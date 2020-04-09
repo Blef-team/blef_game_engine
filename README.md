@@ -11,4 +11,4 @@ Game states are currently stored in and retrieved from `.rds` files. When necess
 ## Deployment
 The service is deployed to EC2 with CodeDeploy integration.
 
-You can see deployment instructions in the [deployment readme](deployment/DEPLOYMENT_README.md)
+You can see deployment instructions in the [deployment readme](deployment/README.md)
