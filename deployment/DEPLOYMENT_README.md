@@ -1,7 +1,7 @@
 ## Deployment
 The service is deployed to EC2 with AWS CodeDeploy integration. The process of a single manual deployment and how to set up the deployment integration from scratch is decribed here.
 
-#### Single deployment
+### Single deployment
 To execute a single deployment, run the following command:
 ```
 aws deploy create-deployment \
@@ -17,7 +17,7 @@ To check the deployment status:
 aws deploy get-deployment --deployment-id <DEPLOYMENT ID> --query "deploymentInfo.[status, errorInformation.code, errorInformation.message]" --output table
 ```
 
-#### Setting up new deployment integration
+### Setting up new deployment integration
 To set up EC2/CodeDeploy integration from scratch, follow these steps (__change resource names__):
 
 Create an instance profile:
