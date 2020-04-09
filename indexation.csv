@@ -1,0 +1,89 @@
+hand_type,detail_1,detail_2
+High card,0,
+High card,1,
+High card,2,
+High card,3,
+High card,4,
+High card,5,
+Pair,0,
+Pair,1,
+Pair,2,
+Pair,3,
+Pair,4,
+Pair,5,
+Two pairs,1,0
+Two pairs,2,0
+Two pairs,2,1
+Two pairs,3,0
+Two pairs,3,1
+Two pairs,3,2
+Two pairs,4,0
+Two pairs,4,1
+Two pairs,4,2
+Two pairs,4,3
+Two pairs,5,0
+Two pairs,5,1
+Two pairs,5,2
+Two pairs,5,3
+Two pairs,5,4
+Small straight,,
+Big straight,,
+Great straight,,
+Three of a kind,0,
+Three of a kind,1,
+Three of a kind,2,
+Three of a kind,3,
+Three of a kind,4,
+Three of a kind,5,
+Full house,0,1
+Full house,0,2
+Full house,0,3
+Full house,0,4
+Full house,0,5
+Full house,1,0
+Full house,1,2
+Full house,1,3
+Full house,1,4
+Full house,1,5
+Full house,2,0
+Full house,2,1
+Full house,2,3
+Full house,2,4
+Full house,2,5
+Full house,3,0
+Full house,3,1
+Full house,3,2
+Full house,3,4
+Full house,3,5
+Full house,4,0
+Full house,4,1
+Full house,4,2
+Full house,4,3
+Full house,4,5
+Full house,5,0
+Full house,5,1
+Full house,5,2
+Full house,5,3
+Full house,5,4
+Colour,3,
+Colour,2,
+Colour,1,
+Colour,0,
+Four of a kind,0,
+Four of a kind,1,
+Four of a kind,2,
+Four of a kind,3,
+Four of a kind,4,
+Four of a kind,5,
+Small flush,3,
+Small flush,2,
+Small flush,1,
+Small flush,0,
+Big flush,3,
+Big flush,2,
+Big flush,1,
+Big flush,0,
+Great flush,3,
+Great flush,2,
+Great flush,1,
+Great flush,0,
