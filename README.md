@@ -16,11 +16,11 @@ The service is deployed to EC2 with CodeDeploy integration.
 To execute a single deployment, run the following command:
 ```
 aws deploy create-deployment \
->   --application-name GameEngineService \
->   --deployment-config-name CodeDeployDefault.OneAtATime \
->   --deployment-group-name GameEngineService-DeploymentGroup \
->   --description "DEPLOYMENT DESCRIPTION" \
->   --github-location repository=maciej-pomykala/blef_game_engine,commitId=<COMMIT ID>
+   --application-name GameEngineService \
+   --deployment-config-name CodeDeployDefault.OneAtATime \
+   --deployment-group-name GameEngineService-DeploymentGroup \
+   --description "DEPLOYMENT DESCRIPTION" \
+   --github-location repository=maciej-pomykala/blef_game_engine,commitId=<COMMIT ID>
 ```
 which returns a deployment id.
 To check the deployment status:
