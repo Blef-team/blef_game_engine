@@ -25,7 +25,7 @@ aws deploy create-deployment \
 which returns a deployment id.
 To check the deployment status:
 ```
-aws deploy get-deployment --deployment-id <DEPLOYMENT ID> --query "deploymentInfo.status" --output text
+aws deploy get-deployment --deployment-id <DEPLOYMENT ID> --query "deploymentInfo.[status, errorInformation.code, errorInformation.message]" --output table
 ```
 
 #### Setting up new deployment integration
