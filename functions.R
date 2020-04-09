@@ -8,7 +8,7 @@ get_path <- function(game_uuid, r = -1) {
 draw_cards <- function(players) {
   possible_cards <- expand.grid(0:5, 0:3)
   all_cards <- possible_cards[sample(1:24, sum(players$n_cards)), ] 
-  nicknames <- sapply(1:nrow(players), function(p) rep(players$nickname[p], players$n_cards[p])) %>% unlist()
+  nicknames <- lapply(1:nrow(players), function(p) rep(players$nickname[p], players$n_cards[p])) %>% unlist()
   cbind(nicknames, all_cards) %>% 
     as.data.frame() %>%
     set_colnames(c("player", "value", "colour")) %>%

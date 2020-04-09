@@ -161,7 +161,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
 #* @param action_id The id of the action (bet or check).
 #* @get /games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
-  
+  action_id <- as.numeric(action_id)
   game <- readRDS(get_path(game_uuid))
   auth_success <- player_uuid == game$players$uuid[game$players$nickname == game$cp_nickname]
 
@@ -183,11 +183,8 @@ function(game_uuid, player_uuid, res, action_id) {
       if (game$cp_nickname == tail(game$players$nickname, 1)) {
         game$cp_nickname <- game$players$nickname[1]
       } else {
-        game$cp_nickname <- game$players$nickname[which(game$players$nickname == cp_nickname) + 1]
+        game$cp_nickname <- game$players$nickname[which(game$players$nickname == game$cp_nickname) + 1]
       } 
-      
-      # Increment the round number
-      game$round_number %<>% add(1)
       
       # Save game state
       saveRDS(game, get_path(game_uuid))
