@@ -50,5 +50,5 @@ aws deploy create-application --application-name GameEngineService
 ```
 Create a CodeDeploy deployment group:
 ```
-aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-key,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-DeploymentGroup --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
+aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-DeploymentGroup --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
 ```
