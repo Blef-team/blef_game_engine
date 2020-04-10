@@ -1,6 +1,8 @@
 # Game engine service for `Blef`
 > The API service to create manage and run games of Blef
 
+![CI](https://github.com/maciej-pomykala/blef_game_engine/workflows/CI/badge.svg?branch=master)
+
 This repository contains the code to run the Blef game engine API service.
 
 At the initial stage it consists of a few basic endpoints, to create, join, start and run a game.
