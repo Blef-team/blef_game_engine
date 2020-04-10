@@ -23,8 +23,8 @@ os: linux
 #   "files" section altogether. A blank or incomplete "files" section
 #   may cause associated deployments to fail.
 files:
-  - source: /
-    destination: /var/gameengineservice/
+  - source: /api
+    destination: /var/gameengineservice/api/
 # For deployments to Amazon Linux, Ubuntu Server, or RHEL instances,
 #   you can specify a "permissions"
 #   section here that describes special permissions to apply to the files
@@ -96,13 +96,10 @@ files:
   #     timeout:
   #   - location:
   #     timeout:
-# During the ApplicationStart deployment lifecycle event, run the commands
-#   in the script specified in "location".
-  # ApplicationStart:
-  #   - location:
-  #     timeout:
-  #   - location:
-  #     timeout:
+During the ApplicationStart deployment lifecycle event, run the commands
+  in the script specified in "location".
+  ApplicationStart:
+    - location: api/run_api.sh
 # During the ValidateService deployment lifecycle event, run the commands
 #   in the script specified in "location".
   # ValidateService:
