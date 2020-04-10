@@ -4,33 +4,6 @@ os: linux
 files:
   - source: /api
     destination: /var/gameengineservice/api/
-ApplicationStop:
-  - location:
-    timeout:
-  - location:
-    timeout:
-# # During the BeforeInstall deployment lifecycle event, run the commands
-# #   in the script specified in "location".
-#   BeforeInstall:
-#     - location:
-#       timeout:
-#     - location:
-#       timeout:
-# # During the AfterInstall deployment lifecycle event, run the commands
-# #   in the script specified in "location".
-#   AfterInstall:
-#     - location:
-#       timeout:
-#     - location:
-#       timeout:
-# During the ApplicationStart deployment lifecycle event, run the commands
-#   in the script specified in "location".
-ApplicationStart:
-  - location: api/run_api.sh
-# # During the ValidateService deployment lifecycle event, run the commands
-# #   in the script specified in "location".
-# ValidateService:
-#   - location:
-#     timeout:
-#   - location:
-#     timeout:
+hooks:
+  ApplicationStart:
+    - location: api/run_api.sh
