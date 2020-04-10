@@ -52,3 +52,19 @@ Create a CodeDeploy deployment group:
 ```
 aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-DeploymentGroup --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
 ```
+
+### Setting up Github Action AWS integration for continuous deployments
+Having set up CodeDeploy integration we can automate deployment with Github actions. For this purpose, we need to prepare AWS credentials. Replace `<ACCOUNT ID>` and `<EXTERNAL ID>` with real values in `github-actions-role.json` and `github-actions-user-policy.json` and then proceed with the following steps:
+
+Create a user for Github Actions:
+```
+aws iam create-user --user-name github-actions-user
+```
+Create a role for Guthub Actions:
+```
+aws iam create-role --role-name github-actions-role --assume-role-policy-document file://<PATH TO REPO>/deployment/github-actions-role.json
+```
+Attach permissions policy to user:
+```
+aws iam put-user-policy --user-name github-actions-user --policy-name github-actions-user-policy --policy-document file://<PATH TO REPO>/deployment/github-action-user-policy.json
+```
