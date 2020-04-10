@@ -2,6 +2,7 @@ library(uuid)
 library(magrittr)
 library(readr)
 library(dplyr)
+library(stringr)
 
 source("api/game_routines.R")
 
@@ -309,4 +310,25 @@ function(game_uuid, admin_uuid, res) {
     res$status <- 200
     list(message = "Request redundant - game already private")
   }
+}
+
+#* List public games
+#* @serializer unboxedJSON
+#* @get /v1/games
+function() {
+  files <- list.files("game_data/", full.names = T)
+  snapshots <- str_detect(files, "_\\d")
+  relevant_files <- files[!snapshots]
+  
+  contents <- lapply(relevant_files, readRDS)
+  public <- sapply(contents, extract2, var = "public")
+  
+  lapply(which(public), function(i) {
+    content <- contents[[i]]
+    list(
+      uuid = relevant_files[i] %>% str_remove("game_data/") %>% str_remove("\\.RDS"),
+      players = as.list(content$players$nickname),
+      started = content$status != "Not started"
+    )
+  })
 }
