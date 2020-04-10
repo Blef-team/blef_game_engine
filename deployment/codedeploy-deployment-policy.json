@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": {
+      "Effect": "Allow",
+      "Action": [
+          "codedeploy:CreateDeployment",
+          "codedeploy:GetDeployment",
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:RegisterApplicationRevision"
+      ],
+      "Resource": "*"
+  }
+}

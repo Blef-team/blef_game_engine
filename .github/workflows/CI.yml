@@ -8,11 +8,12 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master, develop ]
+    types: [closed]
+    branches: [ master ]
 
 jobs:
   deploy:
-    name: Upload to Amazon S3
+    name: Deploy with CodeDeploy to EC2
     runs-on: ubuntu-latest
 
     steps:
@@ -32,4 +33,4 @@ jobs:
 
     - name: Create a deployment with CodeDeploy
       run: |
-        aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-DeploymentGroup --service-role-arn arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/CodeDeployServiceRole ${{ github.event.pull_request.head.sha }}
+        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-DeploymentGroup    --description "Automated deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=maciej-pomykala/blef_game_engine,commitId=${{ github.event.pull_request.head.sha }}

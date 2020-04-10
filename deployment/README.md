@@ -64,7 +64,7 @@ Create a role for Guthub Actions:
 ```
 aws iam create-role --role-name github-actions-role --assume-role-policy-document file://<PATH TO REPO>/deployment/github-actions-role.json
 ```
-Attach permissions policy to user:
+Add CodeDeploy permissions to the guthub action role:
 ```
-aws iam put-user-policy --user-name github-actions-user --policy-name github-actions-user-policy --policy-document file://<PATH TO REPO>/deployment/github-action-user-policy.json
+aws iam put-role-policy --role-name github-actions-role --policy-name codedeploy-deployment --policy-document file://<PATH TO REPO>deployment/codedeploy-deployment-policy.json
 ```
