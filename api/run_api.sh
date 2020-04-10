@@ -1,2 +1,2 @@
-mkdir game_data
+mkdir -p game_data
 Rscript api/run_api.R
