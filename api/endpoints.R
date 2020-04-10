@@ -151,7 +151,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
     list(message = "The UUID does not match any player")
   } else if (r > current_r) {
     res$status <- 400
-    list(message = "Round parameter too high - query the fortune telling endpoint instead")
+    list(message = "Round parameter too high")
   }
 }
 
