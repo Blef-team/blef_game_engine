@@ -96,8 +96,8 @@ files:
   #     timeout:
   #   - location:
   #     timeout:
-During the ApplicationStart deployment lifecycle event, run the commands
-  in the script specified in "location".
+# During the ApplicationStart deployment lifecycle event, run the commands
+#   in the script specified in "location".
   ApplicationStart:
     - location: api/run_api.sh
 # During the ValidateService deployment lifecycle event, run the commands
