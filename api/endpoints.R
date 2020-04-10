@@ -21,6 +21,7 @@ function(res) {
     empty_game <- list(
       game_uuid = game_uuid,
       admin_nickname = NULL,
+      public = F,
       status = "Not started",
       round_number = 0,
       max_cards = 0,
@@ -144,6 +145,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
     return(
       list(
         admin_nickname = game$admin_nickname,
+        public = game$public,
         status = game$status,
         round_number = game$round_number,
         max_cards = game$max_cards,
@@ -254,5 +256,57 @@ function(game_uuid, player_uuid, res, action_id) {
   } else if (!action_allowed) {
     res$status <- 400
     list(message = "Action with this ID is not allowed")
+  }
+}
+
+#* Make game public
+#* @serializer unboxedJSON
+#* @param admin_uuid The identifier of the admin, passed as verification.
+#* @get /v1/games/<game_uuid>/make-public
+function(game_uuid, admin_uuid, res) {
+  
+  game <- readRDS(get_path(game_uuid))
+  auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
+  
+  if (auth_correct & game$public == F) {
+    game$public <- T
+    
+    # Save current game data
+    saveRDS(game, get_path(game_uuid))
+    
+    res$status <- 200
+    list(message = "Game made public")
+  } else if (!auth_correct) {
+    res$status <- 403
+    list(error = "Admin UUID does not match")
+  } else if (game$public == T) {
+    res$status <- 200
+    list(message = "Request redundant - game already public")
+  }
+}
+
+#* Make game private
+#* @serializer unboxedJSON
+#* @param admin_uuid The identifier of the admin, passed as verification.
+#* @get /v1/games/<game_uuid>/make-private
+function(game_uuid, admin_uuid, res) {
+  
+  game <- readRDS(get_path(game_uuid))
+  auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
+  
+  if (auth_correct & game$public == T) {
+    game$public <- F
+    
+    # Save current game data
+    saveRDS(game, get_path(game_uuid))
+    
+    res$status <- 200
+    list(message = "Game made private")
+  } else if (!auth_correct) {
+    res$status <- 403
+    list(error = "Admin UUID does not match")
+  } else if (game$public == F) {
+    res$status <- 200
+    list(message = "Request redundant - game already private")
   }
 }
