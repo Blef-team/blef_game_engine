@@ -1,4 +1,4 @@
-indexation <- read_csv("./api/indexation.csv")
+indexation <- read_csv("./indexation.csv")
 
 get_path <- function(game_uuid, r = -1) {
   if (r == -1) return(paste0("./game_data/", game_uuid, ".RDS"))

@@ -1,4 +1,3 @@
-touch codedeploy_started_run_api
+cd /var/gameengineservice/api/
 mkdir -p game_data
-nohup Rscript api/run_api.R &
-touch codedeploy_finished_run_api
+Rscript run_api.R > /dev/null 2> /dev/null < /dev/null &

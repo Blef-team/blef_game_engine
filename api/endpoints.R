@@ -3,7 +3,7 @@ library(magrittr)
 library(readr)
 library(dplyr)
 
-source("api/game_routines.R")
+source("game_routines.R")
 
 #* Create a new game
 #* @serializer unboxedJSON
