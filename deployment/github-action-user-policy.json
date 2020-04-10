@@ -1,0 +1,13 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ],
+            "Resource": "arn:aws:iam::<ACCOUNT ID>:role/github-actions-role",
+            "Effect": "Allow"
+        }
+    ]
+}
