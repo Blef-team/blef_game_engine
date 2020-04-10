@@ -11,7 +11,7 @@ source("game_routines.R")
 #* @get /v1/games/create
 function(res) {
   # Count started games, prevent abuse
-  games_count <- length(grep(list.files("game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
+  games_count <- length(grep(list.files("../game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
   if (games_count > 10000) {
     res$status <- 429
     list(message = "Too many games started")
@@ -265,16 +265,16 @@ function(game_uuid, player_uuid, res, action_id) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
-  
+
   game <- readRDS(get_path(game_uuid))
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-  
+
   if (auth_correct & game$public == F) {
     game$public <- T
-    
+
     # Save current game data
     saveRDS(game, get_path(game_uuid))
-    
+
     res$status <- 200
     list(message = "Game made public")
   } else if (!auth_correct) {
@@ -291,16 +291,16 @@ function(game_uuid, admin_uuid, res) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
-  
+
   game <- readRDS(get_path(game_uuid))
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-  
+
   if (auth_correct & game$public == T) {
     game$public <- F
-    
+
     # Save current game data
     saveRDS(game, get_path(game_uuid))
-    
+
     res$status <- 200
     list(message = "Game made private")
   } else if (!auth_correct) {
@@ -316,17 +316,17 @@ function(game_uuid, admin_uuid, res) {
 #* @serializer unboxedJSON
 #* @get /v1/games
 function() {
-  files <- list.files("game_data/", full.names = T)
+  files <- list.files("../game_data/", full.names = T)
   snapshots <- str_detect(files, "_\\d")
   relevant_files <- files[!snapshots]
-  
+
   contents <- lapply(relevant_files, readRDS)
   public <- sapply(contents, extract2, var = "public")
-  
+
   lapply(which(public), function(i) {
     content <- contents[[i]]
     list(
-      uuid = relevant_files[i] %>% str_remove("game_data/") %>% str_remove("\\.RDS"),
+      uuid = relevant_files[i] %>% str_remove("../game_data/") %>% str_remove("\\.RDS"),
       players = as.list(content$players$nickname),
       started = content$status != "Not started"
     )
