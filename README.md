@@ -7,4 +7,8 @@ At the initial stage it consists of a few basic endpoints, to create, join, star
 
 Game states are currently stored in and retrieved from `.rds` files. When necessary, this data will be migrated to an appropriate database, which will run alongside the API, or on separate infrastructure.
 
-There are (going to be) appropriate GitHub actions with EC2 integration, to execute CI/deployment of the service.
+
+## Deployment
+The service is deployed to EC2 with CodeDeploy integration.
+
+You can see deployment instructions in the [deployment readme](deployment/README.md)

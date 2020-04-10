@@ -1,0 +1,20 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowIamUserAssumeRole",
+            "Effect": "Allow",
+            "Action": "sts:AssumeRole",
+            "Principal": {"AWS": "arn:aws:iam::<ACCOUNT ID>:user/github-actions-user"},
+            "Condition": {
+                "StringEquals": {"sts:ExternalId": "<EXTERNAL ID>"}
+            }
+        },
+        {
+            "Sid": "AllowPassSessionTags",
+            "Effect": "Allow",
+            "Action": "sts:TagSession",
+            "Principal": {"AWS": "arn:aws:iam::<ACCOUNT ID>:user/github-actions-user"}
+        }
+    ]
+}
