@@ -3,14 +3,14 @@ library(magrittr)
 library(readr)
 library(dplyr)
 
-source("api/game_routines.R")
+source("game_routines.R")
 
 #* Create a new game
 #* @serializer unboxedJSON
 #* @get /v1/games/create
 function(res) {
   # Count started games, prevent abuse
-  games_count <- length(grep(list.files("game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
+  games_count <- length(grep(list.files("../game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
   if (games_count > 10000) {
     res$status <- 429
     list(message = "Too many games started")
