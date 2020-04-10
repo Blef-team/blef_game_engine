@@ -7,10 +7,10 @@ source("api/game_routines.R")
 
 #* Create a new game
 #* @serializer unboxedJSON
-#* @get /games/create
+#* @get /v1/games/create
 function() {
   game_uuid <- UUIDgenerate(use.time = F)
-  
+
   empty_game <- list(
     game_uuid = game_uuid,
     admin_nickname = NULL,
@@ -23,16 +23,16 @@ function() {
     history = data.frame(nickname = character(), action_id = numeric())
   )
   saveRDS(empty_game, file = get_path(game_uuid))
-  
+
   list(game_uuid = game_uuid)
 }
 
 #* Add a player to a game
 #* @serializer unboxedJSON
 #* @param nickname The nickname chosen by the user.
-#* @get /games/<game_uuid>/join
+#* @get /v1/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
-  
+
   player_uuid <- UUIDgenerate(use.time = F)
   game <- readRDS(get_path(game_uuid))
   nick_taken <- nickname %in% game$players$nickname
@@ -40,7 +40,7 @@ function(game_uuid, nickname, res) {
     if (nrow(game$players) == 0) game$admin_nickname <- nickname
     game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
       mutate(uuid = as.character(uuid), nickname = as.character(nickname))
-    
+
     saveRDS(game, get_path(game_uuid))
     list(player_uuid = player_uuid)
   } else if (nick_taken) {
@@ -55,35 +55,35 @@ function(game_uuid, nickname, res) {
 #* Start the game
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /games/<game_uuid>/start
+#* @get /v1/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
-  
+
   game <- readRDS(get_path(game_uuid))
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-  
+
   n_players <- nrow(game$players)
-  
+
   if (auth_correct & game$status == "Not started" & n_players %in% 2:8) {
 
     game$status <- "Running"
     game$round_number <- 1
-    
+
     # Determine maximum number of cards
     if (n_players == 2) game$max_cards <- 11
     if (n_players != 2) game$max_cards <- floor(24 / n_players)
-    
+
     # Give each player 1 card
     game$players$n_cards <- rep(1, nrow(game$players))
-      
+
     # Shuffle the order of the players
     game$players <- game$players[order(rnorm(n_players)), ]
-      
+
     # Deal cards
     game$hands <- draw_cards(game$players)
-      
+
     # Fill in the current player
     game$cp_nickname <- game$players$nickname[1]
-      
+
     # Save current game data
     saveRDS(game, get_path(game_uuid))
 
@@ -105,9 +105,9 @@ function(game_uuid, admin_uuid, res) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the player whose cards the user wants to see before the round finishes.
 #* @param requested_r The round for which information is requested. If no round specified, current round info is returned.
-#* @get /games/<game_uuid>
+#* @get /v1/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, requested_r = -1) {
-  
+
   current_r <- readRDS(get_path(game_uuid))$round_number
   if (requested_r == -1 | requested_r == current_r) {
     r <- current_r
@@ -116,13 +116,13 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
     r <- requested_r
     game <- readRDS(get_path(game_uuid, r))
   }
-  
+
   auth_attempt <-player_uuid != ""
   auth_success <- player_uuid %in% game$players$uuid
   auth_problem <- auth_attempt & !auth_success
-  
+
   if (!auth_problem & r %in% 0:current_r) {
-    
+
     if (r < current_r) {
       revealed_hands <- jsonise_hands(game)
     } else if (r == current_r & auth_success) {
@@ -132,7 +132,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
       revealed_hands <- data.frame()
     }
     privatised_players <- game$players %<>% select(-uuid)
-     
+
     return(
       list(
         admin_nickname = game$admin_nickname,
@@ -145,7 +145,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
         history = game$history
       )
     )
-    
+
   } else if (auth_problem) {
     res$status <- 400
     list(message = "The UUID does not match any player")
@@ -159,7 +159,7 @@ function(game_uuid, player_uuid = "", res, requested_r = -1) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the current player for authentication.
 #* @param action_id The id of the action (bet or check).
-#* @get /games/<game_uuid>/play
+#* @get /v1/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
   action_id <- as.numeric(action_id)
   game <- readRDS(get_path(game_uuid))
@@ -170,31 +170,31 @@ function(game_uuid, player_uuid, res, action_id) {
   } else {
     action_allowed <- action_id %in% 0:88 & action_id > game$history[nrow(game$history), 2]
   }
-  
+
   if (auth_success & action_allowed) {
-    
+
     # If the action was a bet
     if (action_id != 88) {
-      
+
       # Attach action to history
       game$history %<>% rbind(c(game$cp_nickname, action_id)) %>% format_history()
-      
+
       # Increment the current player
       if (game$cp_nickname == tail(game$players$nickname, 1)) {
         game$cp_nickname <- game$players$nickname[1]
       } else {
         game$cp_nickname <- game$players$nickname[which(game$players$nickname == game$cp_nickname) + 1]
-      } 
-      
+      }
+
       # Save game state
       saveRDS(game, get_path(game_uuid))
-      
+
     } else if (action_id == 88) {
       # If the action was a check
-      
+
       last_bet <- game$history[nrow(game$history), 2] %>% unlist()
       set_exists <- determine_set_existence(game$hands, last_bet)
-      
+
       # Determine losing player. If cp is 1st in the table and the previous player lost, go to last player in the table
       if (set_exists) {
         losing_player_i <- which(game$players$nickname == game$cp_nickname)
@@ -205,38 +205,38 @@ function(game_uuid, player_uuid, res, action_id) {
       }
       game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
       game$history %<>% rbind(c(game$players$nickname[losing_player_i], 89))
-      
+
       # Save snapshot of the game
       saveRDS(game, get_path(game_uuid, game$round_number))
-      
+
       # Add a card to the losing player
       game$players$n_cards[losing_player_i] %<>% add(1)
-      
+
       # If a player surpasses max cards, finish game or only kick them out
       if (game$players$n_cards[losing_player_i] > game$max_cards) {
-        game$players <- game$players[-losing_player_i, ] 
+        game$players <- game$players[-losing_player_i, ]
         if (nrow(game$players) == 1) {
           game$status <- "Finished"
           game$cp_nickname <- NULL
         } else {
           game$round_number %<>% add(1)
           game$history <- data.frame(nickname = character(), action_id = numeric())
-          game$hands <- draw_cards(game$players) 
+          game$hands <- draw_cards(game$players)
           # If the checking player was eliminated, the one who now occupies the same row should be the next player
           # Otherwise the current player doesn't change
           if (game$players$nickname[losing_player_i] == game$cp_nickname) {
             if (losing_player_i > nrow(game$players)) new_cp_i <- 1
-            if (losing_player_i <= nrow(game$players)) new_cp_i <- losing_player_i 
+            if (losing_player_i <= nrow(game$players)) new_cp_i <- losing_player_i
           }
         }
       } else {
         # If no one should be kicked out, increment round number, redraw cards and set new current player
         game$round_number %<>% add(1)
         game$history <- data.frame(nickname = character(), action_id = numeric())
-        game$hands <- draw_cards(game$players) 
-        game$cp_nickname <- game$players$nickname[losing_player_i] 
+        game$hands <- draw_cards(game$players)
+        game$cp_nickname <- game$players$nickname[losing_player_i]
       }
-      
+
       # Save game state
       saveRDS(game, get_path(game_uuid))
     }
@@ -248,4 +248,3 @@ function(game_uuid, player_uuid, res, action_id) {
     list(message = "Action with this ID is not allowed")
   }
 }
-
