@@ -15,6 +15,16 @@
             "Effect": "Allow",
             "Action": "sts:TagSession",
             "Principal": {"AWS": "arn:aws:iam::<ACCOUNT ID>:user/github-actions-user"}
+        },
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": [
+                    "codedeploy.amazonaws.com"
+                ]
+            },
+            "Action": "sts:AssumeRole"
         }
     ]
 }
