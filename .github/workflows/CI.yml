@@ -33,4 +33,4 @@ jobs:
 
     - name: Create a deployment with CodeDeploy
       run: |
-        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-DeploymentGroup    --description "Automated deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=maciej-pomykala/blef_game_engine,commitId=${{ github.event.pull_request.head.sha }}
+        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-DeploymentGroup    --description "Automated deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=maciej-pomykala/blef_game_engine,commitId=${{ github.sha }}
