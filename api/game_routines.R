@@ -92,5 +92,5 @@ determine_set_existence <- function(cards, set_id) {
 format_history <- function(history) {
   history %>%
     set_colnames(c("player", "action_id")) %>%
-    mutate(player = as.character(player), action_id = as.numeric(action_id))
+    mutate(player = as.character(player), action_id = as.numeric(as.character(action_id)))
 }
