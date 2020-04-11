@@ -52,12 +52,13 @@ There are 88 sets in the game. They are the following:
 | Great straight  | *Great straight*       | 1              | at least one 9, one 10, one J, one Q, one K and one A    |
 | Three of a kind | *Three Xs*             | 6              | at least 3 Xs                                            |
 | Full house      | *Full house: Xs on Ys* | 30             | at least 3 Xs and 2 Ys                                   |
-| Colour          | *Colour: Xs*           | 4              | at least 5 cards of colour X                             |
+| Colour          | *Colour: Cs*           | 4              | at least 5 cards of Cs                                   |
 | Four of a kind  | *Four Xs*              | 6              | at least 4 Xs                                            |
-| Small flush     | *Small flush: Xs*      | 4              | 9 of Xs, 10 of Xs, J of Xs, Q of Xs and K of Xs          |
-| Big flush       | *Big flush: Xs*        | 4              | 10 of Xs, J of Xs, Q of Xs, K of Xs and A of Xs          |
-| Great flush     | *Great flush: Xs*      | 4              | 9 of Xs, 10 of Xs, J of Xs, Q of Xs, K of Xs and A of Xs |
+| Small flush     | *Small flush: Cs*      | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs and K of Cs          |
+| Big flush       | *Big flush: Cs*        | 4              | 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs          |
+| Great flush     | *Great flush: Cs*      | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs |
 
+where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and C is one of club, diamond, heart, or spade (in this order of seniority). X must be more senior than than Y. If two pairs or two full houses are compared, the one with the more senior X is more senior overall. If X is equal in both, the one with the more senior Y is more senior overall.
 
 ## How the API implements the game
 
