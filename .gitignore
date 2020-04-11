@@ -40,3 +40,6 @@ vignettes/*.pdf
 
 # Game engine - persisted game data
 game_data/
+
+# HTML files created to preview the output of md files
+*.html
