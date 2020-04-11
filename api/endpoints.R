@@ -114,18 +114,18 @@ function(game_uuid, admin_uuid, res) {
 #* Get the game state
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the player whose cards the user wants to see before the round finishes.
-#* @param requested_r The round for which information is requested. If no round specified, current round info is returned.
+#* @param round The round for which information is requested. If no round specified, current round info is returned.
 #* @get /v1/games/<game_uuid>
-function(game_uuid, player_uuid = "", res, requested_r = -1) {
+function(game_uuid, player_uuid = "", res, round = -1) {
   
   game_path <- get_path(game_uuid)
   if(file.exists(game_path)) {
     current_r <- readRDS(game_path)$round_number
-    if (requested_r == -1 | requested_r == current_r) {
+    if (round == -1 | round == current_r) {
       r <- current_r
       game <- readRDS(get_path(game_uuid))
     } else {
-      r <- requested_r
+      r <- as.numeric(round)
       game <- readRDS(get_path(game_uuid, r))
     }
     
