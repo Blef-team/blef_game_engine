@@ -143,7 +143,6 @@ function(game_uuid, player_uuid = "", res, round = -1) {
     }
     privatised_players <- game$players %<>% select(-uuid)
 
-    print(revealed_hands)
     return(
       list(
         admin_nickname = game$admin_nickname,
