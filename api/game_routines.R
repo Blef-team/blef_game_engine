@@ -25,7 +25,7 @@ jsonise_hands <- function(game, nicknames = unique(game$players$nickname)) {
 determine_set_existence <- function(cards, set_id) {
 
   set_id %<>% as.numeric()
-  set_type <- unlist(indexation$hand_type[set_id + 1])
+  set_type <- unlist(indexation$set_type[set_id + 1])
   detail_1 <- as.numeric(unlist(indexation$detail_1[set_id + 1]))
   detail_2 <- as.numeric(unlist(indexation$detail_2[set_id + 1]))
 
