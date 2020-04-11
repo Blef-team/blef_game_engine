@@ -1,89 +1,89 @@
-hand_type,detail_1,detail_2
-High card,0,
-High card,1,
-High card,2,
-High card,3,
-High card,4,
-High card,5,
-Pair,0,
-Pair,1,
-Pair,2,
-Pair,3,
-Pair,4,
-Pair,5,
-Two pairs,1,0
-Two pairs,2,0
-Two pairs,2,1
-Two pairs,3,0
-Two pairs,3,1
-Two pairs,3,2
-Two pairs,4,0
-Two pairs,4,1
-Two pairs,4,2
-Two pairs,4,3
-Two pairs,5,0
-Two pairs,5,1
-Two pairs,5,2
-Two pairs,5,3
-Two pairs,5,4
-Small straight,,
-Big straight,,
-Great straight,,
-Three of a kind,0,
-Three of a kind,1,
-Three of a kind,2,
-Three of a kind,3,
-Three of a kind,4,
-Three of a kind,5,
-Full house,0,1
-Full house,0,2
-Full house,0,3
-Full house,0,4
-Full house,0,5
-Full house,1,0
-Full house,1,2
-Full house,1,3
-Full house,1,4
-Full house,1,5
-Full house,2,0
-Full house,2,1
-Full house,2,3
-Full house,2,4
-Full house,2,5
-Full house,3,0
-Full house,3,1
-Full house,3,2
-Full house,3,4
-Full house,3,5
-Full house,4,0
-Full house,4,1
-Full house,4,2
-Full house,4,3
-Full house,4,5
-Full house,5,0
-Full house,5,1
-Full house,5,2
-Full house,5,3
-Full house,5,4
-Colour,3,
-Colour,2,
-Colour,1,
-Colour,0,
-Four of a kind,0,
-Four of a kind,1,
-Four of a kind,2,
-Four of a kind,3,
-Four of a kind,4,
-Four of a kind,5,
-Small flush,3,
-Small flush,2,
-Small flush,1,
-Small flush,0,
-Big flush,3,
-Big flush,2,
-Big flush,1,
-Big flush,0,
-Great flush,3,
-Great flush,2,
-Great flush,1,
-Great flush,0,
+﻿action_id,hand_type,detail_1,detail_2,humanised
+0,High card,0,,High card: 9
+1,High card,1,,High card: 10
+2,High card,2,,High card: J
+3,High card,3,,High card: Q
+4,High card,4,,High card: K
+5,High card,5,,High card: A
+6,Pair,0,,Pair of 9s
+7,Pair,1,,Pair of 10s
+8,Pair,2,,Pair of Js
+9,Pair,3,,Pair of Qs
+10,Pair,4,,Pair of Ks
+11,Pair,5,,Pair of As
+12,Two pairs,1,0,Two pairs: 10s and 9s
+13,Two pairs,2,0,Two pairs: Js and 9s
+14,Two pairs,2,1,Two pairs: Js and 10s
+15,Two pairs,3,0,Two pairs: Qs and 9s
+16,Two pairs,3,1,Two pairs: Qs and 10s
+17,Two pairs,3,2,Two pairs: Qs and Js
+18,Two pairs,4,0,Two pairs: Ks and 9s
+19,Two pairs,4,1,Two pairs: Ks and 10s
+20,Two pairs,4,2,Two pairs: Ks and Js
+21,Two pairs,4,3,Two pairs: Ks and Qs
+22,Two pairs,5,0,Two pairs: As and 9s
+23,Two pairs,5,1,Two pairs: As and 10s
+24,Two pairs,5,2,Two pairs: As and Js
+25,Two pairs,5,3,Two pairs: As and Qs
+26,Two pairs,5,4,Two pairs: As and Ks
+27,Small straight,,,Small straight
+28,Big straight,,,Big straight
+29,Great straight,,,Great straight
+30,Three of a kind,0,,Three 9s
+31,Three of a kind,1,,Three 10s
+32,Three of a kind,2,,Three Js
+33,Three of a kind,3,,Three Qs
+34,Three of a kind,4,,Three Ks
+35,Three of a kind,5,,Three As
+36,Full house,0,1,Full house: 9s on 10s
+37,Full house,0,2,Full house: 9s on Js
+38,Full house,0,3,Full house: 9s on Qs
+39,Full house,0,4,Full house: 9s on Ks
+40,Full house,0,5,Full house: 9s on As
+41,Full house,1,0,Full house: 10s on 9s
+42,Full house,1,2,Full house: 10s on Js
+43,Full house,1,3,Full house: 10s on Qs
+44,Full house,1,4,Full house: 10s on Ks
+45,Full house,1,5,Full house: 10s on As
+46,Full house,2,0,Full house: Js on 9s
+47,Full house,2,1,Full house: Js on 10s
+48,Full house,2,3,Full house: Js on Qs
+49,Full house,2,4,Full house: Js on Ks
+50,Full house,2,5,Full house: Js on As
+51,Full house,3,0,Full house: Qs on 9s
+52,Full house,3,1,Full house: Qs on 10s
+53,Full house,3,2,Full house: Qs on Js
+54,Full house,3,4,Full house: Qs on Ks
+55,Full house,3,5,Full house: Qs on As
+56,Full house,4,0,Full house: Ks on 9s
+57,Full house,4,1,Full house: Ks on 10s
+58,Full house,4,2,Full house: Ks on Js
+59,Full house,4,3,Full house: Ks on Qs
+60,Full house,4,5,Full house: Ks on As
+61,Full house,5,0,Full house: As on 9s
+62,Full house,5,1,Full house: As on 10s
+63,Full house,5,2,Full house: As on Js
+64,Full house,5,3,Full house: As on Qs
+65,Full house,5,4,Full house: As on Ks
+66,Colour,0,,Colour: clubs
+67,Colour,1,,Colour: diamonds
+68,Colour,2,,Colour: hearts
+69,Colour,3,,Colour: spades
+70,Four of a kind,0,,Four 9s
+71,Four of a kind,1,,Four 10s
+72,Four of a kind,2,,Four Js
+73,Four of a kind,3,,Four Qs
+74,Four of a kind,4,,Four Ks
+75,Four of a kind,5,,Four As
+76,Small flush,0,,Small flush: clubs
+77,Small flush,1,,Small flush: diamonds
+78,Small flush,2,,Small flush: hearts
+79,Small flush,3,,Small flush: spades
+80,Big flush,0,,Big flush: clubs
+81,Big flush,1,,Big flush: diamonds
+82,Big flush,2,,Big flush: hearts
+83,Big flush,3,,Big flush: spades
+84,Great flush,0,,Great flush: clubs
+85,Great flush,1,,Great flush: diamonds
+86,Great flush,2,,Great flush: hearts
+87,Great flush,3,,Great flush: spades
