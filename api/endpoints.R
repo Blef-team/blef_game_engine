@@ -117,52 +117,58 @@ function(game_uuid, admin_uuid, res) {
 #* @param requested_r The round for which information is requested. If no round specified, current round info is returned.
 #* @get /v1/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, requested_r = -1) {
-
-  current_r <- readRDS(get_path(game_uuid))$round_number
-  if (requested_r == -1 | requested_r == current_r) {
-    r <- current_r
-    game <- readRDS(get_path(game_uuid))
-  } else {
-    r <- requested_r
-    game <- readRDS(get_path(game_uuid, r))
-  }
-
-  auth_attempt <-player_uuid != ""
-  auth_success <- player_uuid %in% game$players$uuid
-  auth_problem <- auth_attempt & !auth_success
-
-  if (!auth_problem & r %in% 0:current_r) {
-
-    if (r < current_r) {
-      revealed_hands <- jsonise_hands(game)
-    } else if (r == current_r & auth_success) {
-      user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
-      revealed_hands <- jsonise_hands(game, nicknames = user_nickname)
-    } else if (r == current_r & !auth_success) {
-      revealed_hands <- data.frame()
+  
+  game_path <- get_path(game_uuid)
+  if(file.exists(game_path)) {
+    current_r <- readRDS(game_path)$round_number
+    if (requested_r == -1 | requested_r == current_r) {
+      r <- current_r
+      game <- readRDS(get_path(game_uuid))
+    } else {
+      r <- requested_r
+      game <- readRDS(get_path(game_uuid, r))
     }
-    privatised_players <- game$players %<>% select(-uuid)
-
-    return(
-      list(
-        admin_nickname = game$admin_nickname,
-        public = game$public,
-        status = game$status,
-        round_number = game$round_number,
-        max_cards = game$max_cards,
-        players = privatised_players,
-        hands = revealed_hands,
-        cp_nickname = game$cp_nickname,
-        history = game$history
+    
+    auth_attempt <-player_uuid != ""
+    auth_success <- player_uuid %in% game$players$uuid
+    auth_problem <- auth_attempt & !auth_success
+    
+    if (!auth_problem & r %in% 0:current_r) {
+      
+      if (r < current_r) {
+        revealed_hands <- jsonise_hands(game)
+      } else if (r == current_r & auth_success) {
+        user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
+        revealed_hands <- jsonise_hands(game, nicknames = user_nickname)
+      } else if (r == current_r & !auth_success) {
+        revealed_hands <- data.frame()
+      }
+      privatised_players <- game$players %<>% select(-uuid)
+      
+      return(
+        list(
+          admin_nickname = game$admin_nickname,
+          public = game$public,
+          status = game$status,
+          round_number = game$round_number,
+          max_cards = game$max_cards,
+          players = privatised_players,
+          hands = revealed_hands,
+          cp_nickname = game$cp_nickname,
+          history = game$history
+        )
       )
-    )
-
-  } else if (auth_problem) {
+      
+    } else if (auth_problem) {
+      res$status <- 400
+      list(message = "The UUID does not match any player")
+    } else if (r > current_r) {
+      res$status <- 400
+      list(message = "Round parameter too high")
+    }
+  } else {
     res$status <- 400
-    list(message = "The UUID does not match any player")
-  } else if (r > current_r) {
-    res$status <- 400
-    list(message = "Round parameter too high")
+    list(message = "Game does not exist")
   }
 }
 
