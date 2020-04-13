@@ -220,7 +220,7 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 
 ## Action IDs
 
-The table below matches the action IDs used by the API with the relevant sets the players bet on when entering IDs between 0 and 87. An ID of 88 is a check.
+The table below matches the action IDs used by the API with the relevant sets the players bet on when entering IDs between 0 and 87. An ID of 88 is a check. A set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
 
 | Action ID | Set description       |
 |-----------|-----------------------|
