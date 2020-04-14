@@ -25,7 +25,7 @@ The starting player makes a *bet*, which has to specify a certain *set* of cards
 
 Suppose that Bob is the next player. Bob has two choices: either he checks Alice, or he bets on a more senior set than a pair of aces. 
 
-* If he checks Alice, then every player reveals their cards. If the set specified by Alice (a pair of aces) can be found among all players' cards, this means that Alice's bet was correct and Bob loses the round. If only one ace or no aces at all could be found among the cards, then Bob loses the round. 
+* If he checks Alice, then every player reveals their cards. If the set specified by Alice (a pair of aces) can be found among all players' cards, this means that Alice's bet was correct and Bob loses the round. If only one ace or no aces at all could be found among the cards, then Alice loses the round. 
 * If he bets on a more senior set, the next player in the circle makes a move (if there is only Alice and Bob, the game comes back to Alice), which, again, can be either a check or a more senior bet. 
 
 In general, players proceed in a circle betting on more and more senior sets until one player checks the previous player.
@@ -80,7 +80,7 @@ Then, the user who created the game informs other users with whom they want to p
 
 ### Starting a game
 
-The first user to join the game is made the 'admin'. Users know the nickname of the admin. The admin, using their player UUID for authentication, will start the game, at which no more players can join it. 
+The first user to join the game is made the 'admin'. Users know the nickname of the admin. The admin, using their player UUID for authentication, will start the game, at which point no more players can join it. 
 
 The players are shuffled - i.e. the order of the players in the game (the order in which players make bets) may not be the one in which players join the game. In particular, the game admin might not be the starting player in the first round.
 
@@ -106,7 +106,13 @@ By recording the current state of the game and snapshots of the game at the end 
 
 ### Making a move
 
-There is an endpoint dedicated to letting the current player make a move. The player provides their UUID (for authentication) and the id of the action they are trying to make, which can be either a bet or a check.
+There is an endpoint dedicated to letting the current player make a move. The player provides their UUID (for authentication) and the action they are trying to make (a bet or a check), represented with an action ID.
+
+### Public / private games
+
+A game can be public or private. A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. However, these changes can only be made before the game starts. 
+
+Finally, there is an endpoint which allows a user to see all public games (their UUID, list of players and an indication whether they have started). 
 
 ### Full API documentation
 
