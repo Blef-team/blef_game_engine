@@ -218,6 +218,127 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
 ```
 
+**Make game public**
+  ----
+  Allows the first player who joined the game to make it public (visible to anyone).
+
+* **URL**
+  
+  /v1/games/{game_uuid}/make-public
+
+* **Method:**
+  
+  `GET`
+
+* **URL Params**
+  
+  **Required:**
+ 
+  `"game_uuid"=string`
+   
+* **Data Params**
+
+  `"admin_uuid"=string`
+
+* **Success Response:**
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Game made public"}`
+
+  OR
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Request redundant - game already public"}`
+
+* **Error Response:**
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Admin UUID does not match"}`
+
+* **Sample Call:**
+  
+```
+curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+```
+
+**Make game private**
+  ----
+  Allows the first player who joined the game to make it private (visible to only those who know its UUID).
+
+* **URL**
+  
+  /v1/games/{game_uuid}/make-private
+
+* **Method:**
+  
+  `GET`
+
+* **URL Params**
+  
+  **Required:**
+ 
+  `"game_uuid"=string`
+   
+* **Data Params**
+
+  `"admin_uuid"=string`
+
+* **Success Response:**
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Game made private"}`
+
+  OR
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Request redundant - game already private"}`
+
+* **Error Response:**
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Admin UUID does not match"}`
+
+* **Sample Call:**
+  
+```
+curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+```
+
+**List public games**
+  ----
+  Allows users to see all public games.
+
+* **URL**
+  
+  /v1/games
+
+* **Method:**
+  
+  `GET`
+
+* **URL Params**
+  
+  NONE
+
+*  **Data Params**
+
+  NONE
+
+* **Success Response:**
+  
+  * **Code:** 200 OK <br />
+  **Content:** `[{"uuid":"4acb8354-e0d2-4a0c-941d-6f6289bdac63","players":["a"],"started":false},{"uuid":"e10ee626-f05f-4229-bb8d-fee28aecce4b","players":["a","b"],"started":true}]`
+
+* **Error Response:**
+  
+  NONE
+  
+* **Sample Call:**
+  
+```
+curl <IP & PORT>/v1/games
+```
+
 ## Action IDs
 
 The table below matches the action IDs used by the API with the relevant sets the players bet on when entering IDs between 0 and 87. An ID of 88 is a check. A set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
