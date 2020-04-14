@@ -269,7 +269,7 @@ function(game_uuid, admin_uuid, res) {
   game <- readRDS(get_path(game_uuid))
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
 
-  if (auth_correct & game$public == F) {
+  if (auth_correct & game$public == F & game$status == "Not started") {
     game$public <- T
 
     # Save current game data
@@ -283,6 +283,9 @@ function(game_uuid, admin_uuid, res) {
   } else if (game$public == T) {
     res$status <- 200
     list(message = "Request redundant - game already public")
+  } else if (game$status != "Not started") {
+    res$status <- 403
+    list(message = "Cannot make the change - game already started")
   }
 }
 
@@ -295,7 +298,7 @@ function(game_uuid, admin_uuid, res) {
   game <- readRDS(get_path(game_uuid))
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
 
-  if (auth_correct & game$public == T) {
+  if (auth_correct & game$public == T & game$status == "Not started") {
     game$public <- F
 
     # Save current game data
@@ -309,6 +312,9 @@ function(game_uuid, admin_uuid, res) {
   } else if (game$public == F) {
     res$status <- 200
     list(message = "Request redundant - game already private")
+  } else if (game$status != "Not started") {
+    res$status <- 403
+    list(message = "Cannot make the change - game already started")
   }
 }
 
