@@ -341,7 +341,7 @@ curl <IP & PORT>/v1/games
 
 ## Action IDs
 
-The table below matches the action IDs used by the API with the relevant sets the players bet on when entering IDs between 0 and 87. An ID of 88 is a check. A set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
+The table below details what action ID a player should use to make a specific move. Action IDs between 0 and 87 cover bets, while 88 is a check. The way the actions are arranged, a set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
 
 | Action ID | Set description       |
 |-----------|-----------------------|
@@ -433,3 +433,4 @@ The table below matches the action IDs used by the API with the relevant sets th
 | 85        | Great flush: diamonds |
 | 86        | Great flush: hearts   |
 | 87        | Great flush: spades   |
+| 88        | **Check**             |
