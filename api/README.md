@@ -12,7 +12,7 @@
   
   `GET`
 
-*  **URL Params**
+* **URL Params**
   
   None
 
@@ -44,17 +44,17 @@ curl <IP & PORT>/v1/games/create
   
   `GET`
 
-*  **URL Params**
+* **URL Params**
   
-   **Required:**
+  **Required:**
  
-   `"game_uuid"=string`
+  `"game_uuid"=string`
    
-*  **Data Params**
+* **Data Params**
 
-   **Required:**
+  **Required:**
  
-   `"nickname"=string`
+  `"nickname"=string`
 
 * **Success Response:**
   
@@ -89,15 +89,15 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
   
   `GET`
 
-*  **URL Params**
+* **URL Params**
   
-   **Required:**
+  **Required:**
  
-   `"game_uuid"=string`
+  `"game_uuid"=string`
    
-*  **Data Params**
+* **Data Params**
 
-   None
+   `"admin_uuid"=string`
 
 * **Success Response:**
   
@@ -137,24 +137,24 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
   
   `GET`
 
-*  **URL Params**
+* **URL Params**
   
-   **Required:**
+  **Required:**
  
-   `"game_uuid"=string`
+  `"game_uuid"=string`
    
-*  **Data Params**
+* **Data Params**
 
-   **Optional:**
+  **Optional:**
  
-   `"player_uuid"=string`
+  `"player_uuid"=string`
    
-   `"round"=integer`
+  `"round"=integer`
 
 * **Success Response:**
   
   * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname":"a","public":true,"status":"Not started","round_number":0,"max_cards":0,"players":[{"nickname":"a","n_cards":0}],"hands":[],"cp_nickname":{},"history":[]}`
+  **Content:** `{"admin_nickname":"funky","public":false,"status":"Running","round_number":12,"max_cards":11,"players":[{"nickname":"chunky","n_cards":8},{"nickname":"funky","n_cards":5}],"hands":[{"Nickname":"chunky","Hand":[{"value":5,"colour":2},{"value":4,"colour":3},{"value":4,"colour":1},{"value":4,"colour":0},{"value":3,"colour":2},{"value":3,"colour":1},{"value":2,"colour":0},{"value":1,"colour":1}]},{"Nickname":"funky","Hand":[{"value":5,"colour":1},{"value":5,"colour":0},{"value":3,"colour":3},{"value":0,"colour":1},{"value":0,"colour":0}]}],"cp_nickname":"funky","history":[{"player":"chunky","action_id":"74"},{"player":"funky","action_id":"88"},{"player":"chunky","action_id":"89"}]}`
 
 * **Error Response:**
   
@@ -184,19 +184,19 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
   
   `GET`
 
-*  **URL Params**
+* **URL Params**
   
-   **Required:**
+  **Required:**
  
-   `"game_uuid"=string`
+  `"game_uuid"=string`
    
-*  **Data Params**
+* **Data Params**
 
-   **Required:**
+  **Required:**
  
-   `"player_uuid"=string`
+  `"player_uuid"=string`
    
-   `"action_id"=integer`
+  `"action_id"=integer`
 
 * **Success Response:**
   
