@@ -317,7 +317,7 @@ function(game_uuid, player_uuid, res, action_id) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
-
+  
   game_uuid_valid <- validate_uuid(game_uuid)
   admin_uuid_valid <- validate_uuid(admin_uuid)
   
@@ -340,6 +340,9 @@ function(game_uuid, admin_uuid, res) {
     } else if (game$public == T) {
       res$status <- 200
       list(message = "Request redundant - game already public")
+    } else if (game$status != "Not started") {
+      res$status <- 403
+      list(message = "Cannot make the change - game already started")
     }
   } else if(!game_uuid_valid) {
     res$status <- 400
@@ -348,7 +351,6 @@ function(game_uuid, admin_uuid, res) {
     res$status <- 400
     list(error = "Invalid admin UUID")
   }
-  
 }
 
 #* Make game private
@@ -379,6 +381,9 @@ function(game_uuid, admin_uuid, res) {
     } else if (game$public == F) {
       res$status <- 200
       list(message = "Request redundant - game already private")
+    } else if (game$status != "Not started") {
+    res$status <- 403
+    list(message = "Cannot make the change - game already started")
     }
   } else if(!game_uuid_valid) {
     res$status <- 400
