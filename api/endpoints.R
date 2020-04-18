@@ -249,22 +249,22 @@ function(game_uuid, player_uuid, res, action_id) {
         
         # Determine losing player (the last player in the history table)
         if (set_exists) {
-          losing_player_i <- which(game$players$nickname == game$cp_nickname)
+          losing_player <- game$cp_nickname
         } else if (!set_exists) {
-          losing_player_i <- which(game$players$nickname == tail(game$history$player, 1))
+          losing_player <- tail(game$history$player, 1)
         } 
         game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
-        game$history %<>% rbind(c(game$players$nickname[losing_player_i], 89))
+        game$history %<>% rbind(c(losing_player, 89))
         
         # Save snapshot of the game
         saveRDS(game, get_path(game_uuid, game$round_number))
         
         # Add a card to the losing player
-        game$players$n_cards[losing_player_i] %<>% add(1)
+        game$players$n_cards[game$players$nickname == losing_player] %<>% add(1)
         
         # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
-        if (game$players$n_cards[losing_player_i] > game$max_cards) {
-          game$players$n_cards[losing_player_i] <- 0
+        if (game$players$n_cards[game$players$nickname == losing_player] > game$max_cards) {
+          game$players$n_cards[game$players$nickname == losing_player] <- 0
           if (sum(game$players$n_cards > 0) == 1) {
             game$status <- "Finished"
             game$cp_nickname <- NULL
@@ -274,7 +274,7 @@ function(game_uuid, player_uuid, res, action_id) {
             game$hands <- draw_cards(game$players)
             # If the checking player was eliminated, figure out the next player
             # Otherwise the current player doesn't change
-            if (game$players$nickname[losing_player_i] == game$cp_nickname) {
+            if (losing_player == game$cp_nickname) {
               game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
             }
           }
@@ -283,7 +283,7 @@ function(game_uuid, player_uuid, res, action_id) {
           game$round_number %<>% add(1)
           game$history <- data.frame(nickname = character(), action_id = numeric())
           game$hands <- draw_cards(game$players)
-          game$cp_nickname <- game$players$nickname[losing_player_i]
+          game$cp_nickname <- losing_player
         }
         
         # Save game state
