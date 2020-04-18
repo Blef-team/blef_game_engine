@@ -140,9 +140,9 @@ function(game_uuid, admin_uuid, res) {
 function(game_uuid, player_uuid = "", res, round = -1) {
   
   game_uuid_valid <- validate_uuid(game_uuid)
-  player_uuid_valid <- validate_uuid(player_uuid)
+  player_uuid_valid_or_empty <- player_uuid == "" | validate_uuid(player_uuid)
   
-  if (game_uuid_valid & (player_uuid == "" | player_uuid_valid)) {
+  if (game_uuid_valid & player_uuid_valid_or_empty) {
     
     game_path <- get_path(game_uuid)
     
@@ -200,7 +200,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   } else if (!game_uuid_valid) {
     res$status <- 400
     list(error = "Invalid game UUID")
-  } else if (!(player_uuid == "" | player_uuid_valid)) {
+  } else if (!player_uuid_valid_or_empty) {
     res$status <- 400
     list(error = "Invalid player UUID")
   }
