@@ -45,30 +45,41 @@ function(res) {
 #* @get /v1/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
 
+  # Check if the supplied game UUID is a valid UUID before loading the game
   game_uuid_valid <- validate_uuid(game_uuid)
-  
-  if (game_uuid_valid) {
-    player_uuid <- UUIDgenerate(use.time = F)
-    game <- readRDS(get_path(game_uuid))
-    nick_taken <- nickname %in% game$players$nickname
-    if (!nick_taken & game$status == "Not started") {
-      if (nrow(game$players) == 0) game$admin_nickname <- nickname
-      game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
-        mutate(uuid = as.character(uuid), nickname = as.character(nickname))
-      
-      saveRDS(game, get_path(game_uuid))
-      list(player_uuid = player_uuid)
-    } else if (nick_taken) {
-      res$status <- 409
-      list(error = "Nickname already taken")
-    } else if (game$status != "Not started") {
-      res$status <- 405
-      list(error = "Game already started")
-    }
-  } else {
+  if(!game_uuid_valid) {
     res$status <- 400
-    list(error = "Invalid game UUID")
+    return(list(error = "Invalid game UUID"))
   }
+  game <- readRDS(get_path(game_uuid))
+  
+  # Check whether the game has already started, in which case users shouldn't be able to join
+  if (game$status != "Not started") {
+    res$status <- 403
+    return(list(error = "Game already started"))
+  }
+  
+  # Check if the game is not full
+  game_full <- nrow(game$players) == 8
+  if (game_full) {
+    res$status <- 403
+    return(list(error = "The game room is full"))
+  }
+  
+  # Check whether the nickname is available
+  nick_taken <- nickname %in% game$players$nickname
+  if (nick_taken) {
+    res$status <- 409
+    return(list(error = "Nickname already taken"))
+  }
+  
+  player_uuid <- UUIDgenerate(use.time = F)
+  if (nrow(game$players) == 0) game$admin_nickname <- nickname
+  game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
+    mutate(uuid = as.character(uuid), nickname = as.character(nickname))
+  
+  saveRDS(game, get_path(game_uuid))
+  list(player_uuid = player_uuid)
 }
 
 #* Start the game

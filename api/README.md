@@ -63,13 +63,18 @@ curl <IP & PORT>/v1/games/create
 
 * **Error Response:**
   
-  * **Code:** 409 CONFLICT <br />
-  **Content:** `{"error":"Nickname already taken"}`
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game already started"}`
   
   OR
   
-  * **Code:** 405 METHOD NOT ALLOWED <br />
-  **Content:** `{"error":"Game already started"}`
+  * **Code:** 409 CONFLICT <br />
+  **Content:** `{"error":"Nickname already taken"}`
 
 * **Sample Call:**
   
