@@ -20,7 +20,8 @@ jsonise_hands <- function(game, nicknames = unique(game$players$nickname)) {
   if (nrow(game$hands) == 0) {
     jsonised_hands <- data.frame()
   } else {
-    jsonised_hands <- lapply(nicknames, function(p) {
+    active_nicknames <- nicknames[nicknames %in% game$players$nickname[game$players$n_cards > 0]]
+    jsonised_hands <- lapply(active_nicknames, function(p) {
       list(Nickname = p, Hand = game$hands %>% filter(player == p) %>% select(-player))
     })
   }
@@ -98,4 +99,14 @@ format_history <- function(history) {
   history %>%
     set_colnames(c("player", "action_id")) %>%
     mutate(player = as.character(player), action_id = as.numeric(as.character(action_id)))
+}
+
+find_next_active_player <- function(players, cp_nickname) {
+  active_players <- players %>% filter(n_cards > 0) %>% pull(nickname)
+  if (cp_nickname == tail(active_players, 1)) {
+    new_cp_nickname <- active_players[1]
+  } else {
+    new_cp_nickname <- active_players[which(active_players == cp_nickname) + 1]
+  }
+  return(new_cp_nickname)
 }

@@ -236,11 +236,7 @@ function(game_uuid, player_uuid, res, action_id) {
         game$history %<>% rbind(c(game$cp_nickname, action_id)) %>% format_history()
         
         # Increment the current player
-        if (game$cp_nickname == tail(game$players$nickname, 1)) {
-          game$cp_nickname <- game$players$nickname[1]
-        } else {
-          game$cp_nickname <- game$players$nickname[which(game$players$nickname == game$cp_nickname) + 1]
-        }
+        game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
         
         # Save game state
         saveRDS(game, get_path(game_uuid))
@@ -248,17 +244,15 @@ function(game_uuid, player_uuid, res, action_id) {
       } else if (action_id == 88) {
         # If the action was a check
         
-        last_bet <- game$history[nrow(game$history), 2] %>% unlist()
+        last_bet <- tail(game$history$action_id, 1)
         set_exists <- determine_set_existence(game$hands, last_bet)
         
-        # Determine losing player. If cp is 1st in the table and the previous player lost, go to last player in the table
+        # Determine losing player (the last player in the history table)
         if (set_exists) {
           losing_player_i <- which(game$players$nickname == game$cp_nickname)
-        } else if (!set_exists & game$cp_nickname == game$players$nickname[1]) {
-          losing_player_i <- nrow(game$players)
-        } else if (!set_exists & game$cp_nickname != game$players$nickname[1]) {
-          losing_player_i <- which(game$players$nickname == game$cp_nickname) - 1
-        }
+        } else if (!set_exists) {
+          losing_player_i <- which(game$players$nickname == tail(game$history$player, 1))
+        } 
         game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
         game$history %<>% rbind(c(game$players$nickname[losing_player_i], 89))
         
@@ -268,21 +262,20 @@ function(game_uuid, player_uuid, res, action_id) {
         # Add a card to the losing player
         game$players$n_cards[losing_player_i] %<>% add(1)
         
-        # If a player surpasses max cards, finish game or only kick them out
+        # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
         if (game$players$n_cards[losing_player_i] > game$max_cards) {
-          game$players <- game$players[-losing_player_i, ]
-          if (nrow(game$players) == 1) {
+          game$players$n_cards[losing_player_i] <- 0
+          if (sum(game$players$n_cards > 0) == 1) {
             game$status <- "Finished"
             game$cp_nickname <- NULL
           } else {
             game$round_number %<>% add(1)
             game$history <- data.frame(nickname = character(), action_id = numeric())
             game$hands <- draw_cards(game$players)
-            # If the checking player was eliminated, the one who now occupies the same row should be the next player
+            # If the checking player was eliminated, figure out the next player
             # Otherwise the current player doesn't change
             if (game$players$nickname[losing_player_i] == game$cp_nickname) {
-              if (losing_player_i > nrow(game$players)) new_cp_i <- 1
-              if (losing_player_i <= nrow(game$players)) new_cp_i <- losing_player_i
+              game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
             }
           }
         } else {
