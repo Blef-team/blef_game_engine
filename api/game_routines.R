@@ -17,9 +17,14 @@ draw_cards <- function(players) {
 }
 
 jsonise_hands <- function(game, nicknames = unique(game$players$nickname)) {
-  lapply(nicknames, function(p) {
-    list(Nickname = p, Hand = game$hands %>% filter(player == p) %>% select(-player))
-  })
+  if (nrow(game$hands) == 0) {
+    jsonised_hands <- data.frame()
+  } else {
+    jsonised_hands <- lapply(nicknames, function(p) {
+      list(Nickname = p, Hand = game$hands %>% filter(player == p) %>% select(-player))
+    })
+  }
+  return(jsonised_hands)
 }
 
 determine_set_existence <- function(cards, set_id) {
