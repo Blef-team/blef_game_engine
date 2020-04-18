@@ -48,22 +48,26 @@ function(game_uuid, nickname, res) {
   game_uuid_valid <- validate_uuid(game_uuid)
   
   if (game_uuid_valid) {
-    player_uuid <- UUIDgenerate(use.time = F)
     game <- readRDS(get_path(game_uuid))
+    game_full <- nrow(game$players) == 8
     nick_taken <- nickname %in% game$players$nickname
-    if (!nick_taken & game$status == "Not started") {
+    if (!nick_taken & game$status == "Not started" & !game_full) {
+      player_uuid <- UUIDgenerate(use.time = F)
       if (nrow(game$players) == 0) game$admin_nickname <- nickname
       game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
         mutate(uuid = as.character(uuid), nickname = as.character(nickname))
       
       saveRDS(game, get_path(game_uuid))
       list(player_uuid = player_uuid)
+    } else if (game$status != "Not started") {
+      res$status <- 403
+      list(error = "Game already started")
+    } else if (game_full) {
+      res$status <- 403
+      list(error = "The game room is full")
     } else if (nick_taken) {
       res$status <- 409
       list(error = "Nickname already taken")
-    } else if (game$status != "Not started") {
-      res$status <- 405
-      list(error = "Game already started")
     }
   } else {
     res$status <- 400
