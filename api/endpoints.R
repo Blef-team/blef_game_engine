@@ -162,7 +162,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
       
       if (!auth_problem & r %in% 0:current_r) {
         
-        if (r < current_r) {
+        if (r < current_r | game$status == "Finished") {
           revealed_hands <- jsonise_hands(game)
         } else if (r == current_r & auth_success) {
           user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
