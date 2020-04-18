@@ -53,6 +53,12 @@ function(game_uuid, nickname, res) {
   }
   game <- readRDS(get_path(game_uuid))
   
+  # Check whether the game has already started, in which case users shouldn't be able to join
+  if (game$status != "Not started") {
+    res$status <- 403
+    return(list(error = "Game already started"))
+  }
+  
   # Check if the game is not full
   game_full <- nrow(game$players) == 8
   if (game_full) {
@@ -65,12 +71,6 @@ function(game_uuid, nickname, res) {
   if (nick_taken) {
     res$status <- 409
     return(list(error = "Nickname already taken"))
-  }
-  
-  # Check whether the game has already started, in which case users shouldn't be able to join
-  if (game$status != "Not started") {
-    res$status <- 403
-    return(list(error = "Game already started"))
   }
   
   player_uuid <- UUIDgenerate(use.time = F)
