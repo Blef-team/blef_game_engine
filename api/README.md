@@ -74,12 +74,22 @@ curl <IP & PORT>/v1/games/create
   OR
   
   * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Game already started"}`
   
   OR
   
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"The game room is full"}`
+
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname missing - please supply it"}`
 
   OR
   

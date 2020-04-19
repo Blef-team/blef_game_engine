@@ -71,6 +71,12 @@ function(game_uuid, nickname, res) {
     return(list(error = "The game room is full"))
   }
   
+  # Check if the nickname argument has been supplied
+  if(missing(nickname)) {
+    res$status <- 400
+    return(list(error = "Nickname missing - please supply it"))
+  }
+  
   # Check whether the nickname is available
   if (nickname %in% game$players$nickname) {
     res$status <- 409
