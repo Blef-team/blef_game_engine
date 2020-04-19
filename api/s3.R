@@ -1,10 +1,6 @@
 library("aws.ec2metadata")
 library("aws.s3")
 
-get_instance_role <- function() {
-  metadata$iam_role("CodeDeploy-EC2-Instance-Profile")
-}
-
 keys_list <- tryCatch(
   {
     s3_access_key <- metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$AccessKeyId
