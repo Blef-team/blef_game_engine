@@ -5,7 +5,7 @@ get_instance_role <- function() {
   metadata$iam_role("CodeDeploy-EC2-Instance-Profile")
 }
 
-list[] <- tryCatch(
+keys_list <- tryCatch(
   {
     s3_access_key <- metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$AccessKeyId
     s3_secret_access_key <- metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$SecretAccessKey
@@ -20,6 +20,10 @@ list[] <- tryCatch(
     return(keys)
   }
 )
+
+s3_access_key <- keys_list[1]
+s3_secret_access_key <- keys_list[2]
+
 if (s3_access_key == "" | s3_secret_access_key == ""){
   stop("Can't get AWS credentials for S3. Aborting.")
 }
