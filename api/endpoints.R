@@ -13,14 +13,7 @@ validate_uuid <- function(x) str_detect(x, "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-
 #* Create a new game
 #* @serializer unboxedJSON
 #* @get /v1/games/create
-function(res) {
-
-  # Count started games, prevent abuse
-  games_count <- length(grep(list.files("../game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
-  if (games_count > 10000) {
-    res$status <- 429
-    return(list(message = "Too many games started"))
-  }
+function() {
 
   game_uuid <- UUIDgenerate(use.time = F)
 
