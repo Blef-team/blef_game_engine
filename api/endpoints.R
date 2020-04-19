@@ -91,60 +91,76 @@ function(game_uuid, nickname, res) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
-
-  game_uuid_valid <- validate_uuid(game_uuid)
-  admin_uuid_valid <- validate_uuid(admin_uuid)
   
-  if (game_uuid_valid & admin_uuid_valid) {
-    
-    game <- readRDS(get_path(game_uuid))
-    auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-    
-    n_players <- nrow(game$players)
-    
-    if (auth_correct & game$status == "Not started" & n_players %in% 2:8) {
-      
-      game$status <- "Running"
-      game$round_number <- 1
-      
-      # Determine maximum number of cards
-      if (n_players == 2) game$max_cards <- 11
-      if (n_players != 2) game$max_cards <- floor(24 / n_players)
-      
-      # Give each player 1 card
-      game$players$n_cards <- rep(1, nrow(game$players))
-      
-      # Shuffle the order of the players
-      game$players <- game$players[order(rnorm(n_players)), ]
-      
-      # Deal cards
-      game$hands <- draw_cards(game$players)
-      
-      # Fill in the current player
-      game$cp_nickname <- game$players$nickname[1]
-      
-      # Save current game data
-      saveRDS(game, get_path(game_uuid))
-      
-      res$status <- 202
-      list(message = "Game started")
-    } else if (!n_players %in% 2:8) {
-      res$status <- 405
-      list(message = "Number of players not between 2 and 8")
-    } else if (game$status != "Not started") {
-      res$status <- 405
-      list(message = "Game already started")
-    } else if (!auth_correct) {
-      res$status <- 403
-      list(error = "Admin UUID does not match")
-    }
-  } else if(!game_uuid_valid) {
+  # Check if the supplied game UUID is a valid UUID before loading the game
+  if (!validate_uuid(game_uuid)) {
     res$status <- 400
-    list(error = "Invalid game UUID")
-  } else if(!admin_uuid_valid) {
-    res$status <- 400
-    list(error = "Invalid admin UUID")
+    return(list(error = "Invalid game UUID"))
   }
+  
+  # Check if game exists
+  if(!file.exists(get_path(game_uuid))) {
+    res$status <- 400
+    return(list(error = "Game does not exist"))
+  }
+  
+  # See if the game has already started
+  game <- readRDS(get_path(game_uuid))
+  if (game$status != "Not started") {
+    res$status <- 405
+    return(list(error = "Game already started"))
+  }
+  
+  # Check if admin UUID has been supplied
+  if(missing(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Admin UUID missing - please supply it"))
+  }
+  
+  # Check if the supplied admin UUID is a valid UUID
+  if (!validate_uuid(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid admin UUID"))
+  }
+  
+  # Check whether the supplied UUID matches the admin UUID
+  auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
+  if (!auth_correct) {
+    res$status <- 403
+    return(list(error = "Admin UUID does not match"))
+  }
+  
+  # Check if we have at least 2 players. We won't have too many players because the join endpoint takes care of that
+  n_players <- nrow(game$players)
+  if (n_players < 2) {
+    res$status <- 405
+    return(list(error = "At least 2 players needed to start a game"))
+  }
+  
+  game$status <- "Running"
+  game$round_number <- 1
+  
+  # Determine maximum number of cards
+  if (n_players == 2) game$max_cards <- 11
+  if (n_players != 2) game$max_cards <- floor(24 / n_players)
+  
+  # Give each player 1 card
+  game$players$n_cards <- rep(1, nrow(game$players))
+  
+  # Shuffle the order of the players
+  game$players <- game$players[order(rnorm(n_players)), ]
+  
+  # Deal cards
+  game$hands <- draw_cards(game$players)
+  
+  # Fill in the current player
+  game$cp_nickname <- game$players$nickname[1]
+  
+  # Save current game data
+  saveRDS(game, get_path(game_uuid))
+  
+  res$status <- 202
+  list(message = "Game started")
 }
 
 #* Get the game state
