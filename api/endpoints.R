@@ -399,7 +399,7 @@ function(game_uuid, admin_uuid, res) {
   # See if the game has already started
   game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
-    res$status <- 405
+    res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
   }
   
@@ -458,7 +458,7 @@ function(game_uuid, admin_uuid, res) {
   # See if the game has already started
   game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
-    res$status <- 405
+    res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
   }
   

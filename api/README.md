@@ -347,8 +347,33 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 
 * **Error Response:**
   
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
 
 * **Sample Call:**
   
@@ -390,8 +415,33 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 
 * **Error Response:**
   
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
 
 * **Sample Call:**
   
