@@ -107,7 +107,7 @@ function(game_uuid, admin_uuid, res) {
   # See if the game has already started
   game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
-    res$status <- 405
+    res$status <- 403
     return(list(error = "Game already started"))
   }
   
@@ -133,7 +133,7 @@ function(game_uuid, admin_uuid, res) {
   # Check if we have at least 2 players. We won't have too many players because the join endpoint takes care of that
   n_players <- nrow(game$players)
   if (n_players < 2) {
-    res$status <- 405
+    res$status <- 403
     return(list(error = "At least 2 players needed to start a game"))
   }
   

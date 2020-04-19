@@ -63,12 +63,12 @@ curl <IP & PORT>/v1/games/create
 
 * **Error Response:**
   
-  * **Code:** 400 FORBIDDEN <br />
+  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"error":"Invalid game UUID"}`
 
   OR
   
-  * **Code:** 400 FORBIDDEN <br />
+  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"error":"Game does not exist"}`
 
   OR
@@ -121,18 +121,38 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 
 * **Error Response:**
   
-  * **Code:** 405 METHOD NOT ALLOWED <br />
-  **Content:** `{"message":"Number of players not between 2 and 8"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid game UUID"}`
+
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Game does not exist"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game already started"}`
   
   OR
   
-  * **Code:** 405 METHOD NOT ALLOWED <br />
-  **Content:** `{"message":"Game already started"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid admin UUID"}`
 
   OR
   
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Admin UUID does not match"}`
+  
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"At least 2 players needed to start a game"}`
 
 * **Sample Call:**
   
