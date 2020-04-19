@@ -29,7 +29,7 @@ function() {
     cp_nickname = NULL,
     history = data.frame(nickname = character(), action_id = numeric())
   )
-  saveRDS(empty_game, file = get_filename(game_uuid))
+  saveRDS(empty_game, get_filename(game_uuid))
 
   list(game_uuid = game_uuid)
 }
