@@ -170,71 +170,79 @@ function(game_uuid, admin_uuid, res) {
 #* @get /v1/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, round = -1) {
   
-  game_uuid_valid <- validate_uuid(game_uuid)
-  player_uuid_valid_or_empty <- player_uuid == "" | validate_uuid(player_uuid)
-  
-  if (game_uuid_valid & player_uuid_valid_or_empty) {
-    
-    game_path <- get_path(game_uuid)
-    
-    if(file.exists(game_path)) {
-      current_r <- readRDS(game_path)$round_number
-      if (round == -1 | round == current_r) {
-        r <- current_r
-        game <- readRDS(get_path(game_uuid))
-      } else {
-        r <- as.numeric(round)
-        game <- readRDS(get_path(game_uuid, r))
-      }
-      
-      auth_attempt <-player_uuid != ""
-      auth_success <- player_uuid %in% game$players$uuid
-      auth_problem <- auth_attempt & !auth_success
-      
-      if (!auth_problem & r %in% 0:current_r) {
-        
-        if (r < current_r | game$status == "Finished") {
-          revealed_hands <- jsonise_hands(game)
-        } else if (r == current_r & auth_success) {
-          user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
-          revealed_hands <- jsonise_hands(game, nicknames = user_nickname)
-        } else if (r == current_r & !auth_success) {
-          revealed_hands <- data.frame()
-        }
-        privatised_players <- game$players %<>% select(-uuid)
-        
-        return(
-          list(
-            admin_nickname = game$admin_nickname,
-            public = game$public,
-            status = game$status,
-            round_number = game$round_number,
-            max_cards = game$max_cards,
-            players = privatised_players,
-            hands = revealed_hands,
-            cp_nickname = game$cp_nickname,
-            history = game$history
-          )
-        )
-        
-      } else if (auth_problem) {
-        res$status <- 400
-        list(message = "The UUID does not match any active player")
-      } else if (r > current_r) {
-        res$status <- 400
-        list(message = "Round parameter too high")
-      }
-    } else {
-      res$status <- 400
-      list(message = "Game does not exist")
-    }
-  } else if (!game_uuid_valid) {
+  # Check if the supplied game UUID is a valid UUID before loading the game
+  if(!validate_uuid(game_uuid)) {
     res$status <- 400
-    list(error = "Invalid game UUID")
-  } else if (!player_uuid_valid_or_empty) {
-    res$status <- 400
-    list(error = "Invalid player UUID")
+    return(list(error = "Invalid game UUID"))
   }
+  
+  # Check if game exists
+  if(!file.exists(get_path(game_uuid))) {
+    res$status <- 400
+    return(list(error = "Game does not exist"))
+  }
+  
+  # Check whether, if a player UUID has been supplied, it is a valid UUID
+  if (!player_uuid == "" & !validate_uuid(player_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid player UUID"))
+  }
+  
+  # Check whether the round parameter is OK
+  round %<>% as.numeric()
+  current_r <- readRDS(get_path(game_uuid))$round_number
+  if (round > current_r) {
+    res$status <- 400
+    return(list(error = "The game has not reached this round"))
+  }
+  if (round < -1 | round == 0 | round %% 1 != 0) {
+    res$status <- 400
+    return(list(error = "The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"))
+  }
+  
+  if (round == -1 | round == current_r) {
+    r <- current_r
+    game <- readRDS(get_path(game_uuid))
+  } else {
+    r <- round
+    game <- readRDS(get_path(game_uuid, r))
+  }
+  
+  # Authenticate a player
+  auth_attempt <-player_uuid != ""
+  auth_success <- player_uuid %in% game$players$uuid
+  auth_problem <- auth_attempt & !auth_success
+  if (auth_problem) {
+    res$status <- 400
+    return(list(error = "The UUID does not match any active player"))
+  }
+  
+  # Fetch the appropriate hands
+  if (r < current_r | game$status == "Finished") {
+    revealed_hands <- jsonise_hands(game)
+  } else if (r == current_r & auth_success) {
+    user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
+    revealed_hands <- jsonise_hands(game, nicknames = user_nickname)
+  } else if (r == current_r & !auth_success) {
+    revealed_hands <- data.frame()
+  }
+  
+  # Hide UUIDs
+  privatised_players <- game$players %<>% select(-uuid)
+  
+  return(
+    list(
+      admin_nickname = game$admin_nickname,
+      public = game$public,
+      status = game$status,
+      round_number = game$round_number,
+      max_cards = game$max_cards,
+      players = privatised_players,
+      hands = revealed_hands,
+      cp_nickname = game$cp_nickname,
+      history = game$history
+    )
+  )
 }
 
 #* Make a move
