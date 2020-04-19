@@ -44,7 +44,13 @@ function(res) {
 #* @param nickname The nickname chosen by the user.
 #* @get /v1/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
-
+  
+  # Check if the nickname argument has been supplied
+  if(missing(nickname)) {
+    res$status <- 400
+    return(list(error = "Nickname missing - please supply it"))
+  }
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   game_uuid_valid <- validate_uuid(game_uuid)
   if(!game_uuid_valid) {
