@@ -384,39 +384,57 @@ function(game_uuid, player_uuid, res, action_id) {
 #* @get /v1/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
   
-  game_uuid_valid <- validate_uuid(game_uuid)
-  admin_uuid_valid <- validate_uuid(admin_uuid)
-  
-  if (game_uuid_valid & admin_uuid_valid) {
-    
-    game <- readRDS(get_path(game_uuid))
-    auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-    
-    if (auth_correct & game$public == F) {
-      game$public <- T
-      
-      # Save current game data
-      saveRDS(game, get_path(game_uuid))
-      
-      res$status <- 200
-      list(message = "Game made public")
-    } else if (!auth_correct) {
-      res$status <- 403
-      list(error = "Admin UUID does not match")
-    } else if (game$public == T) {
-      res$status <- 200
-      list(message = "Request redundant - game already public")
-    } else if (game$status != "Not started") {
-      res$status <- 403
-      list(message = "Cannot make the change - game already started")
-    }
-  } else if(!game_uuid_valid) {
+  # Check if the supplied game UUID is a valid UUID before loading the game
+  if (!validate_uuid(game_uuid)) {
     res$status <- 400
-    list(error = "Invalid game UUID")
-  } else if(!admin_uuid_valid) {
-    res$status <- 400
-    list(error = "Invalid admin UUID")
+    return(list(error = "Invalid game UUID"))
   }
+  
+  # Check if game exists
+  if(!file.exists(get_path(game_uuid))) {
+    res$status <- 400
+    return(list(error = "Game does not exist"))
+  }
+  
+  # See if the game has already started
+  game <- readRDS(get_path(game_uuid))
+  if (game$status != "Not started") {
+    res$status <- 405
+    return(list(error = "Cannot make the change - game already started"))
+  }
+  
+  # Check if admin UUID has been supplied
+  if(missing(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Admin UUID missing - please supply it"))
+  }
+  
+  # Check if the supplied admin UUID is a valid UUID
+  if (!validate_uuid(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid admin UUID"))
+  }
+  
+  # Check whether the supplied UUID matches the admin UUID
+  auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
+  if (!auth_correct) {
+    res$status <- 403
+    return(list(error = "Admin UUID does not match"))
+  }
+  
+  # Check whether the request isn't redundant
+  if (game$public == T) {
+    res$status <- 200
+    return(list(error = "Request redundant - game already public"))
+  }
+  
+  game$public <- T
+  
+  # Save current game data
+  saveRDS(game, get_path(game_uuid))
+  
+  res$status <- 200
+  list(message = "Game made public")
 }
 
 #* Make game private
@@ -424,40 +442,58 @@ function(game_uuid, admin_uuid, res) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
-
-  game_uuid_valid <- validate_uuid(game_uuid)
-  admin_uuid_valid <- validate_uuid(admin_uuid)
   
-  if (game_uuid_valid & admin_uuid_valid) {
-    
-    game <- readRDS(get_path(game_uuid))
-    auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
-    
-    if (auth_correct & game$public == T) {
-      game$public <- F
-      
-      # Save current game data
-      saveRDS(game, get_path(game_uuid))
-      
-      res$status <- 200
-      list(message = "Game made private")
-    } else if (!auth_correct) {
-      res$status <- 403
-      list(error = "Admin UUID does not match")
-    } else if (game$public == F) {
-      res$status <- 200
-      list(message = "Request redundant - game already private")
-    } else if (game$status != "Not started") {
-    res$status <- 403
-    list(message = "Cannot make the change - game already started")
-    }
-  } else if(!game_uuid_valid) {
+  # Check if the supplied game UUID is a valid UUID before loading the game
+  if (!validate_uuid(game_uuid)) {
     res$status <- 400
-    list(error = "Invalid game UUID")
-  } else if(!admin_uuid_valid) {
-    res$status <- 400
-    list(error = "Invalid admin UUID")
+    return(list(error = "Invalid game UUID"))
   }
+  
+  # Check if game exists
+  if(!file.exists(get_path(game_uuid))) {
+    res$status <- 400
+    return(list(error = "Game does not exist"))
+  }
+  
+  # See if the game has already started
+  game <- readRDS(get_path(game_uuid))
+  if (game$status != "Not started") {
+    res$status <- 405
+    return(list(error = "Cannot make the change - game already started"))
+  }
+  
+  # Check if admin UUID has been supplied
+  if(missing(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Admin UUID missing - please supply it"))
+  }
+  
+  # Check if the supplied admin UUID is a valid UUID
+  if (!validate_uuid(admin_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid admin UUID"))
+  }
+  
+  # Check whether the supplied UUID matches the admin UUID
+  auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
+  if (!auth_correct) {
+    res$status <- 403
+    return(list(error = "Admin UUID does not match"))
+  }
+  
+  # Check whether the request isn't redundant
+  if (game$public == F) {
+    res$status <- 200
+    return(list(error = "Request redundant - game already private"))
+  }
+  
+  game$public <- F
+  
+  # Save current game data
+  saveRDS(game, get_path(game_uuid))
+  
+  res$status <- 200
+  list(message = "Game made private")
 }
 
 #* List public games
