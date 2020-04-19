@@ -28,15 +28,14 @@ if (s3_access_key == "" | s3_secret_access_key == ""){
   stop("Can't get AWS credentials for S3. Aborting.")
 }
 
-
 readRDS <- function(path) {
-  s3readRDS(object=path, bucket="game-data", key=s3_access_key, secret=s3_secret_access_key)
+  s3readRDS(object=path, bucket="blef-game-data", key=s3_access_key, secret=s3_secret_access_key)
 }
 
 saveRDS <- function(game, path) {
-  s3readRDS(object=path, bucket="game-data", key=s3_access_key, secret=s3_secret_access_key)
+  s3saveRDS(game, object=path, bucket="blef-game-data", key=s3_access_key, secret=s3_secret_access_key)
 }
 
 game_exists <- function(path) {
-  return(object_exists(object=path, bucket="game-data", key=s3_access_key, secret=s3_secret_access_key))
+  return(object_exists(object=path, bucket="blef-game-data", key=s3_access_key, secret=s3_secret_access_key))
 }
