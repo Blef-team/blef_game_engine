@@ -204,42 +204,22 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
   OR
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has not yet started"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has already finished"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Player UUID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"message":"Invalid player UUID"}`
   
   OR
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
+  **Content:** `{"message":"The game has not reached this round"}`
   
   OR
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID missing - please supply it"}`
+  **Content:** `{"message":"The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"}`
   
   OR
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This action not allowed right now"}`
+  **Content:** `{"message":"The UUID does not match any active player"}`
 
 * **Sample Call:**
   
@@ -279,13 +259,53 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 
 * **Error Response:**
   
-  * **Code:** 400 BAD REQUEST <br/>
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has not yet started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has already finished"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Player UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid player UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
   
   OR
   
-  * **Code:** 400 BAD REQUEST <br/>
-  **Content:** `{"message":"Action with this ID is not allowed"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This action not allowed right now"}`
 
 * **Sample Call:**
   
