@@ -64,11 +64,16 @@ curl <IP & PORT>/v1/games/create
 * **Error Response:**
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Nickname missing - please supply it"}`
+  **Content:** `{"error":"Invalid game UUID"}`
 
   OR
   
-* **Code:** 403 FORBIDDEN <br />
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Game does not exist"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"The game room is full"}`
 
   OR
@@ -76,6 +81,21 @@ curl <IP & PORT>/v1/games/create
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Game already started"}`
   
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname missing - please supply it"}`
+
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
+
   OR
   
   * **Code:** 409 CONFLICT <br />
@@ -116,18 +136,38 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 
 * **Error Response:**
   
-  * **Code:** 405 METHOD NOT ALLOWED <br />
-  **Content:** `{"message":"Number of players not between 2 and 8"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid game UUID"}`
+
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Game does not exist"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game already started"}`
   
   OR
   
-  * **Code:** 405 METHOD NOT ALLOWED <br />
-  **Content:** `{"message":"Game already started"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid admin UUID"}`
 
   OR
   
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Admin UUID does not match"}`
+  
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"At least 2 players needed to start a game"}`
 
 * **Sample Call:**
   
@@ -169,12 +209,32 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
 * **Error Response:**
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The UUID does not match any player"}`
+  **Content:** `{"message":"Invalid game UUID"}`
   
   OR
   
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Round parameter too high"}`
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid player UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The game has not reached this round"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The UUID does not match any active player"}`
 
 * **Sample Call:**
   
@@ -214,13 +274,53 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 
 * **Error Response:**
   
-  * **Code:** 400 BAD REQUEST <br/>
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has not yet started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has already finished"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Player UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid player UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
   
   OR
   
-  * **Code:** 400 BAD REQUEST <br/>
-  **Content:** `{"message":"Action with this ID is not allowed"}`
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This action not allowed right now"}`
 
 * **Sample Call:**
   
@@ -262,8 +362,33 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 
 * **Error Response:**
   
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
 
 * **Sample Call:**
   
@@ -305,8 +430,33 @@ curl <IP & PORT>/v1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 
 * **Error Response:**
   
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+  
+  OR
+  
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+  
+  OR
+  
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
 
 * **Sample Call:**
   
