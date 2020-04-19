@@ -5,7 +5,7 @@ library(dplyr)
 library(stringr)
 
 source("game_routines.R")
-if(!exists("game_exists", mode="function")) source("s3.R")
+if (!exists("game_exists", mode="function")) source("s3.R")
 
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
@@ -41,13 +41,13 @@ function() {
 function(game_uuid, nickname, res) {
 
   # Check if the supplied game UUID is a valid UUID before loading the game
-  if(!validate_uuid(game_uuid)) {
+  if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
 
   # Check if game exists
-  if(!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
@@ -67,13 +67,13 @@ function(game_uuid, nickname, res) {
   }
 
   # Check if the nickname argument has been supplied
-  if(missing(nickname)) {
+  if (missing(nickname)) {
     res$status <- 400
     return(list(error = "Nickname missing - please supply it"))
   }
 
   # Check whether the nickname is in an acceptable format
-  if(!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
+  if (!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
     res$status <- 400
     return(list(error = "Nickname must start with a letter and only contain alphanumeric characters"))
   }
@@ -106,7 +106,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if game exists
-  if(!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
@@ -119,7 +119,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if admin UUID has been supplied
-  if(missing(admin_uuid)) {
+  if (missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
@@ -178,14 +178,15 @@ function(game_uuid, admin_uuid, res) {
 function(game_uuid, player_uuid = "", res, round = -1) {
 
   # Check if the supplied game UUID is a valid UUID before loading the game
-  if(!validate_uuid(game_uuid)) {
+  if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
 
   # Check if game exists
-  if(!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
+    print("We're gonna check if the game exists")
     return(list(error = "Game does not exist"))
   }
 
@@ -266,7 +267,7 @@ function(game_uuid, player_uuid, res, action_id) {
   }
 
   # Check if game exists
-  if (!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
@@ -398,7 +399,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if game exists
-  if(!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
@@ -411,7 +412,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if admin UUID has been supplied
-  if(missing(admin_uuid)) {
+  if (missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
@@ -457,7 +458,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if game exists
-  if(!file.exists(get_filename(game_uuid))) {
+  if (!game_exists(get_filename(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
@@ -470,7 +471,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if admin UUID has been supplied
-  if(missing(admin_uuid)) {
+  if (missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
