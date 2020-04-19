@@ -93,6 +93,11 @@ curl <IP & PORT>/v1/games/create
 
   OR
   
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
+
+  OR
+  
   * **Code:** 409 CONFLICT <br />
   **Content:** `{"error":"Nickname already taken"}`
 

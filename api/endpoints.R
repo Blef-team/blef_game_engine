@@ -77,6 +77,12 @@ function(game_uuid, nickname, res) {
     return(list(error = "Nickname missing - please supply it"))
   }
   
+  # Check whether the nickname is in an acceptable format
+  if(!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
+    res$status <- 400
+    return(list(error = "Nickname must start with a letter and only contain alphanumeric characters"))
+  }
+  
   # Check whether the nickname is available
   if (nickname %in% game$players$nickname) {
     res$status <- 409
