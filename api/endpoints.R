@@ -12,31 +12,31 @@ validate_uuid <- function(x) str_detect(x, "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-
 #* @serializer unboxedJSON
 #* @get /v1/games/create
 function(res) {
+  
   # Count started games, prevent abuse
   games_count <- length(grep(list.files("../game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
   if (games_count > 10000) {
     res$status <- 429
-    list(message = "Too many games started")
+    return(list(message = "Too many games started"))
   }
-  else {
-    game_uuid <- UUIDgenerate(use.time = F)
-
-    empty_game <- list(
-      game_uuid = game_uuid,
-      admin_nickname = NULL,
-      public = F,
-      status = "Not started",
-      round_number = 0,
-      max_cards = 0,
-      players = data.frame(uuid = character(), nickname = character(), n_cards = numeric()), # Player uuids not public
-      hands = data.frame(nickname = character(), value = numeric(), colour = numeric()),
-      cp_nickname = NULL,
-      history = data.frame(nickname = character(), action_id = numeric())
-    )
-    saveRDS(empty_game, file = get_path(game_uuid))
-
-    list(game_uuid = game_uuid)
-  }
+  
+  game_uuid <- UUIDgenerate(use.time = F)
+  
+  empty_game <- list(
+    game_uuid = game_uuid,
+    admin_nickname = NULL,
+    public = F,
+    status = "Not started",
+    round_number = 0,
+    max_cards = 0,
+    players = data.frame(uuid = character(), nickname = character(), n_cards = numeric()), # Player uuids not public
+    hands = data.frame(nickname = character(), value = numeric(), colour = numeric()),
+    cp_nickname = NULL,
+    history = data.frame(nickname = character(), action_id = numeric())
+  )
+  saveRDS(empty_game, file = get_path(game_uuid))
+  
+  list(game_uuid = game_uuid)
 }
 
 #* Add a player to a game
