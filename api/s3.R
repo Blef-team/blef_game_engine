@@ -9,15 +9,13 @@ keys_list <- tryCatch(
   {
     s3_access_key <- metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$AccessKeyId
     s3_secret_access_key <- metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$SecretAccessKey
-    keys <- c(s3_access_key, s3_secret_access_key)
-    return(keys)
+    c(s3_access_key, s3_secret_access_key)
   },
   error = function(e){
     message("Instance metadata not accessible - getting AWS credentials from environment")
     s3_access_key <- Sys.getenv("AWS_ACCESS_KEY_ID")
     s3_secret_access_key <- Sys.getenv("AWS_SECRET_ACCESS_KEY")
-    keys <- c(s3_access_key, s3_secret_access_key)
-    return(keys)
+    c(s3_access_key, s3_secret_access_key)
   }
 )
 
