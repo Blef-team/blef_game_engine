@@ -251,96 +251,130 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @param action_id The id of the action (bet or check).
 #* @get /v1/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
- 
-  game_uuid_valid <- validate_uuid(game_uuid)
-  player_uuid_valid <- validate_uuid(player_uuid)
   
-  if (game_uuid_valid & player_uuid_valid) {
-    action_id <- as.numeric(action_id)
-    game <- readRDS(get_path(game_uuid))
-    auth_success <- player_uuid == game$players$uuid[game$players$nickname == game$cp_nickname]
+  # Check if the supplied game UUID is a valid UUID before loading the game
+  if (!validate_uuid(game_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid game UUID"))
+  }
+  
+  # Check if game exists
+  if (!file.exists(get_path(game_uuid))) {
+    res$status <- 400
+    return(list(message = "Game does not exist"))
+  }
+  
+  game <- readRDS(get_path(game_uuid))
+  # Check if game is currently running
+  if (game$status == "Not started") {
+    res$status <- 400
+    return(list(error = "This game has not yet started"))
+  }
+  if (game$status == "Finished") {
+    res$status <- 400
+    return(list(error = "This game has already finished"))
+  }
+  
+  # Check if player UUID has been supplied
+  if (missing(player_uuid)) {
+    res$status <- 400
+    return(list(error = "Player UUID missing - please supply it"))
+  }
+  
+  # Check whether the player UUID is a valid UUID
+  if (!validate_uuid(player_uuid)) {
+    res$status <- 400
+    return(list(error = "Invalid player UUID"))
+  }
+  
+  # Check if the player UUID matches the UUID of the current player
+  auth_success <- player_uuid == game$players$uuid[game$players$nickname == game$cp_nickname]
+  if (!auth_success) {
+    res$status <- 400
+    return(list(message = "The submitted UUID does not match the UUID of the current player"))
+  }
+  
+  # Check if action ID has been supplied
+  if (missing(action_id)) {
+    res$status <- 400
+    return(list(error = "Action ID missing - please supply it"))
+  }
+  
+  # Check whether the particular action is allowed right now
+  action_id <- as.numeric(action_id)
+  if (!action_id %in% c(0:88)) {
+    res$status <- 400
+    return(list(error = "Action ID must be an integer between 0 and 88"))
+  }
+  
+  if (nrow(game$history) == 0) {
+    action_allowed <- action_id %in% 0:87
+  } else {
+    action_allowed <- action_id %in% 0:88 & action_id > game$history[nrow(game$history), 2]
+  }
+  if (!action_allowed) {
+    res$status <- 400
+    return(list(message = "This action not allowed right now"))
+  }
+  
+  # If the action was a bet
+  if (action_id != 88) {
     
-    if (nrow(game$history) == 0) {
-      action_allowed <- action_id %in% 0:87
-    } else {
-      action_allowed <- action_id %in% 0:88 & action_id > game$history[nrow(game$history), 2]
-    }
+    # Attach action to history
+    game$history %<>% rbind(c(game$cp_nickname, action_id)) %>% format_history()
     
-    if (auth_success & action_allowed) {
-      
-      # If the action was a bet
-      if (action_id != 88) {
-        
-        # Attach action to history
-        game$history %<>% rbind(c(game$cp_nickname, action_id)) %>% format_history()
-        
-        # Increment the current player
-        game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
-        
-        # Save game state
-        saveRDS(game, get_path(game_uuid))
-        
-      } else if (action_id == 88) {
-        # If the action was a check
-        
-        last_bet <- tail(game$history$action_id, 1)
-        set_exists <- determine_set_existence(game$hands, last_bet)
-        
-        # Determine losing player (the last player in the history table)
-        if (set_exists) {
-          losing_player <- game$cp_nickname
-        } else if (!set_exists) {
-          losing_player <- tail(game$history$player, 1)
-        } 
-        game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
-        game$history %<>% rbind(c(losing_player, 89))
-        
-        # Save snapshot of the game
-        saveRDS(game, get_path(game_uuid, game$round_number))
-        
-        # Add a card to the losing player
-        game$players$n_cards[game$players$nickname == losing_player] %<>% add(1)
-        
-        # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
-        if (game$players$n_cards[game$players$nickname == losing_player] > game$max_cards) {
-          game$players$n_cards[game$players$nickname == losing_player] <- 0
-          if (sum(game$players$n_cards > 0) == 1) {
-            game$status <- "Finished"
-            game$cp_nickname <- NULL
-          } else {
-            game$round_number %<>% add(1)
-            game$history <- data.frame(nickname = character(), action_id = numeric())
-            game$hands <- draw_cards(game$players)
-            # If the checking player was eliminated, figure out the next player
-            # Otherwise the current player doesn't change
-            if (losing_player == game$cp_nickname) {
-              game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
-            }
-          }
-        } else {
-          # If no one should be kicked out, increment round number, redraw cards and set new current player
-          game$round_number %<>% add(1)
-          game$history <- data.frame(nickname = character(), action_id = numeric())
-          game$hands <- draw_cards(game$players)
-          game$cp_nickname <- losing_player
+    # Increment the current player
+    game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
+    
+    # Save game state
+    saveRDS(game, get_path(game_uuid))
+    
+  } else { # If the action was a check
+    
+    last_bet <- tail(game$history$action_id, 1)
+    set_exists <- determine_set_existence(game$hands, last_bet)
+    
+    # Determine losing player (the last player in the history table)
+    if (set_exists) {
+      losing_player <- game$cp_nickname
+    } else if (!set_exists) {
+      losing_player <- tail(game$history$player, 1)
+    } 
+    game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
+    game$history %<>% rbind(c(losing_player, 89))
+    
+    # Save snapshot of the game
+    saveRDS(game, get_path(game_uuid, game$round_number))
+    
+    # Add a card to the losing player
+    game$players$n_cards[game$players$nickname == losing_player] %<>% add(1)
+    
+    # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
+    if (game$players$n_cards[game$players$nickname == losing_player] > game$max_cards) {
+      game$players$n_cards[game$players$nickname == losing_player] <- 0
+      if (sum(game$players$n_cards > 0) == 1) {
+        game$status <- "Finished"
+        game$cp_nickname <- NULL
+      } else {
+        game$round_number %<>% add(1)
+        game$history <- data.frame(nickname = character(), action_id = numeric())
+        game$hands <- draw_cards(game$players)
+        # If the checking player was eliminated, figure out the next player
+        # Otherwise the current player doesn't change
+        if (losing_player == game$cp_nickname) {
+          game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
         }
-        
-        # Save game state
-        saveRDS(game, get_path(game_uuid))
       }
-    } else if (!auth_success) {
-      res$status <- 400
-      list(message = "The submitted UUID does not match the UUID of the current player")
-    } else if (!action_allowed) {
-      res$status <- 400
-      list(message = "Action with this ID is not allowed")
+    } else {
+      # If no one should be kicked out, increment round number, redraw cards and set new current player
+      game$round_number %<>% add(1)
+      game$history <- data.frame(nickname = character(), action_id = numeric())
+      game$hands <- draw_cards(game$players)
+      game$cp_nickname <- losing_player
     }
-  } else if (!game_uuid_valid) {
-    res$status <- 400
-    list(error = "Invalid game UUID")
-  } else if (!player_uuid_valid) {
-    res$status <- 400
-    list(error = "Invalid player UUID")
+    
+    # Save game state
+    saveRDS(game, get_path(game_uuid))
   }
 }
 
