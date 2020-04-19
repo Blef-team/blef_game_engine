@@ -1,4 +1,5 @@
 library("aws.ec2metadata")
+library("aws.s3")
 
 s3_access_key = metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$AccessKeyId
 s3_secret_access_key = metadata$iam_role("CodeDeploy-EC2-Instance-Profile")$SecretAccessKey
