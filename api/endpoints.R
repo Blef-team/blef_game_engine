@@ -5,7 +5,7 @@ library(dplyr)
 library(stringr)
 
 source("game_routines.R")
-s3 <- modules::use("s3.R")
+if(!exists("game_exists", mode="function")) source("s3.R")
 
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
@@ -36,7 +36,7 @@ function(res) {
     cp_nickname = NULL,
     history = data.frame(nickname = character(), action_id = numeric())
   )
-  s3.saveRDS(empty_game, file = get_filename(game_uuid))
+  saveRDS(empty_game, file = get_filename(game_uuid))
 
   list(game_uuid = game_uuid)
 }
@@ -59,7 +59,7 @@ function(game_uuid, nickname, res) {
     return(list(error = "Game does not exist"))
   }
 
-  game <- s3.readRDS(get_filename(game_uuid))
+  game <- readRDS(get_filename(game_uuid))
 
   # Check whether the game has already started, in which case users shouldn't be able to join
   if (game$status != "Not started") {
@@ -96,7 +96,7 @@ function(game_uuid, nickname, res) {
   game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
     mutate(uuid = as.character(uuid), nickname = as.character(nickname))
 
-  s3.s3.saveRDS(game, get_filename(game_uuid))
+  saveRDS(game, get_filename(game_uuid))
   list(player_uuid = player_uuid)
 }
 
@@ -119,7 +119,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # See if the game has already started
-  game <- s3.readRDS(get_filename(game_uuid))
+  game <- readRDS(get_filename(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Game already started"))
@@ -171,7 +171,7 @@ function(game_uuid, admin_uuid, res) {
   game$cp_nickname <- game$players$nickname[1]
 
   # Save current game data
-  s3.saveRDS(game, get_filename(game_uuid))
+  saveRDS(game, get_filename(game_uuid))
 
   res$status <- 202
   list(message = "Game started")
@@ -204,7 +204,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 
   # Check whether the round parameter is OK
   round %<>% as.numeric()
-  current_r <- s3.readRDS(get_filename(game_uuid))$round_number
+  current_r <- readRDS(get_filename(game_uuid))$round_number
   if (round > current_r) {
     res$status <- 400
     return(list(error = "The game has not reached this round"))
@@ -216,10 +216,10 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 
   if (round == -1 | round == current_r) {
     r <- current_r
-    game <- s3.readRDS(get_filename(game_uuid))
+    game <- readRDS(get_filename(game_uuid))
   } else {
     r <- round
-    game <- s3.readRDS(get_filename(game_uuid, r))
+    game <- readRDS(get_filename(game_uuid, r))
   }
 
   # Authenticate a player
@@ -278,7 +278,7 @@ function(game_uuid, player_uuid, res, action_id) {
     return(list(error = "Game does not exist"))
   }
 
-  game <- s3.readRDS(get_filename(game_uuid))
+  game <- readRDS(get_filename(game_uuid))
   # Check if game is currently running
   if (game$status == "Not started") {
     res$status <- 400
@@ -341,7 +341,7 @@ function(game_uuid, player_uuid, res, action_id) {
     game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
 
     # Save game state
-    s3.saveRDS(game, get_filename(game_uuid))
+    saveRDS(game, get_filename(game_uuid))
 
   } else { # If the action was a check
 
@@ -358,7 +358,7 @@ function(game_uuid, player_uuid, res, action_id) {
     game$history %<>% rbind(c(losing_player, 89))
 
     # Save snapshot of the game
-    s3.saveRDS(game, get_filename(game_uuid, game$round_number))
+    saveRDS(game, get_filename(game_uuid, game$round_number))
 
     # Add a card to the losing player
     game$players$n_cards[game$players$nickname == losing_player] %<>% add(1)
@@ -388,7 +388,7 @@ function(game_uuid, player_uuid, res, action_id) {
     }
 
     # Save game state
-    s3.saveRDS(game, get_filename(game_uuid))
+    saveRDS(game, get_filename(game_uuid))
   }
 }
 
@@ -411,7 +411,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # See if the game has already started
-  game <- s3.readRDS(get_filename(game_uuid))
+  game <- readRDS(get_filename(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
@@ -445,7 +445,7 @@ function(game_uuid, admin_uuid, res) {
   game$public <- T
 
   # Save current game data
-  s3.saveRDS(game, get_filename(game_uuid))
+  saveRDS(game, get_filename(game_uuid))
 
   res$status <- 200
   list(message = "Game made public")
@@ -470,7 +470,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # See if the game has already started
-  game <- s3.readRDS(get_filename(game_uuid))
+  game <- readRDS(get_filename(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
@@ -504,7 +504,7 @@ function(game_uuid, admin_uuid, res) {
   game$public <- F
 
   # Save current game data
-  s3.saveRDS(game, get_filename(game_uuid))
+  saveRDS(game, get_filename(game_uuid))
 
   res$status <- 200
   list(message = "Game made private")
@@ -518,7 +518,7 @@ function() {
   snapshots <- str_detect(files, "_\\d")
   relevant_files <- files[!snapshots]
 
-  contents <- lapply(relevant_files, s3.s3.readRDS)
+  contents <- lapply(relevant_files, readRDS)
   public <- sapply(contents, extract2, var = "public")
 
   lapply(which(public), function(i) {
