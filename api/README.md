@@ -63,14 +63,24 @@ curl <IP & PORT>/v1/games/create
 
 * **Error Response:**
   
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"The game room is full"}`
+  * **Code:** 400 FORBIDDEN <br />
+  **Content:** `{"error":"Invalid game UUID"}`
+
+  OR
+  
+  * **Code:** 400 FORBIDDEN <br />
+  **Content:** `{"error":"Game does not exist"}`
 
   OR
   
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Game already started"}`
   
+  OR
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
   OR
   
   * **Code:** 409 CONFLICT <br />
