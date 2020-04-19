@@ -261,7 +261,7 @@ function(game_uuid, player_uuid, res, action_id) {
   # Check if game exists
   if (!file.exists(get_path(game_uuid))) {
     res$status <- 400
-    return(list(message = "Game does not exist"))
+    return(list(error = "Game does not exist"))
   }
   
   game <- readRDS(get_path(game_uuid))
@@ -291,7 +291,7 @@ function(game_uuid, player_uuid, res, action_id) {
   auth_success <- player_uuid == game$players$uuid[game$players$nickname == game$cp_nickname]
   if (!auth_success) {
     res$status <- 400
-    return(list(message = "The submitted UUID does not match the UUID of the current player"))
+    return(list(error = "The submitted UUID does not match the UUID of the current player"))
   }
   
   # Check if action ID has been supplied
@@ -314,7 +314,7 @@ function(game_uuid, player_uuid, res, action_id) {
   }
   if (!action_allowed) {
     res$status <- 400
-    return(list(message = "This action not allowed right now"))
+    return(list(error = "This action not allowed right now"))
   }
   
   # If the action was a bet
