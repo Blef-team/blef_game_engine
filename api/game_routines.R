@@ -1,8 +1,8 @@
 indexation <- read_csv("./indexation.csv")
 
 get_path <- function(game_uuid, r = -1) {
-  if (r == -1) return(paste0("../game_data/", game_uuid, ".RDS"))
-  if (r >= 0) return(paste0("../game_data/", game_uuid, "_", r, ".RDS"))
+  if (r == -1) return(paste0("~/game_data/", game_uuid, ".RDS"))
+  if (r >= 0) return(paste0("~/game_data/", game_uuid, "_", r, ".RDS"))
 }
 
 draw_cards <- function(players) {
