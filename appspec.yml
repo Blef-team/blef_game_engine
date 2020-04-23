@@ -6,4 +6,5 @@ files:
     destination: /var/gameengineservice/api/
 hooks:
   ApplicationStart:
+    - runas: ec2-user
     - location: api/run_api.sh
