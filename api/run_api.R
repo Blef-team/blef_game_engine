@@ -4,7 +4,5 @@ if(!require(magrittr)) install.packages("magrittr", repos = "http://cran.us.r-pr
 if(!require(readr)) install.packages("readr", repos = "http://cran.us.r-project.org")
 if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
 if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
-if(!require(aws.ec2metadata)) install.packages("aws.ec2metadata", repos = "http://cran.us.r-project.org")
-if(!require(aws.s3)) install.packages("aws.s3", repos = "http://cran.us.r-project.org")
 
 plumber::plumb("endpoints.R")$run(port = 8000, host = "0.0.0.0")

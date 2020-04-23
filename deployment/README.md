@@ -26,11 +26,11 @@ aws iam create-instance-profile --instance-profile-name CodeDeploy-EC2-Instance-
 ```
 Create a role for the instance profile:
 ```
-aws iam create-role --role-name CodeDeploy-EC2-Instance-Profile --assume-role-policy-document file://<PATH TO REPO>/deployment/GameEngineServer-EC2-Trust.json
+aws iam create-role --role-name CodeDeploy-EC2-Instance-Profile --assume-role-policy-document file://<PATH TO REPO>/deployment/CodeDeploy-EC2-Trust.json
 ```
 Add permissions to the role:
 ```
-aws iam put-role-policy --role-name CodeDeploy-EC2-Instance-Profile --policy-name CodeDeploy-EC2-Permissions --policy-document file://<PATH TO REPO>/deployment/GameEngineServer-EC2-Permissions.json
+aws iam put-role-policy --role-name CodeDeploy-EC2-Instance-Profile --policy-name CodeDeploy-EC2-Permissions --policy-document file://<PATH TO REPO>/deployment/CodeDeploy-EC2-Permissions.json
 ```
 Add the role to the new instance profile:
 ```
