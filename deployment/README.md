@@ -9,7 +9,7 @@ aws deploy create-deployment \
    --deployment-config-name CodeDeployDefault.OneAtATime \
    --deployment-group-name GameEngineService-DeploymentGroup \
    --description "DEPLOYMENT DESCRIPTION" \
-   --github-location repository=maciej-pomykala/blef_game_engine,commitId=<COMMIT ID>
+   --github-location repository=Blef-team/blef_game_engine,commitId=<COMMIT ID>
 ```
 which returns a deployment id.
 To check the deployment status:
@@ -36,11 +36,11 @@ Add the role to the new instance profile:
 ```
 aws iam add-role-to-instance-profile --instance-profile-name CodeDeploy-EC2-Instance-Profile --role-name CodeDeploy-EC2-Instance-Profile
 ```
-Attached the instance profile to the EC2 instance:
+Attach the instance profile to the EC2 instance:
 ```
 aws ec2 associate-iam-instance-profile --iam-instance-profile Name=CodeDeploy-EC2-Instance-Profile --instance-id=<INSTANCE ID>
 ```
-Tagged the instance:
+Tag the instance:
 ```
 aws ec2 create-tags --resources <INSTANCE ID> --tags Key=name,Value=GameEngineServer
 ```
