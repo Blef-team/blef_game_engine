@@ -5,18 +5,23 @@ library(dplyr)
 library(stringr)
 
 source("game_routines.R")
-if (!exists("game_exists", mode="function")) source("s3.R")
-
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b")
 
 #* Create a new game
 #* @serializer unboxedJSON
 #* @get /v1/games/create
-function() {
-
+function(res) {
+  
+  # Count started games, prevent abuse
+  games_count <- length(grep(list.files("../game_data", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
+  if (games_count > 10000) {
+    res$status <- 429
+    return(list(message = "Too many games started"))
+  }
+  
   game_uuid <- UUIDgenerate(use.time = F)
-
+  
   empty_game <- list(
     game_uuid = game_uuid,
     admin_nickname = NULL,
@@ -29,8 +34,8 @@ function() {
     cp_nickname = NULL,
     history = data.frame(nickname = character(), action_id = numeric())
   )
-  saveRDS(empty_game, get_filename(game_uuid))
-
+  saveRDS(empty_game, file = get_path(game_uuid))
+  
   list(game_uuid = game_uuid)
 }
 
@@ -39,57 +44,57 @@ function() {
 #* @param nickname The nickname chosen by the user.
 #* @get /v1/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
-  if (!validate_uuid(game_uuid)) {
+  if(!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if(!file.exists(get_path(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
-
-  game <- readRDS(get_filename(game_uuid))
-
+  
+  game <- readRDS(get_path(game_uuid))
+  
   # Check whether the game has already started, in which case users shouldn't be able to join
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Game already started"))
   }
-
+  
   # Check if the game is not full
   if (nrow(game$players) == 8) {
     res$status <- 403
     return(list(error = "The game room is full"))
   }
-
+  
   # Check if the nickname argument has been supplied
-  if (missing(nickname)) {
+  if(missing(nickname)) {
     res$status <- 400
     return(list(error = "Nickname missing - please supply it"))
   }
-
+  
   # Check whether the nickname is in an acceptable format
-  if (!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
+  if(!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
     res$status <- 400
     return(list(error = "Nickname must start with a letter and only contain alphanumeric characters"))
   }
-
+  
   # Check whether the nickname is available
   if (nickname %in% game$players$nickname) {
     res$status <- 409
     return(list(error = "Nickname already taken"))
   }
-
+  
   player_uuid <- UUIDgenerate(use.time = F)
   if (nrow(game$players) == 0) game$admin_nickname <- nickname
   game$players %<>% rbind(data.frame(uuid = player_uuid, nickname = nickname, n_cards = 0)) %>%
     mutate(uuid = as.character(uuid), nickname = as.character(nickname))
-
-  saveRDS(game, get_filename(game_uuid))
+  
+  saveRDS(game, get_path(game_uuid))
   list(player_uuid = player_uuid)
 }
 
@@ -98,74 +103,74 @@ function(game_uuid, nickname, res) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if(!file.exists(get_path(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
-
+  
   # See if the game has already started
-  game <- readRDS(get_filename(game_uuid))
+  game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Game already started"))
   }
-
+  
   # Check if admin UUID has been supplied
-  if (missing(admin_uuid)) {
+  if(missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
-
+  
   # Check if the supplied admin UUID is a valid UUID
   if (!validate_uuid(admin_uuid)) {
     res$status <- 400
     return(list(error = "Invalid admin UUID"))
   }
-
+  
   # Check whether the supplied UUID matches the admin UUID
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
   if (!auth_correct) {
     res$status <- 403
     return(list(error = "Admin UUID does not match"))
   }
-
+  
   # Check if we have at least 2 players. We won't have too many players because the join endpoint takes care of that
   n_players <- nrow(game$players)
   if (n_players < 2) {
     res$status <- 403
     return(list(error = "At least 2 players needed to start a game"))
   }
-
+  
   game$status <- "Running"
   game$round_number <- 1
-
+  
   # Determine maximum number of cards
   if (n_players == 2) game$max_cards <- 11
   if (n_players != 2) game$max_cards <- floor(24 / n_players)
-
+  
   # Give each player 1 card
   game$players$n_cards <- rep(1, nrow(game$players))
-
+  
   # Shuffle the order of the players
   game$players <- game$players[order(rnorm(n_players)), ]
-
+  
   # Deal cards
   game$hands <- draw_cards(game$players)
-
+  
   # Fill in the current player
   game$cp_nickname <- game$players$nickname[1]
-
+  
   # Save current game data
-  saveRDS(game, get_filename(game_uuid))
-
+  saveRDS(game, get_path(game_uuid))
+  
   res$status <- 202
   list(message = "Game started")
 }
@@ -176,29 +181,28 @@ function(game_uuid, admin_uuid, res) {
 #* @param round The round for which information is requested. If no round specified, current round info is returned.
 #* @get /v1/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, round = -1) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
-  if (!validate_uuid(game_uuid)) {
+  if(!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if(!file.exists(get_path(game_uuid))) {
     res$status <- 400
-    print("We're gonna check if the game exists")
     return(list(error = "Game does not exist"))
   }
-
+  
   # Check whether, if a player UUID has been supplied, it is a valid UUID
   if (!player_uuid == "" & !validate_uuid(player_uuid)) {
     res$status <- 400
     return(list(error = "Invalid player UUID"))
   }
-
+  
   # Check whether the round parameter is OK
   round %<>% as.numeric()
-  current_r <- readRDS(get_filename(game_uuid))$round_number
+  current_r <- readRDS(get_path(game_uuid))$round_number
   if (round > current_r) {
     res$status <- 400
     return(list(error = "The game has not reached this round"))
@@ -207,15 +211,15 @@ function(game_uuid, player_uuid = "", res, round = -1) {
     res$status <- 400
     return(list(error = "The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"))
   }
-
+  
   if (round == -1 | round == current_r) {
     r <- current_r
-    game <- readRDS(get_filename(game_uuid))
+    game <- readRDS(get_path(game_uuid))
   } else {
     r <- round
-    game <- readRDS(get_filename(game_uuid, r))
+    game <- readRDS(get_path(game_uuid, r))
   }
-
+  
   # Authenticate a player
   auth_attempt <-player_uuid != ""
   auth_success <- player_uuid %in% game$players$uuid
@@ -224,7 +228,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
     res$status <- 400
     return(list(error = "The UUID does not match any active player"))
   }
-
+  
   # Fetch the appropriate hands
   if (r < current_r | game$status == "Finished") {
     revealed_hands <- jsonise_hands(game)
@@ -234,10 +238,10 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   } else if (r == current_r & !auth_success) {
     revealed_hands <- data.frame()
   }
-
+  
   # Hide UUIDs
   privatised_players <- game$players %<>% select(-uuid)
-
+  
   return(
     list(
       admin_nickname = game$admin_nickname,
@@ -259,20 +263,20 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @param action_id The id of the action (bet or check).
 #* @get /v1/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if (!file.exists(get_path(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
-
-  game <- readRDS(get_filename(game_uuid))
+  
+  game <- readRDS(get_path(game_uuid))
   # Check if game is currently running
   if (game$status == "Not started") {
     res$status <- 400
@@ -282,39 +286,39 @@ function(game_uuid, player_uuid, res, action_id) {
     res$status <- 400
     return(list(error = "This game has already finished"))
   }
-
+  
   # Check if player UUID has been supplied
   if (missing(player_uuid)) {
     res$status <- 400
     return(list(error = "Player UUID missing - please supply it"))
   }
-
+  
   # Check whether the player UUID is a valid UUID
   if (!validate_uuid(player_uuid)) {
     res$status <- 400
     return(list(error = "Invalid player UUID"))
   }
-
+  
   # Check if the player UUID matches the UUID of the current player
   auth_success <- player_uuid == game$players$uuid[game$players$nickname == game$cp_nickname]
   if (!auth_success) {
     res$status <- 400
     return(list(error = "The submitted UUID does not match the UUID of the current player"))
   }
-
+  
   # Check if action ID has been supplied
   if (missing(action_id)) {
     res$status <- 400
     return(list(error = "Action ID missing - please supply it"))
   }
-
+  
   # Check whether the particular action is allowed right now
   action_id <- as.numeric(action_id)
   if (!action_id %in% c(0:88)) {
     res$status <- 400
     return(list(error = "Action ID must be an integer between 0 and 88"))
   }
-
+  
   if (nrow(game$history) == 0) {
     action_allowed <- action_id %in% 0:87
   } else {
@@ -324,39 +328,39 @@ function(game_uuid, player_uuid, res, action_id) {
     res$status <- 400
     return(list(error = "This action not allowed right now"))
   }
-
+  
   # If the action was a bet
   if (action_id != 88) {
-
+    
     # Attach action to history
     game$history %<>% rbind(c(game$cp_nickname, action_id)) %>% format_history()
-
+    
     # Increment the current player
     game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
-
+    
     # Save game state
-    saveRDS(game, get_filename(game_uuid))
-
+    saveRDS(game, get_path(game_uuid))
+    
   } else { # If the action was a check
-
+    
     last_bet <- tail(game$history$action_id, 1)
     set_exists <- determine_set_existence(game$hands, last_bet)
-
+    
     # Determine losing player (the last player in the history table)
     if (set_exists) {
       losing_player <- game$cp_nickname
     } else if (!set_exists) {
       losing_player <- tail(game$history$player, 1)
-    }
+    } 
     game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
     game$history %<>% rbind(c(losing_player, 89))
-
+    
     # Save snapshot of the game
-    saveRDS(game, get_filename(game_uuid, game$round_number))
-
+    saveRDS(game, get_path(game_uuid, game$round_number))
+    
     # Add a card to the losing player
     game$players$n_cards[game$players$nickname == losing_player] %<>% add(1)
-
+    
     # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
     if (game$players$n_cards[game$players$nickname == losing_player] > game$max_cards) {
       game$players$n_cards[game$players$nickname == losing_player] <- 0
@@ -380,9 +384,9 @@ function(game_uuid, player_uuid, res, action_id) {
       game$hands <- draw_cards(game$players)
       game$cp_nickname <- losing_player
     }
-
+    
     # Save game state
-    saveRDS(game, get_filename(game_uuid))
+    saveRDS(game, get_path(game_uuid))
   }
 }
 
@@ -391,56 +395,56 @@ function(game_uuid, player_uuid, res, action_id) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if(!file.exists(get_path(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
-
+  
   # See if the game has already started
-  game <- readRDS(get_filename(game_uuid))
+  game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
   }
-
+  
   # Check if admin UUID has been supplied
-  if (missing(admin_uuid)) {
+  if(missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
-
+  
   # Check if the supplied admin UUID is a valid UUID
   if (!validate_uuid(admin_uuid)) {
     res$status <- 400
     return(list(error = "Invalid admin UUID"))
   }
-
+  
   # Check whether the supplied UUID matches the admin UUID
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
   if (!auth_correct) {
     res$status <- 403
     return(list(error = "Admin UUID does not match"))
   }
-
+  
   # Check whether the request isn't redundant
   if (game$public == T) {
     res$status <- 200
     return(list(error = "Request redundant - game already public"))
   }
-
+  
   game$public <- T
-
+  
   # Save current game data
-  saveRDS(game, get_filename(game_uuid))
-
+  saveRDS(game, get_path(game_uuid))
+  
   res$status <- 200
   list(message = "Game made public")
 }
@@ -450,56 +454,56 @@ function(game_uuid, admin_uuid, res) {
 #* @param admin_uuid The identifier of the admin, passed as verification.
 #* @get /v1/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
-
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
     return(list(error = "Invalid game UUID"))
   }
-
+  
   # Check if game exists
-  if (!game_exists(get_filename(game_uuid))) {
+  if(!file.exists(get_path(game_uuid))) {
     res$status <- 400
     return(list(error = "Game does not exist"))
   }
-
+  
   # See if the game has already started
-  game <- readRDS(get_filename(game_uuid))
+  game <- readRDS(get_path(game_uuid))
   if (game$status != "Not started") {
     res$status <- 403
     return(list(error = "Cannot make the change - game already started"))
   }
-
+  
   # Check if admin UUID has been supplied
-  if (missing(admin_uuid)) {
+  if(missing(admin_uuid)) {
     res$status <- 400
     return(list(error = "Admin UUID missing - please supply it"))
   }
-
+  
   # Check if the supplied admin UUID is a valid UUID
   if (!validate_uuid(admin_uuid)) {
     res$status <- 400
     return(list(error = "Invalid admin UUID"))
   }
-
+  
   # Check whether the supplied UUID matches the admin UUID
   auth_correct <- admin_uuid == game$players$uuid[game$players$nickname == game$admin_nickname]
   if (!auth_correct) {
     res$status <- 403
     return(list(error = "Admin UUID does not match"))
   }
-
+  
   # Check whether the request isn't redundant
   if (game$public == F) {
     res$status <- 200
     return(list(error = "Request redundant - game already private"))
   }
-
+  
   game$public <- F
-
+  
   # Save current game data
-  saveRDS(game, get_filename(game_uuid))
-
+  saveRDS(game, get_path(game_uuid))
+  
   res$status <- 200
   list(message = "Game made private")
 }
