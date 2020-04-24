@@ -7,3 +7,4 @@ files:
 hooks:
   ApplicationStart:
     - location: api/run_api.sh
+      runas: ec2-user
