@@ -104,6 +104,8 @@ function(game_uuid, nickname, res) {
 #* @get /v1/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
 
+  admin_uuid %<>% str_to_lower()
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -182,6 +184,8 @@ function(game_uuid, admin_uuid, res) {
 #* @get /v1/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, round = -1) {
 
+  player_uuid %<>% str_to_lower()
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if(!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -264,6 +268,8 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @get /v1/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
 
+  player_uuid %<>% str_to_lower()
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -396,6 +402,8 @@ function(game_uuid, player_uuid, res, action_id) {
 #* @get /v1/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
 
+  admin_uuid %<>% str_to_lower()
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -455,6 +463,8 @@ function(game_uuid, admin_uuid, res) {
 #* @get /v1/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
 
+  admin_uuid %<>% str_to_lower()
+  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
