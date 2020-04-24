@@ -22,7 +22,7 @@ jsonise_hands <- function(game, nicknames = unique(game$players$nickname)) {
   } else {
     active_nicknames <- nicknames[nicknames %in% game$players$nickname[game$players$n_cards > 0]]
     jsonised_hands <- lapply(active_nicknames, function(p) {
-      list(Nickname = p, Hand = game$hands %>% filter(player == p) %>% select(-player))
+      list(nickname = p, hand = game$hands %>% filter(player == p) %>% select(-player))
     })
   }
   return(jsonised_hands)
