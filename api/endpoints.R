@@ -267,8 +267,6 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @param action_id The id of the action (bet or check).
 #* @get /v1/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
-
-  player_uuid %<>% str_to_lower()
   
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
@@ -299,6 +297,7 @@ function(game_uuid, player_uuid, res, action_id) {
     return(list(error = "Player UUID missing - please supply it"))
   }
 
+  player_uuid %<>% str_to_lower()
   # Check whether the player UUID is a valid UUID
   if (!validate_uuid(player_uuid)) {
     res$status <- 400
