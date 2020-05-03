@@ -522,6 +522,12 @@ function(game_uuid, admin_uuid, res) {
 #* @get /v2/games
 function() {
   files <- list.files(game_data_path, full.names = T)
+  
+  # Check if there are any games at all
+  if (length(files) == 0) {
+    return(list())
+  }
+  
   snapshots <- str_detect(files, "_\\d")
   relevant_files <- files[!snapshots]
 
