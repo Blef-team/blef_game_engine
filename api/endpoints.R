@@ -14,7 +14,7 @@ validate_uuid <- function(x) str_detect(x, "\\b[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}-
 function(res) {
 
   # Count started games, prevent abuse
-  games_count <- length(grep(list.files("~/game_data/v2/", pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
+  games_count <- length(grep(list.files(game_data_path, pattern=".RDS$"), pattern="(_[0-9]+.RDS$)", inv=T))
   if (games_count > 10000) {
     res$status <- 429
     return(list(message = "Too many games started"))
@@ -521,7 +521,7 @@ function(game_uuid, admin_uuid, res) {
 #* @serializer unboxedJSON
 #* @get /v2/games
 function() {
-  files <- list.files("~/game_data/v2/", full.names = T)
+  files <- list.files(game_data_path, full.names = T)
   snapshots <- str_detect(files, "_\\d")
   relevant_files <- files[!snapshots]
 
@@ -531,7 +531,7 @@ function() {
   lapply(which(public), function(i) {
     content <- contents[[i]]
     list(
-      uuid = relevant_files[i] %>% str_remove("~/game_data/v2/") %>% str_remove("\\.RDS"),
+      uuid = relevant_files[i] %>% str_remove(game_data_path) %>% str_remove("\\.RDS"),
       players = as.list(content$players$nickname),
       started = content$status != "Not started"
     )
