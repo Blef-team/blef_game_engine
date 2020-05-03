@@ -1,8 +1,10 @@
 indexation <- read_csv("./indexation.csv")
+game_data_path <- Sys.getenv("GAME_DATA_PATH")
+if (game_data_path == "") stop("GAME_DATA_PATH environment variable not set")
 
 get_path <- function(game_uuid, r = -1) {
-  if (r == -1) return(paste0("~/game_data/", game_uuid, ".RDS"))
-  if (r >= 0) return(paste0("~/game_data/", game_uuid, "_", r, ".RDS"))
+  if (r == -1) return(paste0(game_data_path, game_uuid, ".RDS"))
+  if (r >= 0) return(paste0(game_data_path, game_uuid, "_", r, ".RDS"))
 }
 
 draw_cards <- function(players) {

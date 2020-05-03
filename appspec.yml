@@ -3,7 +3,7 @@ version: 0.0
 os: linux
 files:
   - source: /api
-    destination: /var/gameengineservice/api/
+    destination: /var/gameengineservice/api/v2/
 hooks:
   ApplicationStart:
     - location: api/run_api.sh
