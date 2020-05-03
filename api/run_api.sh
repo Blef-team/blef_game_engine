@@ -1,4 +1,3 @@
-cd /var/gameengineservice/api/
 export GAME_DATA_PATH=~/game_data/v2/
 mkdir -p $GAME_DATA_PATH
 touch ~/api.log
