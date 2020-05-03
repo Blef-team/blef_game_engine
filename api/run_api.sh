@@ -1,3 +1,6 @@
 cd /var/gameengineservice/api/
-mkdir -p ../game_data
-Rscript run_api.R > /dev/null 2> /dev/null < /dev/null &
+export GAME_DATA_PATH=~/game_data/v2/
+mkdir -p $GAME_DATA_PATH
+touch ~/api.log
+echo $(date -u) >> ~/api.log
+Rscript --verbose run_api.R >> ~/api.log 2>&1 &

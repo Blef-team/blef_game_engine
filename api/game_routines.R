@@ -1,8 +1,10 @@
 indexation <- read_csv("./indexation.csv")
+game_data_path <- Sys.getenv("GAME_DATA_PATH")
+if (game_data_path == "") stop("GAME_DATA_PATH environment variable not set")
 
 get_path <- function(game_uuid, r = -1) {
-  if (r == -1) return(paste0("../game_data/", game_uuid, ".RDS"))
-  if (r >= 0) return(paste0("../game_data/", game_uuid, "_", r, ".RDS"))
+  if (r == -1) return(paste0(game_data_path, game_uuid, ".RDS"))
+  if (r >= 0) return(paste0(game_data_path, game_uuid, "_", r, ".RDS"))
 }
 
 draw_cards <- function(players) {
@@ -17,17 +19,23 @@ draw_cards <- function(players) {
 }
 
 jsonise_hands <- function(game, nicknames = unique(game$players$nickname)) {
-  lapply(nicknames, function(p) {
-    list(Nickname = p, Hand = game$hands %>% filter(player == p) %>% select(-player))
-  })
+  if (nrow(game$hands) == 0) {
+    jsonised_hands <- data.frame()
+  } else {
+    active_nicknames <- nicknames[nicknames %in% game$players$nickname[game$players$n_cards > 0]]
+    jsonised_hands <- lapply(active_nicknames, function(p) {
+      list(nickname = p, hand = game$hands %>% filter(player == p) %>% select(-player))
+    })
+  }
+  return(jsonised_hands)
 }
 
 determine_set_existence <- function(cards, set_id) {
 
   set_id %<>% as.numeric()
-  set_type <- unlist(indexation[set_id + 1, 1])
-  detail_1 <- unlist(indexation[set_id + 1, 2])
-  detail_2 <- unlist(indexation[set_id + 1, 3])
+  set_type <- unlist(indexation$set_type[set_id + 1])
+  detail_1 <- as.numeric(unlist(indexation$detail_1[set_id + 1]))
+  detail_2 <- as.numeric(unlist(indexation$detail_2[set_id + 1]))
 
   card_values <- cards[, 2]
   card_colours <- cards[, 3]
@@ -93,4 +101,14 @@ format_history <- function(history) {
   history %>%
     set_colnames(c("player", "action_id")) %>%
     mutate(player = as.character(player), action_id = as.numeric(as.character(action_id)))
+}
+
+find_next_active_player <- function(players, cp_nickname) {
+  active_players <- players %>% filter(n_cards > 0) %>% pull(nickname)
+  if (cp_nickname == tail(active_players, 1)) {
+    new_cp_nickname <- active_players[1]
+  } else {
+    new_cp_nickname <- active_players[which(active_players == cp_nickname) + 1]
+  }
+  return(new_cp_nickname)
 }
