@@ -537,7 +537,7 @@ function() {
   lapply(which(public), function(i) {
     content <- contents[[i]]
     list(
-      uuid = relevant_files[i] %>% str_remove(game_data_path) %>% str_remove("\\.RDS"),
+      uuid = relevant_files[i] %>% str_remove(paste0(game_data_path, "/")) %>% str_remove("\\.RDS"),
       players = as.list(content$players$nickname),
       started = content$status != "Not started"
     )
