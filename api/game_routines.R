@@ -103,12 +103,14 @@ format_history <- function(history) {
     mutate(player = as.character(player), action_id = as.numeric(as.character(action_id)))
 }
 
-find_next_active_player <- function(players, cp_nickname) {
-  active_players <- players %>% filter(n_cards > 0) %>% pull(nickname)
-  if (cp_nickname == tail(active_players, 1)) {
-    new_cp_nickname <- active_players[1]
+find_next_active_player <- function(players, current_player) {
+  if(is.null(current_player) | !(current_player %in% players$nickname)) stop()
+  
+  active_players <- players %>% filter(n_cards > 0 | nickname == current_player) %>% pull(nickname)
+  if (current_player == tail(active_players, 1)) {
+    new_player <- active_players[1]
   } else {
-    new_cp_nickname <- active_players[which(active_players == cp_nickname) + 1]
+    new_player <- active_players[which(active_players == current_player) + 1]
   }
-  return(new_cp_nickname)
+  return(new_player)
 }
