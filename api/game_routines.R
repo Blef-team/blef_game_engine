@@ -108,9 +108,9 @@ find_next_active_player <- function(players, current_player) {
   
   active_players <- players %>% filter(n_cards > 0 | nickname == current_player) %>% pull(nickname)
   if (current_player == tail(active_players, 1)) {
-    new_player <- active_players[1]
+    next_player <- active_players[1]
   } else {
-    new_player <- active_players[which(active_players == current_player) + 1]
+    next_player <- active_players[which(active_players == current_player) + 1]
   }
-  return(new_player)
+  return(next_player)
 }
