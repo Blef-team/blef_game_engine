@@ -360,6 +360,10 @@ function(game_uuid, player_uuid, res, action_id) {
     game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
     game$history %<>% rbind(c(losing_player, 89))
 
+    # Keep in mind the cp_nickname but nullify it before saving snapshot, to not confuse UIs
+    cp_nickname <- game$cp_nickname
+    game$cp_nickname <- NULL
+
     # Save snapshot of the game
     saveRDS(game, get_path(game_uuid, game$round_number))
 
@@ -371,19 +375,21 @@ function(game_uuid, player_uuid, res, action_id) {
       game$players$n_cards[game$players$nickname == losing_player] <- 0
       if (sum(game$players$n_cards > 0) == 1) {
         game$status <- "Finished"
-        game$cp_nickname <- NULL
       } else {
+        # If the game is not finished, increment round number, redraw cards and set new current player
         game$round_number %<>% add(1)
         game$history <- data.frame(nickname = character(), action_id = numeric())
         game$hands <- draw_cards(game$players)
         # If the checking player was eliminated, figure out the next player
         # Otherwise the current player doesn't change
-        if (losing_player == game$cp_nickname) {
-          game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
+        if (losing_player == cp_nickname) {
+          game$cp_nickname <- find_next_active_player(game$players, cp_nickname)
+        } else {
+          game$cp_nickname <- cp_nickname
         }
       }
     } else {
-      # If no one should be kicked out, increment round number, redraw cards and set new current player
+      # If no one is kicked out, picking the next player is easier
       game$round_number %<>% add(1)
       game$history <- data.frame(nickname = character(), action_id = numeric())
       game$hands <- draw_cards(game$players)
