@@ -216,7 +216,9 @@ function(game_uuid, player_uuid = "", res, round = -1) {
     return(list(error = "The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"))
   }
 
-  if (round == -1 | round == current_r) {
+  # If the game is finished and last round is queried, return the snapshot of the state before card was added and status changed
+  status <- readRDS(get_path(game_uuid))$status
+  if (round == -1 | (round == current_r & status == "Running")) {
     r <- current_r
     game <- readRDS(get_path(game_uuid))
   } else {
