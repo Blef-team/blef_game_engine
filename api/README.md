@@ -6,7 +6,7 @@
 
 * **URL**
   
-  /v2/games/create
+  /v2.1/games/create
 
 * **Method:**
   
@@ -29,7 +29,7 @@
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/create
+curl <IP & PORT>/v2.1/games/create
 ```
 
 **Join game**
@@ -38,7 +38,7 @@ curl <IP & PORT>/v2/games/create
 
 * **URL**
   
-  /v2/games/{game_uuid}/join
+  /v2.1/games/{game_uuid}/join
 
 * **Method:**
   
@@ -104,7 +104,7 @@ curl <IP & PORT>/v2/games/create
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
 ```
 
 **Start game**
@@ -113,7 +113,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 
 * **URL**
   
-  /v2/games/{game_uuid}/start
+  /v2.1/games/{game_uuid}/start
 
 * **Method:**
   
@@ -172,7 +172,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **Get game state**
@@ -181,7 +181,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
 
 * **URL**
   
-  /v2/games/{game_uuid}
+  /v2.1/games/{game_uuid}
 
 * **Method:**
   
@@ -239,7 +239,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 ```
 
 **Play**
@@ -248,7 +248,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 
 * **URL**
   
-  /v2/games/{game_uuid}/play
+  /v2.1/games/{game_uuid}/play
 
 * **Method:**
   
@@ -325,7 +325,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
 ```
 
 **Make game public**
@@ -334,7 +334,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 
 * **URL**
   
-  /v2/games/{game_uuid}/make-public
+  /v2.1/games/{game_uuid}/make-public
 
 * **Method:**
   
@@ -393,7 +393,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **Make game private**
@@ -402,7 +402,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 
 * **URL**
   
-  /v2/games/{game_uuid}/make-private
+  /v2.1/games/{game_uuid}/make-private
 
 * **Method:**
   
@@ -461,7 +461,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <IP & PORT>/v2.1/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **List public games**
@@ -470,7 +470,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admi
 
 * **URL**
   
-  /v2/games
+  /v2.1/games
 
 * **Method:**
   
@@ -496,7 +496,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admi
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2/games
+curl <IP & PORT>/v2.1/games
 ```
 
 ## Action IDs
