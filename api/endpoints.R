@@ -358,7 +358,7 @@ function(game_uuid, player_uuid, res, action_id) {
       losing_player <- tail(game$history$player, 1)
     }
     game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
-    game$history %<>% rbind(c(losing_player, 89))
+    game$history %<>% rbind(c(losing_player, 89)) %>% format_history()
 
     # Save snapshot of the game
     saveRDS(game, get_path(game_uuid, game$round_number))
