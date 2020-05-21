@@ -5,4 +5,4 @@ if(!require(readr)) install.packages("readr", repos = "http://cran.us.r-project.
 if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
 if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
 
-plumber::plumb("endpoints.R")$run(port = 8002, host = "0.0.0.0")
+plumber::plumb("endpoints.R")$run(port = 8003, host = "0.0.0.0")
