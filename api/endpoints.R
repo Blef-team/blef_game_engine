@@ -217,8 +217,8 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   }
 
   # If the game is finished and last round is queried, return the snapshot of the state before card was added and status changed
-  status <- readRDS(get_path(game_uuid))$status
-  if (round == -1 | (round == current_r & status == "Running")) {
+  present_status <- readRDS(get_path(game_uuid))$status
+  if (round == -1 | (round == current_r & present_status == "Running")) {
     r <- current_r
     game <- readRDS(get_path(game_uuid))
   } else {
@@ -236,7 +236,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   }
 
   # Fetch the appropriate hands
-  if (r < current_r | game$status == "Finished") {
+  if (r < current_r | present_status == "Finished") {
     revealed_hands <- jsonise_hands(game)
   } else if (r == current_r & auth_success) {
     user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
