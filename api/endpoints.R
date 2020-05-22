@@ -104,8 +104,6 @@ function(game_uuid, nickname, res) {
 #* @get /v2.2/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
 
-  admin_uuid %<>% str_to_lower()
-  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -132,6 +130,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if the supplied admin UUID is a valid UUID
+  admin_uuid %<>% str_to_lower()
   if (!validate_uuid(admin_uuid)) {
     res$status <- 400
     return(list(error = "Invalid admin UUID"))
