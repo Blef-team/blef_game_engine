@@ -10,7 +10,7 @@ validate_uuid <- function(x) str_detect(x, "\\b[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}-
 
 #* Create a new game
 #* @serializer unboxedJSON
-#* @get /v2.1/games/create
+#* @get /v2.2/games/create
 function(res) {
 
   # Count started games, prevent abuse
@@ -42,7 +42,7 @@ function(res) {
 #* Add a player to a game
 #* @serializer unboxedJSON
 #* @param nickname The nickname chosen by the user.
-#* @get /v2.1/games/<game_uuid>/join
+#* @get /v2.2/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
 
   # Check if the supplied game UUID is a valid UUID before loading the game
@@ -101,11 +101,9 @@ function(game_uuid, nickname, res) {
 #* Start the game
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.1/games/<game_uuid>/start
+#* @get /v2.2/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
 
-  admin_uuid %<>% str_to_lower()
-  
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -132,6 +130,7 @@ function(game_uuid, admin_uuid, res) {
   }
 
   # Check if the supplied admin UUID is a valid UUID
+  admin_uuid %<>% str_to_lower()
   if (!validate_uuid(admin_uuid)) {
     res$status <- 400
     return(list(error = "Invalid admin UUID"))
@@ -181,7 +180,7 @@ function(game_uuid, admin_uuid, res) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the player whose cards the user wants to see before the round finishes.
 #* @param round The round for which information is requested. If no round specified, current round info is returned.
-#* @get /v2.1/games/<game_uuid>
+#* @get /v2.2/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, round = -1) {
 
   player_uuid %<>% str_to_lower()
@@ -216,7 +215,9 @@ function(game_uuid, player_uuid = "", res, round = -1) {
     return(list(error = "The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"))
   }
 
-  if (round == -1 | round == current_r) {
+  # If the game is finished and last round is queried, return the snapshot of the state before card was added and status changed
+  status <- readRDS(get_path(game_uuid))$status
+  if (round == -1 | (round == current_r & status == "Running")) {
     r <- current_r
     game <- readRDS(get_path(game_uuid))
   } else {
@@ -265,7 +266,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the current player for authentication.
 #* @param action_id The id of the action (bet or check).
-#* @get /v2.1/games/<game_uuid>/play
+#* @get /v2.2/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
   
   # Check if the supplied game UUID is a valid UUID before loading the game
@@ -358,7 +359,11 @@ function(game_uuid, player_uuid, res, action_id) {
       losing_player <- tail(game$history$player, 1)
     }
     game$history %<>% rbind(c(game$cp_nickname, 88)) %>% format_history()
-    game$history %<>% rbind(c(losing_player, 89))
+    game$history %<>% rbind(c(losing_player, 89)) %>% format_history()
+
+    # Keep in mind the cp_nickname but nullify it before saving snapshot, to not confuse UIs
+    cp_nickname <- game$cp_nickname
+    game$cp_nickname <- NULL
 
     # Save snapshot of the game
     saveRDS(game, get_path(game_uuid, game$round_number))
@@ -371,19 +376,21 @@ function(game_uuid, player_uuid, res, action_id) {
       game$players$n_cards[game$players$nickname == losing_player] <- 0
       if (sum(game$players$n_cards > 0) == 1) {
         game$status <- "Finished"
-        game$cp_nickname <- NULL
       } else {
+        # If the game is not finished, increment round number, redraw cards and set new current player
         game$round_number %<>% add(1)
         game$history <- data.frame(nickname = character(), action_id = numeric())
         game$hands <- draw_cards(game$players)
         # If the checking player was eliminated, figure out the next player
         # Otherwise the current player doesn't change
-        if (losing_player == game$cp_nickname) {
-          game$cp_nickname <- find_next_active_player(game$players, game$cp_nickname)
+        if (losing_player == cp_nickname) {
+          game$cp_nickname <- find_next_active_player(game$players, cp_nickname)
+        } else {
+          game$cp_nickname <- cp_nickname
         }
       }
     } else {
-      # If no one should be kicked out, increment round number, redraw cards and set new current player
+      # If no one is kicked out, picking the next player is easier
       game$round_number %<>% add(1)
       game$history <- data.frame(nickname = character(), action_id = numeric())
       game$hands <- draw_cards(game$players)
@@ -398,7 +405,7 @@ function(game_uuid, player_uuid, res, action_id) {
 #* Make game public
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.1/games/<game_uuid>/make-public
+#* @get /v2.2/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
 
   admin_uuid %<>% str_to_lower()
@@ -459,7 +466,7 @@ function(game_uuid, admin_uuid, res) {
 #* Make game private
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.1/games/<game_uuid>/make-private
+#* @get /v2.2/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
 
   admin_uuid %<>% str_to_lower()
@@ -519,7 +526,7 @@ function(game_uuid, admin_uuid, res) {
 
 #* List public games
 #* @serializer unboxedJSON
-#* @get /v2.1/games
+#* @get /v2.2/games
 function() {
   files <- list.files(game_data_path, full.names = T)
   
