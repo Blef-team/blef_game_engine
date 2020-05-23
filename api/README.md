@@ -503,94 +503,94 @@ curl <IP & PORT>/v2.2/games
 
 The table below details what action ID a player should use to make a specific move. Action IDs between 0 and 87 cover bets, while 88 is a check. The way the actions are arranged, a set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
 
-| Action ID | Set description       |
-|-----------|-----------------------|
-| 0         | High card: 9          |
-| 1         | High card: 10         |
-| 2         | High card: J          |
-| 3         | High card: Q          |
-| 4         | High card: K          |
-| 5         | High card: A          |
-| 6         | Pair of 9s            |
-| 7         | Pair of 10s           |
-| 8         | Pair of Js            |
-| 9         | Pair of Qs            |
-| 10        | Pair of Ks            |
-| 11        | Pair of As            |
-| 12        | Two pairs: 10s and 9s |
-| 13        | Two pairs: Js and 9s  |
-| 14        | Two pairs: Js and 10s |
-| 15        | Two pairs: Qs and 9s  |
-| 16        | Two pairs: Qs and 10s |
-| 17        | Two pairs: Qs and Js  |
-| 18        | Two pairs: Ks and 9s  |
-| 19        | Two pairs: Ks and 10s |
-| 20        | Two pairs: Ks and Js  |
-| 21        | Two pairs: Ks and Qs  |
-| 22        | Two pairs: As and 9s  |
-| 23        | Two pairs: As and 10s |
-| 24        | Two pairs: As and Js  |
-| 25        | Two pairs: As and Qs  |
-| 26        | Two pairs: As and Ks  |
-| 27        | Small straight        |
-| 28        | Big straight          |
-| 29        | Great straight        |
-| 30        | Three 9s              |
-| 31        | Three 10s             |
-| 32        | Three Js              |
-| 33        | Three Qs              |
-| 34        | Three Ks              |
-| 35        | Three As              |
-| 36        | Full house: 9s on 10s |
-| 37        | Full house: 9s on Js  |
-| 38        | Full house: 9s on Qs  |
-| 39        | Full house: 9s on Ks  |
-| 40        | Full house: 9s on As  |
-| 41        | Full house: 10s on 9s |
-| 42        | Full house: 10s on Js |
-| 43        | Full house: 10s on Qs |
-| 44        | Full house: 10s on Ks |
-| 45        | Full house: 10s on As |
-| 46        | Full house: Js on 9s  |
-| 47        | Full house: Js on 10s |
-| 48        | Full house: Js on Qs  |
-| 49        | Full house: Js on Ks  |
-| 50        | Full house: Js on As  |
-| 51        | Full house: Qs on 9s  |
-| 52        | Full house: Qs on 10s |
-| 53        | Full house: Qs on Js  |
-| 54        | Full house: Qs on Ks  |
-| 55        | Full house: Qs on As  |
-| 56        | Full house: Ks on 9s  |
-| 57        | Full house: Ks on 10s |
-| 58        | Full house: Ks on Js  |
-| 59        | Full house: Ks on Qs  |
-| 60        | Full house: Ks on As  |
-| 61        | Full house: As on 9s  |
-| 62        | Full house: As on 10s |
-| 63        | Full house: As on Js  |
-| 64        | Full house: As on Qs  |
-| 65        | Full house: As on Ks  |
-| 66        | Colour: clubs         |
-| 67        | Colour: diamonds      |
-| 68        | Colour: hearts        |
-| 69        | Colour: spades        |
-| 70        | Four 9s               |
-| 71        | Four 10s              |
-| 72        | Four Js               |
-| 73        | Four Qs               |
-| 74        | Four Ks               |
-| 75        | Four As               |
-| 76        | Small flush: clubs    |
-| 77        | Small flush: diamonds |
-| 78        | Small flush: hearts   |
-| 79        | Small flush: spades   |
-| 80        | Big flush: clubs      |
-| 81        | Big flush: diamonds   |
-| 82        | Big flush: hearts     |
-| 83        | Big flush: spades     |
-| 84        | Great flush: clubs    |
-| 85        | Great flush: diamonds |
-| 86        | Great flush: hearts   |
-| 87        | Great flush: spades   |
-| 88        | **Check**             |
+| Action ID | Set description                      |
+|-----------|--------------------------------------|
+| 0         | High card, 9                         |
+| 1         | High card, 10                        |
+| 2         | High card, J                         |
+| 3         | High card, Q                         |
+| 4         | High card, K                         |
+| 5         | High card, A                         |
+| 6         | Pair of 9s                           |
+| 7         | Pair of 10s                          |
+| 8         | Pair of Js                           |
+| 9         | Pair of Qs                           |
+| 10        | Pair of Ks                           |
+| 11        | Pair of As                           |
+| 12        | Two pair, 10s and 9s                 |
+| 13        | Two pair, Js and 9s                  |
+| 14        | Two pair, Js and 10s                 |
+| 15        | Two pair, Qs and 9s                  |
+| 16        | Two pair, Qs and 10s                 |
+| 17        | Two pair, Qs and Js                  |
+| 18        | Two pair, Ks and 9s                  |
+| 19        | Two pair, Ks and 10s                 |
+| 20        | Two pair, Ks and Js                  |
+| 21        | Two pair, Ks and Qs                  |
+| 22        | Two pair, As and 9s                  |
+| 23        | Two pair, As and 10s                 |
+| 24        | Two pair, As and Js                  |
+| 25        | Two pair, As and Qs                  |
+| 26        | Two pair, As and Ks                  |
+| 27        | Small straight (9-K)                 |
+| 28        | Big straight (10-A)                  |
+| 29        | Great straight (9-A)                 |
+| 30        | Three of a kind, 9s                  |
+| 31        | Three of a kind, 10s                 |
+| 32        | Three of a kind, Js                  |
+| 33        | Three of a kind, Qs                  |
+| 34        | Three of a kind, Ks                  |
+| 35        | Three of a kind, As                  |
+| 36        | Full house, 9s over 10s              |
+| 37        | Full house, 9s over Js               |
+| 38        | Full house, 9s over Qs               |
+| 39        | Full house, 9s over Ks               |
+| 40        | Full house, 9s over As               |
+| 41        | Full house, 10s over 9s              |
+| 42        | Full house, 10s over Js              |
+| 43        | Full house, 10s over Qs              |
+| 44        | Full house, 10s over Ks              |
+| 45        | Full house, 10s over As              |
+| 46        | Full house, Js over 9s               |
+| 47        | Full house, Js over 10s              |
+| 48        | Full house, Js over Qs               |
+| 49        | Full house, Js over Ks               |
+| 50        | Full house, Js over As               |
+| 51        | Full house, Qs over 9s               |
+| 52        | Full house, Qs over 10s              |
+| 53        | Full house, Qs over Js               |
+| 54        | Full house, Qs over Ks               |
+| 55        | Full house, Qs over As               |
+| 56        | Full house, Ks over 9s               |
+| 57        | Full house, Ks over 10s              |
+| 58        | Full house, Ks over Js               |
+| 59        | Full house, Ks over Qs               |
+| 60        | Full house, Ks over As               |
+| 61        | Full house, As over 9s               |
+| 62        | Full house, As over 10s              |
+| 63        | Full house, As over Js               |
+| 64        | Full house, As over Qs               |
+| 65        | Full house, As over Ks               |
+| 66        | Flush, clubs                         |
+| 67        | Flush, diamonds                      |
+| 68        | Flush, hearts                        |
+| 69        | Flush, spades                        |
+| 70        | Four of a kind, 9s                   |
+| 71        | Four of a kind, 10s                  |
+| 72        | Four of a kind, Js                   |
+| 73        | Four of a kind, Qs                   |
+| 74        | Four of a kind, Ks                   |
+| 75        | Four of a kind, As                   |
+| 76        | Small straight flush (9-K), clubs    |
+| 77        | Small straight flush (9-K), diamonds |
+| 78        | Small straight flush (9-K), hearts   |
+| 79        | Small straight flush (9-K), spades   |
+| 80        | Big straight flush (10-A), clubs     |
+| 81        | Big straight flush (10-A), diamonds  |
+| 82        | Big straight flush (10-A), hearts    |
+| 83        | Big straight flush (10-A), spades    |
+| 84        | Great straight flush (9-A), clubs    |
+| 85        | Great straight flush (9-A), diamonds |
+| 86        | Great straight flush (9-A), hearts   |
+| 87        | Great straight flush (9-A), spades   |
+| 88        | **Check**                            |
