@@ -58,7 +58,7 @@ There are 88 sets in the game. They are the following:
 | Big straight flush       | *Big straight flush (10-A), Cs*  | 4              | 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs          |
 | Great straight flush     | *Great straight flush (9-A), Cs* | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs |
 
-where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and C is one of club, diamond, heart, or spade (in this order of seniority). X must be more senior than than Y. If two pairs or two full houses are compared, the one with the more senior X is more senior overall. If X is equal in both, the one with the more senior Y is more senior overall.
+where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and C is one of club, diamond, heart, or spade (in this order of seniority). When betting two pair, X must be more senior than than Y. If two pair sets or full house sets are compared, the one with the more senior X is more senior overall. If X is equal in both, the one with the more senior Y is more senior overall.
 
 ## How we implement the game
 
