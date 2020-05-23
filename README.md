@@ -42,21 +42,21 @@ However, there is a maximum number of cards that can be held by a player. This n
 
 There are 88 sets in the game. They are the following:
 
-| Type of set     | How it's said          | Number of sets | Composition of the set                                   |
-|-----------------|------------------------|----------------|----------------------------------------------------------|
-| High card       | *High card: X*         | 6              | at least 1 X                                             |
-| Pair            | *Pair of Xs*           | 6              | at least 2 Xs                                            |
-| Two pairs       | *Two pairs: Xs and Ys* | 15             | at least 2 Xs and at least 2 Ys                          |
-| Small straight  | *Small straight*       | 1              | at least one 9, one 10, one J, one Q and one K           |
-| Big straight    | *Big straight*         | 1              | at least one 10, one J, one Q, one K and one A           |
-| Great straight  | *Great straight*       | 1              | at least one 9, one 10, one J, one Q, one K and one A    |
-| Three of a kind | *Three Xs*             | 6              | at least 3 Xs                                            |
-| Full house      | *Full house: Xs on Ys* | 30             | at least 3 Xs and 2 Ys                                   |
-| Colour          | *Colour: Cs*           | 4              | at least 5 cards of Cs                                   |
-| Four of a kind  | *Four Xs*              | 6              | at least 4 Xs                                            |
-| Small flush     | *Small flush: Cs*      | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs and K of Cs          |
-| Big flush       | *Big flush: Cs*        | 4              | 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs          |
-| Great flush     | *Great flush: Cs*      | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs |
+| Type of set              | How we specify it                | Number of sets | Composition of the set                                   |
+|--------------------------|----------------------------------|----------------|----------------------------------------------------------|
+| High card                | *High card, X*                   | 6              | at least 1 X                                             |
+| Pair                     | *Pair of Xs*                     | 6              | at least 2 Xs                                            |
+| Two pair                 | *Two pair, Xs and Ys*            | 15             | at least 2 Xs and at least 2 Ys                          |
+| Small straight           | *Small straight (9-K)*           | 1              | at least one 9, one 10, one J, one Q and one K           |
+| Big straight             | *Big straight (10-A)*            | 1              | at least one 10, one J, one Q, one K and one A           |
+| Great straight           | *Great straight (9-A)*           | 1              | at least one 9, one 10, one J, one Q, one K and one A    |
+| Three of a kind          | *Three of a kind, Xs*            | 6              | at least 3 Xs                                            |
+| Full house               | *Full house, Xs over Ys*         | 30             | at least 3 Xs and 2 Ys                                   |
+| Flush                    | *Flush, Cs*                      | 4              | at least 5 cards of Cs                                   |
+| Four of a kind           | *Four of a kind, Xs*             | 6              | at least 4 Xs                                            |
+| Small straight flush     | *Small straight flush (9-K), Cs* | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs and K of Cs          |
+| Big straight flush       | *Big straight flush (10-A), Cs*  | 4              | 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs          |
+| Great straight flush     | *Great straight flush (9-A), Cs* | 4              | 9 of Cs, 10 of Cs, J of Cs, Q of Cs, K of Cs and A of Cs |
 
 where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and C is one of club, diamond, heart, or spade (in this order of seniority). X must be more senior than than Y. If two pairs or two full houses are compared, the one with the more senior X is more senior overall. If X is equal in both, the one with the more senior Y is more senior overall.
 
