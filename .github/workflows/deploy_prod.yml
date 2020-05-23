@@ -25,6 +25,7 @@ jobs:
     name: Deploy with CodeDeploy to production on EC2
     runs-on: ubuntu-latest
 
+    steps:
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
