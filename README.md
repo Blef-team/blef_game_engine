@@ -45,7 +45,7 @@ There are 88 sets in the game. They are the following:
 | Type of set              | How we specify it                | Number of sets | Composition of the set                                   |
 |--------------------------|----------------------------------|----------------|----------------------------------------------------------|
 | High card                | *High card, X*                   | 6              | at least 1 X                                             |
-| Pair                     | *Pair of Xs*                     | 6              | at least 2 Xs                                            |
+| One pair                 | *Pair of Xs*                     | 6              | at least 2 Xs                                            |
 | Two pair                 | *Two pair, Xs and Ys*            | 15             | at least 2 Xs and at least 2 Ys                          |
 | Small straight           | *Small straight (9-K)*           | 1              | at least one 9, one 10, one J, one Q and one K           |
 | Big straight             | *Big straight (10-A)*            | 1              | at least one 10, one J, one Q, one K and one A           |
