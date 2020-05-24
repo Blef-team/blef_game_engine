@@ -18,7 +18,6 @@ def test_create(response):
     new_game = response.json()
     assert isinstance(new_game, dict)
     uuid = UUID(new_game.get("game_uuid"))
-    os.environ["game_uuid"] = str(uuid)
 
 
 def test_game_state(response):
@@ -39,5 +38,4 @@ def test_game_state(response):
 def test_join(response):
     """ Test the /games/{id}/join endpoint response """
     new_player = response.json()
-    uuid = UUID(new_player.get("player_uuid"))
-    os.environ["player_uuid"] = str(uuid)
+    UUID(new_player.get("player_uuid"))
