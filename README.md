@@ -1,7 +1,8 @@
 # Game engine service for `Blef`
 > The API service to create manage and run games of Blef
 
-![CI](https://github.com/maciej-pomykala/blef_game_engine/workflows/CI/badge.svg?branch=master)
+![CI](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20dev/badge.svg?branch=develop)
+![CI](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=master)
 
 This repository contains the code to run the Blef game engine API service.
 
@@ -21,22 +22,22 @@ The game starts with a fixed number of players arranged in a circle and a shuffl
 
 ### First round
 
-The starting player makes a *bet*, which has to specify a certain *set* of cards. For example, Alice is the starting player and makes a bet saying "Pair of aces". This means that she is claiming that if every player revealed their cards and the cards were pooled together, at least two aces would be found among them. There are 88 sets on which players can bet and they are ranked - some sets are more *senior* than others. 
+The starting player makes a *bet*, which has to specify a certain *set* of cards. For example, Alice is the starting player and makes a bet saying "Pair of aces". This means that she is claiming that if every player revealed their cards and the cards were pooled together, at least two aces would be found among them. There are 88 sets on which players can bet and they are ranked - some sets are more *senior* than others.
 
-Suppose that Bob is the next player. Bob has two choices: either he checks Alice, or he bets on a more senior set than a pair of aces. 
+Suppose that Bob is the next player. Bob has two choices: either he checks Alice, or he bets on a more senior set than a pair of aces.
 
-* If he checks Alice, then every player reveals their cards. If the set specified by Alice (a pair of aces) can be found among all players' cards, this means that Alice's bet was correct and Bob loses the round. If only one ace or no aces at all could be found among the cards, then Alice loses the round. 
-* If he bets on a more senior set, the next player in the circle makes a move (if there is only Alice and Bob, the game comes back to Alice), which, again, can be either a check or a more senior bet. 
+* If he checks Alice, then every player reveals their cards. If the set specified by Alice (a pair of aces) can be found among all players' cards, this means that Alice's bet was correct and Bob loses the round. If only one ace or no aces at all could be found among the cards, then Alice loses the round.
+* If he bets on a more senior set, the next player in the circle makes a move (if there is only Alice and Bob, the game comes back to Alice), which, again, can be either a check or a more senior bet.
 
 In general, players proceed in a circle betting on more and more senior sets until one player checks the previous player.
 
-On one hand, a player should use the knowledge of their own cards to make bets (about everybody's pooled cards) which have a better chance of being correct. For example, if Alice has two aces she knows that if she says "Pair of aces" she will not lose when Bob checks her. On the other hand, Alice doesn't want other players to know her cards. If other players don't know her cards, there is a better chance that they will make an incorrect bet and lose. If they know her cards, they will bet on sets which include Alice's cards and Alice will have trouble making a correct, more senior bet. 
+On one hand, a player should use the knowledge of their own cards to make bets (about everybody's pooled cards) which have a better chance of being correct. For example, if Alice has two aces she knows that if she says "Pair of aces" she will not lose when Bob checks her. On the other hand, Alice doesn't want other players to know her cards. If other players don't know her cards, there is a better chance that they will make an incorrect bet and lose. If they know her cards, they will bet on sets which include Alice's cards and Alice will have trouble making a correct, more senior bet.
 
 ### Next rounds
 
-The second round begins with the player who lost the first round. That player begins the second round with two cards, while others still have one. However, all cards are reshuffled and redrawn. Each round follows the same rules. That means that the starting player bets on a specific set and the subsequent players in the circle bet on more and more senior sets until one player checks the player before them (if a player bets on the most senior set out of all 88, the next player can only check). After each round, the losing player is assigned one more card and makes the first bet in the next round. 
+The second round begins with the player who lost the first round. That player begins the second round with two cards, while others still have one. However, all cards are reshuffled and redrawn. Each round follows the same rules. That means that the starting player bets on a specific set and the subsequent players in the circle bet on more and more senior sets until one player checks the player before them (if a player bets on the most senior set out of all 88, the next player can only check). After each round, the losing player is assigned one more card and makes the first bet in the next round.
 
-However, there is a maximum number of cards that can be held by a player. This number is determined before the game starts and adjusted to the number of players in the game. If a player has that number of cards and loses a round, instead of getting one more card, they lose the game completely, which means that they do not participate in any subsequent rounds. If a player loses the game, the next round starts from the next player in the circle. The game ends when only one player remains. That player is the winner. 
+However, there is a maximum number of cards that can be held by a player. This number is determined before the game starts and adjusted to the number of players in the game. If a player has that number of cards and loses a round, instead of getting one more card, they lose the game completely, which means that they do not participate in any subsequent rounds. If a player loses the game, the next round starts from the next player in the circle. The game ends when only one player remains. That player is the winner.
 
 ### The sets
 
@@ -68,11 +69,11 @@ The game is implemented in the form of an API service deployed on a remote (AWS)
 * letting a player join a game room
 * letting the first player in a game room start the game
 * informing a user about the state of a given game
-* letting a player make a move in a game 
+* letting a player make a move in a game
 
 ### Creating a game
 
-At first, a user has to create a game. This action creates and saves a game object on the API server. As part of this, the relevatn API endpoint provisions a unique UUID for the game and informs the user who created the game of this UUID. 
+At first, a user has to create a game. This action creates and saves a game object on the API server. As part of this, the relevatn API endpoint provisions a unique UUID for the game and informs the user who created the game of this UUID.
 
 ### Joining a game
 
@@ -80,15 +81,15 @@ Then, the user who created the game informs other users with whom they want to p
 
 ### Starting a game
 
-The first user to join the game is made the 'admin'. Users know the nickname of the admin. The admin, using their player UUID for authentication, will start the game, at which point no more players can join it. 
+The first user to join the game is made the 'admin'. Users know the nickname of the admin. The admin, using their player UUID for authentication, will start the game, at which point no more players can join it.
 
 The players are shuffled - i.e. the order of the players in the game (the order in which players make bets) may not be the one in which players join the game. In particular, the game admin might not be the starting player in the first round.
 
-The maximum number of cards is a deterministic function of the number of players who are starting the game. It is equal to 24 (the number of cards available) divided by the number of players and rounded downwards. This ensures that at no point more cards will be needed than are available in the deck. The rule has one exception. With 2 players, the maximum number of cards is 11, not 12. This is because there is a simple strategy to ensure that the first player who reaches 12 cards loses the game. Specifically, in order for them to win the game, it would require the other player to also reach 12 cards and lose a round. However, when the second player reaches 12 cards this player will begin the final round and, knowing that each of the 24 cards is owned by either of the two players, can bet the highest set (Great flush spades) and be guaranteed a win. 
+The maximum number of cards is a deterministic function of the number of players who are starting the game. It is equal to 24 (the number of cards available) divided by the number of players and rounded downwards. This ensures that at no point more cards will be needed than are available in the deck. The rule has one exception. With 2 players, the maximum number of cards is 11, not 12. This is because there is a simple strategy to ensure that the first player who reaches 12 cards loses the game. Specifically, in order for them to win the game, it would require the other player to also reach 12 cards and lose a round. However, when the second player reaches 12 cards this player will begin the final round and, knowing that each of the 24 cards is owned by either of the two players, can bet the highest set (Great flush spades) and be guaranteed a win.
 
 ### Querying the game state
 
-Players and observers can query the state of the game, choosing either to get the latest state of the game or the state at the end of a specific round. If a user requests to see the state of the game at the end of a past round, they will be shown all cards possessed by each player in that round. However, when users query the current state of the game, they will not be shown any cards unless they provide a valid player UUID to authenticate themselves as a specific player. In that case, they will be shown the cards of that player. 
+Players and observers can query the state of the game, choosing either to get the latest state of the game or the state at the end of a specific round. If a user requests to see the state of the game at the end of a past round, they will be shown all cards possessed by each player in that round. However, when users query the current state of the game, they will not be shown any cards unless they provide a valid player UUID to authenticate themselves as a specific player. In that case, they will be shown the cards of that player.
 
 Users can query the (current or past, as mentioned above) state of the game at any point. When they do so, they get the following information about the game:
 
@@ -110,9 +111,9 @@ There is an endpoint dedicated to letting the current player make a move. The pl
 
 ### Public / private games
 
-A game can be public or private. A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. However, these changes can only be made before the game starts. 
+A game can be public or private. A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. However, these changes can only be made before the game starts.
 
-Finally, there is an endpoint which allows a user to see all public games (their UUID, list of players and an indication whether they have started). 
+Finally, there is an endpoint which allows a user to see all public games (their UUID, list of players and an indication whether they have started).
 
 ### Full API documentation
 
