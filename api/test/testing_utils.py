@@ -39,3 +39,8 @@ def test_join(response):
     """ Test the /games/{id}/join endpoint response """
     new_player = response.json()
     UUID(new_player.get("player_uuid"))
+
+
+def test_start(response):
+    message = response.json()
+    assert message.get("message") == "Game started"
