@@ -58,3 +58,15 @@ stages:
       status_code: 200
       verify_response_with:
         function: testing_utils:test_game_state
+
+  - name: Join game as second player
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}/join?nickname=test_player_2"
+      method: GET
+    response:
+      status_code: 200
+      save:
+        json:
+          player_uuid: player_2_uuid
+      verify_response_with:
+        function: testing_utils:test_join
