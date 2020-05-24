@@ -1,3 +1,4 @@
+import os
 from uuid import UUID
 
 
@@ -16,4 +17,20 @@ def test_create(response):
     """ Test the /games/create endpoint response """
     new_game = response.json()
     assert isinstance(new_game, dict)
-    UUID(new_game.get("game_uuid"))
+    uuid = UUID(new_game.get("game_uuid"))
+    os.environ["game_uuid"] = str(uuid)
+
+
+def test_game_state(response):
+    """ Test the /games/{id} endpoint response """
+    game_state = response.json()
+    assert isinstance(game_state, dict)
+    assert "admin_nickname" in game_state
+    assert isinstance(game_state.get("public"), bool)
+    assert game_state.get("status") in ["Not started", "Running", "Finished"]
+    assert game_state.get("round_number") in range(24)
+    assert game_state.get("max_cards") in [0, 3, 4, 6, 8, 11]
+    assert isinstance(game_state.get("players"), list)
+    assert isinstance(game_state.get("hands"), list)
+    assert "cp_nickname" in game_state
+    assert isinstance(game_state.get("history"), list)

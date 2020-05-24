@@ -1,15 +1,36 @@
 ---
 # This test requires BASE_URL environment variable
-test_name: Test /games endpoint
+test_name: Test /games* endpoints
+
+# Allow for extra keys in the response
+strict:
+  - headers:on
+  - json:off
 
 stages:
-  - name: Validate response
-
+  - name: Validate /games
     request:
       url: "{tavern.env_vars.BASE_URL}/games"
       method: GET
-
     response:
       status_code: 200
       verify_response_with:
         function: testing_utils:test_games
+
+  - name: Create a game
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/create"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_create
+
+  - name: Get game state
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{tavern.env_vars.game_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_game_state
