@@ -34,3 +34,10 @@ def test_game_state(response):
     assert isinstance(game_state.get("hands"), list)
     assert "cp_nickname" in game_state
     assert isinstance(game_state.get("history"), list)
+
+
+def test_join(response):
+    """ Test the /games/{id}/join endpoint response """
+    new_player = response.json()
+    uuid = UUID(new_player.get("player_uuid"))
+    os.environ["player_uuid"] = str(uuid)

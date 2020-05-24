@@ -34,3 +34,21 @@ stages:
       status_code: 200
       verify_response_with:
         function: testing_utils:test_game_state
+
+  - name: Join game
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{tavern.env_vars.game_uuid}/join?nickname=test_player"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_join
+
+  - name: Get game state with player_uuid
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{tavern.env_vars.game_uuid}?player_uuid{tavern.env_vars.player_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_game_state
