@@ -74,8 +74,7 @@ stages:
 
   - *get_game_state_with_admin_player_uuid_anchor
 
-  - &get_game_state_with_player_2_uuid_anchor
-    name: Get game state with player_2_uuid
+  - name: Get game state with player_2_uuid
     request:
       url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}?player_uuid{player_2_uuid}"
       method: GET
@@ -92,3 +91,23 @@ stages:
       status_code: 202
       verify_response_with:
         function: testing_utils:test_start
+
+  - &get_running_game_state_with_admin_player_uuid_anchor
+    name: Get running game state with admin_player_uuid
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}?player_uuid{admin_player_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_running_game_state_with_player_uuid
+
+  - &get_running_game_state_with_player_2_uuid_anchor
+    name: Get running game state with admin_player_uuid
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}?player_uuid{player_2_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_running_game_state_with_player_uuid
