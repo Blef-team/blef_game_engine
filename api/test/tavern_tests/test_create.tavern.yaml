@@ -1,0 +1,15 @@
+---
+# This test requires BASE_URL environment variable
+test_name: Test /games/create endpoint
+
+stages:
+  - name: Validate response
+
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/create"
+      method: GET
+
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_create

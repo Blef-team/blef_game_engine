@@ -10,3 +10,10 @@ def test_games(response):
         assert isinstance(game.get("players"), list)
         assert all(isinstance(nickname, str) for nickname in game.get("players", []))
         assert isinstance(game.get("started"), bool)
+
+
+def test_create(response):
+    """ Test the /games/create endpoint response """
+    new_game = response.json()
+    assert isinstance(new_game, dict)
+    UUID(new_game.get("game_uuid"))
