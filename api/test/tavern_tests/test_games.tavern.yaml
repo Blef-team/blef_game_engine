@@ -111,3 +111,43 @@ stages:
       status_code: 200
       verify_response_with:
         function: testing_utils:test_running_game_state_with_player_uuid
+
+  - name: Play an admin player move
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}/play?player_uuid={admin_player_uuid}&action_id=10"
+      method: GET
+    response:
+      status_code:
+        - 200
+        - 400
+      verify_response_with:
+        function: testing_utils:test_play
+
+  - name: Play a player 2 move
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}/play?player_uuid={player_2_uuid}&action_id=20"
+      method: GET
+    response:
+      status_code:
+        - 200
+        - 400
+      verify_response_with:
+        function: testing_utils:test_play
+
+  - name: Get game state with admin_player_uuid after play
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}?player_uuid{admin_player_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_game_state_with_player_uuid_after_play
+
+  - name: Get game state with player_2_uuid after play
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}?player_uuid{player_2_uuid}"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_game_state_with_player_uuid_after_play

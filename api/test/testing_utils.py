@@ -61,6 +61,12 @@ def test_running_game_state_with_player_uuid(response):
             assert card.get("value") in range(6)
             assert card.get("colour") in range(4)
     assert isinstance(game_state.get("cp_nickname"), str) and game_state.get("cp_nickname")
+
+
+def test_game_state_with_player_uuid_after_play(response):
+    test_running_game_state_with_player_uuid(response)
+    game_state = response.json()
+    assert game_state.get("history")
     for action in game_state.get("history"):
         assert isinstance(action["player"], str) and action["player"]
         assert action["action_id"] in range(90)
@@ -75,3 +81,11 @@ def test_join(response):
 def test_start(response):
     message = response.json()
     assert message.get("message") == "Game started"
+
+
+def test_play(response):
+    message = response.json()
+    if response.status_code == 400:
+        assert message.get("error") in ["The submitted UUID does not match the UUID of the current player"]
+    if response.status_code == 200:
+        assert message == dict()
