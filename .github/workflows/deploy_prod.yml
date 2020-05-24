@@ -1,0 +1,42 @@
+# This is the CI workflow to deploy the Game Engine Service to production on EC2 with CodeDeploy
+
+name: Deploy prod
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  validate_prod:
+    name: Validate the production deployment version and port
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Validate
+      run: ./deployment/validate_prod.sh
+
+  deploy_prod:
+    needs: validate_prod
+    name: Deploy with CodeDeploy to production on EC2
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-2
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        role-external-id: ${{ secrets.AWS_ROLE_EXTERNAL_ID }}
+        role-duration-seconds: 1200
+        role-session-name: CodeDeploySession
+
+    - name: Create a production deployment with CodeDeploy
+      run: |
+        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-DeploymentGroup    --description "Automated v2 production deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=Blef-team/blef_game_engine,commitId=${{ github.sha }}
