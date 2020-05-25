@@ -24,4 +24,4 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
 
-      run: BASE_URL="http://localhost:8001/v2" ./api/test/run.sh
+    - run: BASE_URL="http://localhost:8001/v2" ./api/test/run.sh
