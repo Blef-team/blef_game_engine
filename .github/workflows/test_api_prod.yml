@@ -15,7 +15,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    # Run api locally on the prod 
+    # Run api locally and test it with Tavern
+
+    - uses: r-lib/actions/setup-r@v1
     - uses: actions/setup-python@v2
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
