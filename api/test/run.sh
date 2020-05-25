@@ -1,7 +1,7 @@
 # Run API tests with pytest and tavern
 if [ -z "$BASE_URL" ]
 then
-      echo "\$var is empty"
+      echo "\$BASE_URL is empty"
 else
       echo "Running API tests against $BASE_URL"
 fi
