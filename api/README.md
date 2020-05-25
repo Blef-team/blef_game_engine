@@ -526,6 +526,33 @@ curl <IP & PORT>/v2/games
 curl <IP & PORT>/v2/version
 ```
 
+**Get the number of active games**
+  ----
+  Returns the number of games which have been modified in the last 30 minutes.
+
+* **URL**
+  
+  /v2/games/active
+
+* **Method:**
+  
+  `GET`
+
+* **URL Params**
+  
+  None
+
+* **Success Response:**
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"active_games":20}`
+
+* **Sample Call:**
+  
+```
+curl <IP & PORT>/v2/games/active
+```
+
 ## Action IDs
 
 The table below details what action ID a player should use to make a specific move. Action IDs between 0 and 87 cover bets, while 88 is a check. The way the actions are arranged, a set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
