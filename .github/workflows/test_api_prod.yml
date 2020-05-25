@@ -1,0 +1,19 @@
+# This is the CI workflow to test the Game Engine Service code locally
+
+name: Test locally
+
+jobs:
+  test_locally:
+    name: Validate the develop deployment version and port
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Run api locally on the prod port
+    - name: Run api
+      run: DEPLOYMENT_GROUP_NAME="GameEngineService-Production" ./api/run_api.sh
+
+    - name: Test
+      run: BASE_URL="http://localhost:8001/v2" ./api/test/run.sh
