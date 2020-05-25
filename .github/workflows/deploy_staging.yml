@@ -1,6 +1,6 @@
 # This is the CI workflow to deploy the Game Engine Service to staging on EC2 with CodeDeploy
 
-name: Deploy prod
+name: Deploy staging
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
