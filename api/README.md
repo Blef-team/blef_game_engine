@@ -5,8 +5,507 @@
   Creates an empty game object.
 
 * **URL**
+
+  /v2/games/create
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  None
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"game_uuid":"f2fdd601-bc82-438b-a4ee-a871dc35561a"}`
+
+* **Error Response:**
+
+  * **Code:** 429 TOO MANY REQUESTS <br />
+  **Content:** `{"message":"Too many games started"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/create
+```
+
+**Join game**
+  ----
+  Allows a player to join a specific game under a specific nickname.
+
+* **URL**
+
+  /v2/games/{game_uuid}/join
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"nickname"=string`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"player_uuid":"f65e08df-d82a-46b1-979b-550cbc04d56d"}`
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game already started"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"The game room is full"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
+
+  OR
+
+  * **Code:** 409 CONFLICT <br />
+  **Content:** `{"error":"Nickname already taken"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
+```
+
+**Start game**
+  ----
+  Allows the first player who joined the game to start it. After that point, no further players can join the game.
+
+* **URL**
+
+  /v2/games/{game_uuid}/start
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+   `"admin_uuid"=string`
+
+* **Success Response:**
+
+  * **Code:** 202 Accepted <br />
+  **Content:** `{"message":"Game started"}`
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game already started"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Admin UUID missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Invalid admin UUID"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Admin UUID does not match"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"At least 2 players needed to start a game"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+```
+
+**Get game state**
+  ----
+  Allows a user to query the current (or past) state of the game, restricting information about players hands as appropriate.
+
+* **URL**
+
+  /v2/games/{game_uuid}
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Optional:**
+
+  `"player_uuid"=string`
+
+  `"round"=integer`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"admin_nickname":"funky","public":false,"status":"Running","round_number":12,"max_cards":11,"players":[{"nickname":"chunky","n_cards":8},{"nickname":"funky","n_cards":5}],"hands":[{"Nickname":"chunky","Hand":[{"value":5,"colour":2},{"value":4,"colour":3},{"value":4,"colour":1},{"value":4,"colour":0},{"value":3,"colour":2},{"value":3,"colour":1},{"value":2,"colour":0},{"value":1,"colour":1}]},{"Nickname":"funky","Hand":[{"value":5,"colour":1},{"value":5,"colour":0},{"value":3,"colour":3},{"value":0,"colour":1},{"value":0,"colour":0}]}],"cp_nickname":"funky","history":[{"player":"chunky","action_id":"74"},{"player":"funky","action_id":"88"},{"player":"chunky","action_id":"89"}]}`
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid player UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The game has not reached this round"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The UUID does not match any active player"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
+```
+
+**Play**
+  ----
+  Allows a user to make a move in a game. See below for explanation of the `action_id` parameter.
+
+* **URL**
+
+  /v2/games/{game_uuid}/play
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"player_uuid"=string`
+
+  `"action_id"=integer`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br/>
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has not yet started"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This game has already finished"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Player UUID missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid player UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"This action not allowed right now"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
+```
+
+**Make game public**
+  ----
+  Allows the first player who joined the game to make it public (visible to anyone).
+
+* **URL**
+
+  /v2/games/{game_uuid}/make-public
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  `"admin_uuid"=string`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Game made public"}`
+
+  OR
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Request redundant - game already public"}`
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+```
+
+**Make game private**
+  ----
+  Allows the first player who joined the game to make it private (visible to only those who know its UUID).
+
+* **URL**
+
+  /v2/games/{game_uuid}/make-private
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  `"admin_uuid"=string`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Game made private"}`
+
+  OR
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Request redundant - game already private"}`
+
+* **Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid game UUID"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Game does not exist"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Cannot make the change - game already started"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Admin UUID missing - please supply it"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"message":"Invalid admin UUID"}`
+
+  OR
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"message":"Admin UUID does not match"}`
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+```
+
+**List public games**
+  ----
+  Allows users to see all public games.
+
+* **URL**
+
+  /v2/games
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  NONE
+
+*  **Data Params**
+
+  NONE
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `[{"uuid":"4acb8354-e0d2-4a0c-941d-6f6289bdac63","players":["a"],"started":false},{"uuid":"e10ee626-f05f-4229-bb8d-fee28aecce4b","players":["a","b"],"started":true}]`
+
+* **Error Response:**
+
+  NONE
+
+* **Sample Call:**
+
+```
+curl <IP & PORT>/v2/games
+```
+
+**Get the service version**
+  ----
+  Returns the version of the game engine API.
+
+* **URL**
   
-  /v2.2/games/create
+  /v2/version
 
 * **Method:**
   
@@ -19,484 +518,12 @@
 * **Success Response:**
   
   * **Code:** 200 OK <br />
-  **Content:** `{"game_uuid":"f2fdd601-bc82-438b-a4ee-a871dc35561a"}`
-
-* **Error Response:**
-  
-  * **Code:** 429 TOO MANY REQUESTS <br />
-  **Content:** `{"message":"Too many games started"}`
+  **Content:** `{"version":"2.2.0"}`
 
 * **Sample Call:**
   
 ```
-curl <IP & PORT>/v2.2/games/create
-```
-
-**Join game**
-  ----
-  Allows a player to join a specific game under a specific nickname.
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}/join
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-  **Required:**
- 
-  `"nickname"=string`
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"player_uuid":"f65e08df-d82a-46b1-979b-550cbc04d56d"}`
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid game UUID"}`
-
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Game does not exist"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"The game room is full"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Game already started"}`
-  
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"The game room is full"}`
-
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Nickname missing - please supply it"}`
-
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
-
-  OR
-  
-  * **Code:** 409 CONFLICT <br />
-  **Content:** `{"error":"Nickname already taken"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
-```
-
-**Start game**
-  ----
-  Allows the first player who joined the game to start it. After that point, no further players can join the game.
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}/start
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-   `"admin_uuid"=string`
-
-* **Success Response:**
-  
-  * **Code:** 202 Accepted <br />
-  **Content:** `{"message":"Game started"}`
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid game UUID"}`
-
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Game does not exist"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Game already started"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Admin UUID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid admin UUID"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
-  
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"At least 2 players needed to start a game"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
-```
-
-**Get game state**
-  ----
-  Allows a user to query the current (or past) state of the game, restricting information about players hands as appropriate.
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-  **Optional:**
- 
-  `"player_uuid"=string`
-   
-  `"round"=integer`
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname":"funky","public":false,"status":"Running","round_number":12,"max_cards":11,"players":[{"nickname":"chunky","n_cards":8},{"nickname":"funky","n_cards":5}],"hands":[{"Nickname":"chunky","Hand":[{"value":5,"colour":2},{"value":4,"colour":3},{"value":4,"colour":1},{"value":4,"colour":0},{"value":3,"colour":2},{"value":3,"colour":1},{"value":2,"colour":0},{"value":1,"colour":1}]},{"Nickname":"funky","Hand":[{"value":5,"colour":1},{"value":5,"colour":0},{"value":3,"colour":3},{"value":0,"colour":1},{"value":0,"colour":0}]}],"cp_nickname":"funky","history":[{"player":"chunky","action_id":"74"},{"player":"funky","action_id":"88"},{"player":"chunky","action_id":"89"}]}`
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid player UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The game has not reached this round"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The UUID does not match any active player"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
-```
-
-**Play**
-  ----
-  Allows a user to make a move in a game. See below for explanation of the `action_id` parameter.
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}/play
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-  **Required:**
- 
-  `"player_uuid"=string`
-   
-  `"action_id"=integer`
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br/>
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has not yet started"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has already finished"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Player UUID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid player UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This action not allowed right now"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
-```
-
-**Make game public**
-  ----
-  Allows the first player who joined the game to make it public (visible to anyone).
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}/make-public
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-  `"admin_uuid"=string`
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Game made public"}`
-
-  OR
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Request redundant - game already public"}`
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-  
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Cannot make the change - game already started"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Admin UUID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid admin UUID"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Admin UUID does not match"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
-```
-
-**Make game private**
-  ----
-  Allows the first player who joined the game to make it private (visible to only those who know its UUID).
-
-* **URL**
-  
-  /v2.2/games/{game_uuid}/make-private
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  **Required:**
- 
-  `"game_uuid"=string`
-   
-* **Data Params**
-
-  `"admin_uuid"=string`
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Game made private"}`
-
-  OR
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Request redundant - game already private"}`
-
-* **Error Response:**
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-  
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Cannot make the change - game already started"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Admin UUID missing - please supply it"}`
-  
-  OR
-  
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid admin UUID"}`
-
-  OR
-  
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Admin UUID does not match"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
-```
-
-**List public games**
-  ----
-  Allows users to see all public games.
-
-* **URL**
-  
-  /v2.2/games
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  NONE
-
-*  **Data Params**
-
-  NONE
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `[{"uuid":"4acb8354-e0d2-4a0c-941d-6f6289bdac63","players":["a"],"started":false},{"uuid":"e10ee626-f05f-4229-bb8d-fee28aecce4b","players":["a","b"],"started":true}]`
-
-* **Error Response:**
-  
-  NONE
-  
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2.2/games
+curl <IP & PORT>/v2/version
 ```
 
 ## Action IDs
