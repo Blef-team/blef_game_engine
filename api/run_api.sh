@@ -1,6 +1,14 @@
-cd /var/gameengineservice/api/v2.2/
-export GAME_DATA_PATH=~/game_data/v2.2/
+cd /var/gameengineservice/api/v2/
+export GAME_DATA_PATH=~/game_data/v2/
 mkdir -p $GAME_DATA_PATH
 touch ~/api_v2.2.log
 echo $(date -u) >> ~/api_v2.2.log
-Rscript --verbose run_api.R >> ~/api_v2.2.log 2>&1 &
+if [ "$DEPLOYMENT_GROUP_NAME" == "GameEngineService-Production" ]
+then
+    PORT=8001 Rscript --verbose run_api.R >> ~/api_v2.2.log 2>&1 &
+elif [ "$DEPLOYMENT_GROUP_NAME" == "GameEngineService-Staging" ]
+then
+    PORT=8011 Rscript --verbose run_api.R >> ~/api_v2.2.log 2>&1 &
+else
+    PORT=8020 Rscript --verbose run_api.R >> ~/api_v2.2.log 2>&1 &
+fi
