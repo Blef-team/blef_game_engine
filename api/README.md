@@ -499,6 +499,33 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admi
 curl <IP & PORT>/v2/games
 ```
 
+**Get the service version**
+  ----
+  Returns the version of the game engine API.
+
+* **URL**
+  
+  /v2/version
+
+* **Method:**
+  
+  `GET`
+
+* **URL Params**
+  
+  None
+
+* **Success Response:**
+  
+  * **Code:** 200 OK <br />
+  **Content:** `{"version":"2.2.0"}`
+
+* **Sample Call:**
+  
+```
+curl <IP & PORT>/v2/version
+```
+
 ## Action IDs
 
 The table below details what action ID a player should use to make a specific move. Action IDs between 0 and 87 cover bets, while 88 is a check. The way the actions are arranged, a set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.
