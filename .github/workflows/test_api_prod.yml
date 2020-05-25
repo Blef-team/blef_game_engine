@@ -19,9 +19,8 @@ jobs:
     - name: Run api
       run: DEPLOYMENT_GROUP_NAME="GameEngineService-Production" ./api/run_api.sh
 
-    - name: Test
-      uses: actions/setup-python@v2
+    - uses: actions/setup-python@v2
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-
+    - name: Test
       run: BASE_URL="http://localhost:8001/v2" ./api/test/run.sh
