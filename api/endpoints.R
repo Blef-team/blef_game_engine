@@ -8,6 +8,17 @@ source("game_routines.R")
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-\\b[0-9a-fA-F]{12}\\b")
 
+#* Get the number of active games
+#* @serializer unboxedJSON
+#* @get /v2/games/active
+function(res) {
+  # Count games active at most 30 minutes ago
+  active_game_count <- strtoi(system("find ~/game_data/v2/ \\( -name '*.RDS' \\) -mmin -30 | grep -Ev '_[0-9]+.RDS' | wc -l", intern = TRUE))
+  res$status <- 200
+  return(list(active_games = active_game_count))
+}
+
+
 #* Get the service version
 #* @serializer unboxedJSON
 #* @get /v2/version
