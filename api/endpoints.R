@@ -8,6 +8,14 @@ source("game_routines.R")
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-\\b[0-9a-fA-F]{12}\\b")
 
+#* Get the service version
+#* @serializer unboxedJSON
+#* @get /v2/version
+function(res) {
+  # Return the service version
+  list(version = "2.2.0")
+}
+
 #* Create a new game
 #* @serializer unboxedJSON
 #* @get /v2.2/games/create
