@@ -1,4 +1,5 @@
-cd /var/gameengineservice/api/v2/
+cd /var/gameengineservice/v2/
+cd api/
 export GAME_DATA_PATH=~/game_data/v2/
 mkdir -p $GAME_DATA_PATH
 touch ~/api_v2.2.log

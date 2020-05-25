@@ -40,3 +40,12 @@ jobs:
     - name: Create a production deployment with CodeDeploy
       run: |
         aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-Production    --description "Automated v2 production deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=Blef-team/blef_game_engine,commitId=${{ github.sha }}
+
+  test_prod:
+    needs: deploy_prod
+    name: Test the production deployment
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Test
+      run: BASE_URL="http://18.132.35.89:8001/v2" ./api/test/run.sh

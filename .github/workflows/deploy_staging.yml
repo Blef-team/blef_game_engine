@@ -40,3 +40,12 @@ jobs:
     - name: Create a staging deployment with CodeDeploy
       run: |
         aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-Staging    --description "Automated v2 staging deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=Blef-team/blef_game_engine,commitId=${{ github.sha }}
+
+  test_staging:
+    needs: deploy_staging
+    name: Test the staging deployment
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Test
+      run: BASE_URL="http://18.132.35.89:8011/v2" ./api/test/run.sh

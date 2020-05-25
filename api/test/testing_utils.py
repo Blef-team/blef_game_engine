@@ -27,7 +27,7 @@ def test_create(response):
     """ Test the /games/create endpoint response """
     new_game = response.json()
     assert isinstance(new_game, dict)
-    uuid = UUID(new_game.get("game_uuid"))
+    UUID(new_game.get("game_uuid"))
 
 
 def test_game_state(response):
