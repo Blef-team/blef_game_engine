@@ -48,9 +48,13 @@ Create a CodeDeploy application:
 ```
 aws deploy create-application --application-name GameEngineService
 ```
-Create a CodeDeploy deployment group:
+Create CodeDeploy deployment groups:
 ```
 aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-DeploymentGroup --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
+
+aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-Staging --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
+
+aws deploy create-deployment-group --application-name GameEngineService --ec2-tag-filters Key=ec2-tag-value,Type=KEY_AND_VALUE,Value=GameEngineServer --deployment-group-name GameEngineService-Production --service-role-arn arn:aws:iam::<ACCOUNT ID>:role/CodeDeployServiceRole
 ```
 
 ### Setting up Github Action AWS integration for continuous deployments
