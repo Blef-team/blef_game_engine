@@ -11,6 +11,15 @@ n_players_to_max_cards = {
     8: 3
 }
 
+def test_version(response):
+    """ Test the /version endpoint response"""
+    games = response.json()
+    assert isinstance(games, dict)
+    assert isinstance(games.get("version"), str) and games.get("version")
+    version_components = games.get("version").split(".")
+    assert len(version_components) == 3
+    assert all(isinstance(component, str) for component in version_components)
+
 
 def test_games(response):
     """ Test the /games endpoint response"""

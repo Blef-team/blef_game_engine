@@ -8,6 +8,15 @@ strict:
   - json:off
 
 stages:
+  - name: Validate /version
+    request:
+      url: "{tavern.env_vars.BASE_URL}/version"
+      method: GET
+    response:
+      status_code: 200
+      verify_response_with:
+        function: testing_utils:test_version
+
   - name: Validate /games
     request:
       url: "{tavern.env_vars.BASE_URL}/games"
