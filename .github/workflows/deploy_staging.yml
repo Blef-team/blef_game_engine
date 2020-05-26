@@ -8,7 +8,7 @@ on:
   push:
     branches: [ staging ]
     paths:
-    - '.github/workflows'
+    - '.github/workflows/deploy_staging.yml'
     - 'api/**'
     - '!api/README.md'
     - 'deployment/**'

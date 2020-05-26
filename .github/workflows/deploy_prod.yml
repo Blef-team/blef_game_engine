@@ -8,7 +8,7 @@ on:
   push:
     branches: [ master ]
     paths:
-    - '.github/workflows'
+    - '.github/workflows/deploy_prod.yml'
     - 'api/**'
     - '!api/README.md'
     - 'deployment/**'

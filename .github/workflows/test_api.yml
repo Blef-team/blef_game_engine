@@ -6,12 +6,9 @@ on:
   pull_request:
     branches: [ master, develop, staging ]
     paths:
-    - '.github/workflows'
+    - '.github/workflows/test_api.yml'
     - 'api/**'
     - '!api/README.md'
-    - 'deployment/**'
-    - '!deployment/README.md'
-    - 'appspec.yml'
 
 jobs:
   test_locally:
