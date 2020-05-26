@@ -1,7 +1,7 @@
 # Game engine service for `Blef`
 > The API service to create manage and run games of Blef
 
-![Test locally](https://github.com/Blef-team/blef_game_engine/workflows/Test%20locally/badge.svg)
+![Test locally](https://github.com/Blef-team/blef_game_engine/workflows/Test%20locally/badge.svg?branch=develop)
 ![Deploy dev](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20dev/badge.svg?branch=develop)
 ![Deploy staging](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=staging)
 ![Deploy prod](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=master)
