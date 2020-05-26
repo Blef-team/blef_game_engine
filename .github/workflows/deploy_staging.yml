@@ -7,6 +7,13 @@ name: Deploy staging
 on:
   push:
     branches: [ staging ]
+    paths:
+    - '.github/workflows'
+    - 'api/**'
+    - '!api/README.md'
+    - 'deployment/**'
+    - '!deployment/README.md'
+    - 'appspec.yml'
 
 jobs:
   validate_staging:
