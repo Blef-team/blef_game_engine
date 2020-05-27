@@ -60,6 +60,6 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
     - name: Test version
-      run: curl http://18.132.35.89:8011/v2/version | python -c "import sys, json; response = json.load(sys.stdin); assert isinstance(response, dict) and response.get('version')=='2.2.0'"
+      run: curl http://18.132.35.89:8011/v2/version | python -c "import sys, json; response = json.load(sys.stdin); assert isinstance(response, dict) and response.get('version')=='2.3.0'"
     - name: Test api
       run: BASE_URL="http://18.132.35.89:8011/v2" ./api/test/run.sh
