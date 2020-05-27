@@ -10,6 +10,13 @@ At the initial stage it consists of a few basic endpoints, to create, join, star
 
 Game states are currently stored in and retrieved from `.rds` files. When necessary, this data will be migrated to an appropriate database, which will run alongside the API, or on separate infrastructure.
 
+## See also
+ * [Blef Shiny app](https://github.com/Blef-team/blef_shiny_web_app)
+
+ * [<img src="https://repository-images.githubusercontent.com/254896653/3600ad80-9bc8-11ea-9e93-4dd5abbacdef" height="30px" width="30px"> Blef iOS app](https://github.com/Blef-team/blef_ios_app)
+
+ * [Blef AI](https://github.com/Blef-team/blef_ai)
+
 ## The rules of the game
 
 *Blef* is a Polish* card game inspired by Poker. In the game, each player has a certain number of playing cards between 9 and Ace, each card only known to its owner, and players have to make guesses about other players' cards.
