@@ -2,6 +2,7 @@
 if [ -z "$BASE_URL" ]
 then
       echo "\$BASE_URL is empty"
+      return 1
 else
       echo "Running API tests against $BASE_URL"
 fi
