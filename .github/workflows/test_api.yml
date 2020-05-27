@@ -26,4 +26,4 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
     - name: Run and test API
-      run: DEPLOYMENT_GROUP_NAME="GameEngineService-Production" ./api/run_api.sh && sleep 800 && cat ~/api_v2.2.log && curl http://localhost:8001/v2/games && BASE_URL="http://localhost:8001/v2" ./api/test/run.sh
+      run: DEPLOYMENT_GROUP_NAME="GameEngineService-Production" ./api/run_api.sh && sleep 800 && cat ~/api_v2.3.log && curl http://localhost:8001/v2/games && BASE_URL="http://localhost:8001/v2" ./api/test/run.sh

@@ -518,7 +518,7 @@ curl <IP & PORT>/v2/games
 * **Success Response:**
   
   * **Code:** 200 OK <br />
-  **Content:** `{"version":"2.2.0"}`
+  **Content:** `{"version":"2.3.0"}`
 
 * **Sample Call:**
   

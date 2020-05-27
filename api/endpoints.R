@@ -24,7 +24,7 @@ function(res) {
 #* @get /v2/version
 function(res) {
   # Return the service version
-  list(version = "2.2.0")
+  list(version = "2.3.0")
 }
 
 #* Create a new game
