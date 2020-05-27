@@ -7,6 +7,13 @@ name: Deploy prod
 on:
   push:
     branches: [ master ]
+    paths:
+    - '.github/workflows/deploy_prod.yml'
+    - 'api/**'
+    - '!api/README.md'
+    - 'deployment/**'
+    - '!deployment/README.md'
+    - 'appspec.yml'
 
 jobs:
   validate_prod:
