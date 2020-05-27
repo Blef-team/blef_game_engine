@@ -18,7 +18,7 @@ def test_version(response):
     assert isinstance(games.get("version"), str) and games.get("version")
     version_components = games.get("version").split(".")
     assert len(version_components) == 3
-    assert all(isinstance(component, str) for component in version_components)
+    assert all(version_components)
 
 
 def test_games(response):
