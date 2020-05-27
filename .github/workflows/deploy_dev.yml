@@ -54,5 +54,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
     - name: Test
       run: BASE_URL="http://18.132.35.89:8020/v2" ./api/test/run.sh
