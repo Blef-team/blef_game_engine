@@ -3,7 +3,7 @@
 
 ![Test locally](https://github.com/Blef-team/blef_game_engine/workflows/Test%20locally/badge.svg)
 ![Deploy dev](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20dev/badge.svg?branch=develop)
-![Deploy staging](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=staging)
+![Deploy staging](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20staging/badge.svg?branch=staging)
 ![Deploy prod](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=master)
 
 This repository contains the code to run the Blef game engine API service.
