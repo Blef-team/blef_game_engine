@@ -1,14 +1,14 @@
-# This is the CI workflow to deploy the Game Engine Service to develop on EC2 with CodeDeploy
+# This is the CI workflow to deploy the Game Engine Service to staging on EC2 with CodeDeploy
 
-name: Deploy dev
+name: Deploy staging
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
   push:
-    branches: [ develop ]
+    branches: [ staging ]
     paths:
-    - '.github/workflows/deploy_dev.yml'
+    - '.github/workflows/deploy_staging.yml'
     - 'api/**'
     - '!api/README.md'
     - 'deployment/**'
@@ -16,8 +16,8 @@ on:
     - 'appspec.yml'
 
 jobs:
-  validate_dev:
-    name: Validate the develop deployment version and port
+  validate_staging:
+    name: Validate the staging deployment version and port
     runs-on: ubuntu-latest
 
     steps:
@@ -25,11 +25,11 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Validate
-      run: ./deployment/validate_dev.sh
+      run: ./deployment/validate_staging.sh
 
-  deploy_dev:
-    needs: validate_dev
-    name: Deploy with CodeDeploy to develop on EC2
+  deploy_staging:
+    needs: validate_staging
+    name: Deploy with CodeDeploy to staging on EC2
     runs-on: ubuntu-latest
 
     steps:
@@ -44,13 +44,13 @@ jobs:
         role-duration-seconds: 1200
         role-session-name: CodeDeploySession
 
-    - name: Create a develop deployment with CodeDeploy
+    - name: Create a staging deployment with CodeDeploy
       run: |
-        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-DeploymentGroup    --description "Automated v2 develop deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=Blef-team/blef_game_engine,commitId=${{ github.sha }}
+        aws deploy create-deployment    --application-name GameEngineService    --deployment-config-name CodeDeployDefault.OneAtATime    --deployment-group-name GameEngineService-Staging    --description "Automated v2 staging deployment with GitHub Action+CodeDeploy to EC2"    --github-location repository=Blef-team/blef_game_engine,commitId=${{ github.sha }}
 
-  test_dev:
-    needs: deploy_dev
-    name: Test the develop deployment
+  test_staging:
+    needs: deploy_staging
+    name: Test the staging deployment
     runs-on: ubuntu-latest
 
     steps:
@@ -60,6 +60,6 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
     - name: Test version
-      run: curl http://18.132.35.89:8020/v2/version | python -c "import sys, json; response = json.load(sys.stdin); assert isinstance(response, dict) and response.get('version')=='2.3.0'"
+      run: curl http://18.132.35.89:8011/v2/version | python -c "import sys, json; response = json.load(sys.stdin); assert isinstance(response, dict) and response.get('version')=='2.3.0'"
     - name: Test api
-      run: BASE_URL="http://18.132.35.89:8020/v2" ./api/test/run.sh
+      run: BASE_URL="http://18.132.35.89:8011/v2" ./api/test/run.sh
