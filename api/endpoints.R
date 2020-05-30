@@ -8,9 +8,28 @@ source("game_routines.R")
 
 validate_uuid <- function(x) str_detect(x, "\\b[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-\\b[0-9a-fA-F]{12}\\b")
 
+#* Get the number of active games
+#* @serializer unboxedJSON
+#* @get /v2/games/active
+function(res) {
+  # Count games active at most 30 minutes ago
+  active_game_count <- strtoi(system("find ~/game_data/v2/ \\( -name '*.RDS' \\) -mmin -30 | grep -Ev '_[0-9]+.RDS' | wc -l", intern = TRUE))
+  res$status <- 200
+  return(list(active_games = active_game_count))
+}
+
+
+#* Get the service version
+#* @serializer unboxedJSON
+#* @get /v2/version
+function(res) {
+  # Return the service version
+  list(version = "2.3.0")
+}
+
 #* Create a new game
 #* @serializer unboxedJSON
-#* @get /v2.2/games/create
+#* @get /v2/games/create
 function(res) {
 
   # Count started games, prevent abuse
@@ -42,7 +61,7 @@ function(res) {
 #* Add a player to a game
 #* @serializer unboxedJSON
 #* @param nickname The nickname chosen by the user.
-#* @get /v2.2/games/<game_uuid>/join
+#* @get /v2/games/<game_uuid>/join
 function(game_uuid, nickname, res) {
 
   # Check if the supplied game UUID is a valid UUID before loading the game
@@ -101,7 +120,7 @@ function(game_uuid, nickname, res) {
 #* Start the game
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.2/games/<game_uuid>/start
+#* @get /v2/games/<game_uuid>/start
 function(game_uuid, admin_uuid, res) {
 
   # Check if the supplied game UUID is a valid UUID before loading the game
@@ -180,11 +199,11 @@ function(game_uuid, admin_uuid, res) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the player whose cards the user wants to see before the round finishes.
 #* @param round The round for which information is requested. If no round specified, current round info is returned.
-#* @get /v2.2/games/<game_uuid>
+#* @get /v2/games/<game_uuid>
 function(game_uuid, player_uuid = "", res, round = -1) {
 
   player_uuid %<>% str_to_lower()
-  
+
   # Check if the supplied game UUID is a valid UUID before loading the game
   if(!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -216,8 +235,8 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   }
 
   # If the game is finished and last round is queried, return the snapshot of the state before card was added and status changed
-  status <- readRDS(get_path(game_uuid))$status
-  if (round == -1 | (round == current_r & status == "Running")) {
+  present_status <- readRDS(get_path(game_uuid))$status
+  if (round == -1 | (round == current_r & present_status == "Running")) {
     r <- current_r
     game <- readRDS(get_path(game_uuid))
   } else {
@@ -235,7 +254,7 @@ function(game_uuid, player_uuid = "", res, round = -1) {
   }
 
   # Fetch the appropriate hands
-  if (r < current_r | game$status == "Finished") {
+  if (r < current_r | present_status == "Finished") {
     revealed_hands <- jsonise_hands(game)
   } else if (r == current_r & auth_success) {
     user_nickname <- game$players %>% filter(uuid == player_uuid) %>% pull(nickname)
@@ -266,9 +285,9 @@ function(game_uuid, player_uuid = "", res, round = -1) {
 #* @serializer unboxedJSON
 #* @param player_uuid The UUID of the current player for authentication.
 #* @param action_id The id of the action (bet or check).
-#* @get /v2.2/games/<game_uuid>/play
+#* @get /v2/games/<game_uuid>/play
 function(game_uuid, player_uuid, res, action_id) {
-  
+
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -405,11 +424,11 @@ function(game_uuid, player_uuid, res, action_id) {
 #* Make game public
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.2/games/<game_uuid>/make-public
+#* @get /v2/games/<game_uuid>/make-public
 function(game_uuid, admin_uuid, res) {
 
   admin_uuid %<>% str_to_lower()
-  
+
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -466,11 +485,11 @@ function(game_uuid, admin_uuid, res) {
 #* Make game private
 #* @serializer unboxedJSON
 #* @param admin_uuid The identifier of the admin, passed as verification.
-#* @get /v2.2/games/<game_uuid>/make-private
+#* @get /v2/games/<game_uuid>/make-private
 function(game_uuid, admin_uuid, res) {
 
   admin_uuid %<>% str_to_lower()
-  
+
   # Check if the supplied game UUID is a valid UUID before loading the game
   if (!validate_uuid(game_uuid)) {
     res$status <- 400
@@ -526,15 +545,15 @@ function(game_uuid, admin_uuid, res) {
 
 #* List public games
 #* @serializer unboxedJSON
-#* @get /v2.2/games
+#* @get /v2/games
 function() {
   files <- list.files(game_data_path, full.names = T)
-  
+
   # Check if there are any games at all
   if (length(files) == 0) {
     return(list())
   }
-  
+
   snapshots <- str_detect(files, "_\\d")
   relevant_files <- files[!snapshots]
 
