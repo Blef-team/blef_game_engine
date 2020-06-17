@@ -87,6 +87,12 @@ def test_join(response):
     UUID(new_player.get("player_uuid"))
 
 
+def test_join_nickname_too_long(response):
+    """ Test the /games/{id}/join endpoint response when the requested nickname is too long"""
+    message = response.json()
+    assert message.get("error") == "Nickname too long - must be within 32 characters"
+
+
 def test_start(response):
     message = response.json()
     assert message.get("message") == "Game started"

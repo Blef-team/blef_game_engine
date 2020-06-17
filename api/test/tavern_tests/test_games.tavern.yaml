@@ -47,6 +47,15 @@ stages:
       verify_response_with:
         function: testing_utils:test_game_state
 
+  - name: Try joining game with a nickname that is too long
+    request:
+      url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}/join?nickname=themostannoyingnicknameintheworld"
+      method: GET
+    response:
+      status_code: 400
+      verify_response_with:
+        function: testing_utils:test_join_nickname_too_long
+
   - name: Join game
     request:
       url: "{tavern.env_vars.BASE_URL}/games/{game_uuid}/join?nickname=test_player"
