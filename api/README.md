@@ -94,6 +94,11 @@ curl <IP & PORT>/v2/games/create
   OR
 
   * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Nickname too long - must be within 32 characters"}`
+
+  OR
+
+  * **Code:** 400 BAD REQUEST <br />
   **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
 
   OR
