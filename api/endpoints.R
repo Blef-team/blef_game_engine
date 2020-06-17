@@ -96,6 +96,12 @@ function(game_uuid, nickname, res) {
     return(list(error = "Nickname missing - please supply it"))
   }
 
+  # Check whether the nickname is not longer than 32 characters
+  if(str_length(nickname) > 32) {
+    res$status <- 400
+    return(list(error = "Nickname too long - must be within 32 characters"))
+  }
+
   # Check whether the nickname is in an acceptable format
   if(!str_detect(nickname, "^[a-zA-Z]\\w*$")) {
     res$status <- 400
