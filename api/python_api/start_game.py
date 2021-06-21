@@ -72,7 +72,12 @@ def draw_cards(players):
     all_cards_raw = sample(list(possible_cards), sum(p["n_cards"] for p in players))
     all_cards = [{"value": tup[0], "colour": tup[1]} for tup in all_cards_raw]
     card_iterator = iter(all_cards)
-    hands = [list(islice(card_iterator, 0, p["n_cards"])) for p in players]
+    hands = []
+    for player in players:
+        player_hand = list(islice(card_iterator, 0, player["n_cards"]))
+        for card in player_hand:
+            card["player"] = player["nickname"]
+        hands.extend(player_hand)
     return hands
 
 
