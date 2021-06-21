@@ -7,7 +7,7 @@ def query_dynamodb():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table("games")
     now = round(time.time())
-    diff = 3600
+    diff = 1800
     response = table.scan(
         FilterExpression=Attr('last_modified').gt(now - diff)
     )
