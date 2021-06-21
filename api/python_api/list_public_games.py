@@ -1,4 +1,6 @@
 import boto3
+import json
+from boto3.dynamodb.conditions import Attr
 
 
 def response_payload(status_code, body):
@@ -9,7 +11,7 @@ def response_payload(status_code, body):
                 'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials' : True,
+                'Access-Control-Allow-Credentials': True,
                 'Content-Type': 'application/json'
             },
         }
@@ -25,7 +27,9 @@ def internal_error_payload(err, message=None):
 def query_dynamodb():
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table("games")
-    response = table.scan()
+    response = table.scan(
+        FilterExpression=Attr('public').eq(True)
+    )
     return response['Items']
 
 
