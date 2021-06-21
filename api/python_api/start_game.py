@@ -2,7 +2,6 @@ import uuid
 import boto3
 from boto3.dynamodb.conditions import Key
 import time
-import re
 import json
 from math import floor
 from random import shuffle, sample
