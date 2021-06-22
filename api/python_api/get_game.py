@@ -60,6 +60,10 @@ def parse_event(event):
             body = json.loads(body)
         except ValueError:
             return None
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {})
+    body.update(path_params)
+    body.update(query_params)
     return body
 
 
@@ -145,9 +149,9 @@ def lambda_handler(event, context):
 
         current_status = game.get("status")
 
-        player_uuid = str(body.get("player_uuid"))
+        player_uuid = body.get("player_uuid")
 
-        if not is_valid_uuid(player_uuid):
+        if player_uuid and not is_valid_uuid(player_uuid):
             return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
 
         round = body.get("round")
@@ -171,12 +175,13 @@ def lambda_handler(event, context):
         else:
             round = current_round
 
-        player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
-        if player_uuid and not player_authenticated:
-            return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-
-        revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
+        revealed_hands = []
+        if player_uuid:
+            player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
+            player_authenticated = bool(player_nickname)
+            if not player_authenticated:
+                return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
+            revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
 
         private_players = []
         for player in game["players"]:
