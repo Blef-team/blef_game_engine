@@ -53,6 +53,10 @@ def parse_event(event):
             body = json.loads(body)
         except ValueError:
             return None
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {})
+    body.update(path_params)
+    body.update(query_params)
     return body
 
 
