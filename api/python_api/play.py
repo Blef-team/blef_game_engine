@@ -321,16 +321,21 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
 
 def handle_check(game):
     cp_nickname = game["cp_nickname"]
-    losing_player = game["history"][-1]["player"]
     set_exists = determine_set_existence(game["hands"], game["history"][-1]["action_id"])
     if set_exists:
-        losing_player = cp_nickname
+        losing_player = get_player_by_nickname(game["players"], cp_nickname)
+    else:
+        losing_player = get_player_by_nickname(game["players"], game["history"][-1]["player"])
 
     game["history"].append({"player": losing_player, "action_id": 89})
     game["cp_nickname"] = None
 
-    if save_in_dynamodb(f"{game}_{game['round_number']}"):
-        return response_payload(201, {})
+    game_uuid = game["game_uuid"]
+    # Store the last round separately
+    game["game_uuid"] += "_" + str(int(game['round_number']))
+    if not save_in_dynamodb(game):
+        raise Exception("Can't save game data")
+    game["game_uuid"] = game_uuid
 
     losing_player["n_cards"] += 1
     # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
@@ -410,10 +415,9 @@ def lambda_handler(event, context):
         elif not game["history"] and action_id == 88 or game["history"] and action_id <= game["history"][-1]["action_id"]:
             return response_payload(400, "This action not allowed right now")
 
-        game["history"].append({"player": player_nickname, "action_id": action_id})
-
         if action_id != 88:
-            cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])
+            game["history"].append({"player": player_nickname, "action_id": action_id})
+            cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
                 return response_payload(201, {})
             raise Exception("Something went wrong - could not update game data")
