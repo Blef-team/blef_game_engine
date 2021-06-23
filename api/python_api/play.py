@@ -325,11 +325,11 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
 
 def handle_check(game):
     cp_nickname = game["cp_nickname"]
-    set_exists = determine_set_existence(game["hands"], game["history"][-1]["action_id"])
+    set_exists = determine_set_existence(game["hands"], game["history"][-2]["action_id"])
     if set_exists:
-        losing_player = get_player_by_nickname(game["players"], cp_nickname)
-    else:
         losing_player = get_player_by_nickname(game["players"], game["history"][-1]["player"])
+    else:
+        losing_player = get_player_by_nickname(game["players"], game["history"][-2]["player"])
 
     game["history"].append({"player": losing_player, "action_id": 89})
     game["cp_nickname"] = None
@@ -419,8 +419,9 @@ def lambda_handler(event, context):
         elif not game["history"] and action_id == 88 or game["history"] and action_id <= game["history"][-1]["action_id"]:
             return response_payload(400, "This action not allowed right now")
 
+        game["history"].append({"player": player_nickname, "action_id": action_id})
+        
         if action_id != 88:
-            game["history"].append({"player": player_nickname, "action_id": action_id})
             cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
                 return response_payload(201, {})
