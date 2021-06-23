@@ -365,7 +365,7 @@ def handle_check(game):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        return response_payload(201, {})
+        return response_payload(200, {})
 
 
 def lambda_handler(event, context):
@@ -424,7 +424,7 @@ def lambda_handler(event, context):
         if action_id != 88:
             cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
-                return response_payload(201, {})
+                return response_payload(200, {})
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
