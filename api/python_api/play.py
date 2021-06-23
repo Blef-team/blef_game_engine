@@ -331,7 +331,7 @@ def handle_check(game):
     else:
         losing_player = get_player_by_nickname(game["players"], game["history"][-2]["player"])
 
-    game["history"].append({"player": losing_player, "action_id": 89})
+    game["history"].append({"player": losing_player["nickname"], "action_id": 89})
     game["cp_nickname"] = None
 
     game_uuid = game["game_uuid"]
