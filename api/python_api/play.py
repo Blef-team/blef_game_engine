@@ -239,9 +239,8 @@ def determine_set_existence(cards, action_id):
         indexation = load_indexation()
         set_row = indexation[action_id]
         set_type = set_row["set_type"]
-        detail_1 = set_row["detail_1"]
-        detail_2 = set_row["detail_2"]
-
+        detail_1 = int(set_row["detail_1"]) if set_row["detail_1"] else None
+        detail_2 = int(set_row["detail_2"]) if set_row["detail_2"] else None
         card_values = [card["value"] for card in cards]
         card_colours = [card["colour"] for card in cards]
 
