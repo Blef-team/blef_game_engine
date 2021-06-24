@@ -175,13 +175,16 @@ def lambda_handler(event, context):
         else:
             round = current_round
 
-        revealed_hands = []
         if player_uuid:
             player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
             player_authenticated = bool(player_nickname)
             if not player_authenticated:
                 return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-            revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
+        else:
+            player_authenticated = False
+            player_nickname = ''
+
+        revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
 
         private_players = []
         for player in game["players"]:
