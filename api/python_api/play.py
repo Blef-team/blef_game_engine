@@ -261,7 +261,7 @@ def determine_set_existence(cards, action_id):
         elif set_type == "Three of a kind":
             return card_values.count(detail_1) >= 3
         elif set_type == "Full house":
-            return card_values.count(detail_1) >= 3 and card_values.count(2)
+            return card_values.count(detail_1) >= 3 and card_values.count(detail_2) >= 2
         elif set_type == "Colour":
             return card_colours.count(detail_1) >= 5
         elif set_type == "Four of a kind":
