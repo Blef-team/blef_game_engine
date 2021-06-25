@@ -2,6 +2,8 @@ import boto3
 import json
 from boto3.dynamodb.conditions import Attr
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 def response_payload(status_code, body):
     return {
@@ -25,8 +27,6 @@ def internal_error_payload(err, message=None):
 
 
 def query_dynamodb():
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     response = table.scan(
         FilterExpression=Attr('public').eq(True)
     )

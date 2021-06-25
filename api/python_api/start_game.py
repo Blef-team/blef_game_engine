@@ -7,6 +7,8 @@ from math import floor
 from random import shuffle, sample
 from itertools import islice, product
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 def response_payload(status_code, body):
     return {
@@ -85,8 +87,6 @@ def draw_cards(players):
 
 
 def get_from_dynamodb(game_uuid):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
     if len(items) == 1:
@@ -95,8 +95,6 @@ def get_from_dynamodb(game_uuid):
 
 
 def update_in_dynamodb(game_uuid, status, round_number, max_cards, players, hands, cp_nickname):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     table.update_item(
         Key={
             'game_uuid': game_uuid

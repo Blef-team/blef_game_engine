@@ -3,6 +3,8 @@ import boto3
 import time
 import json
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 def response_payload(status_code, body):
     return {
@@ -26,8 +28,6 @@ def internal_error_payload(err, message=None):
 
 
 def save_in_dynamodb(obj):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     obj["last_modified"] = round(time.time())
     table.put_item(Item=obj)
     return True

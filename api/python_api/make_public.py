@@ -5,6 +5,8 @@ import time
 import json
 from itertools import islice, product
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 def response_payload(status_code, body):
     return {
@@ -69,8 +71,6 @@ def is_valid_uuid(value):
 
 
 def get_from_dynamodb(game_uuid):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
     if len(items) == 1:
@@ -79,8 +79,6 @@ def get_from_dynamodb(game_uuid):
 
 
 def update_in_dynamodb(game_uuid, public):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     table.update_item(
         Key={
             'game_uuid': game_uuid

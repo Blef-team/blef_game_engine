@@ -3,6 +3,8 @@ from boto3.dynamodb.conditions import Attr
 import time
 import json
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 def response_payload(status_code, body):
     return {
@@ -26,8 +28,6 @@ def internal_error_payload(err, message=None):
 
 
 def query_dynamodb():
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     now = round(time.time())
     diff = 1800
     response = table.scan(

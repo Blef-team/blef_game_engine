@@ -7,6 +7,8 @@ import decimal
 from random import sample
 from itertools import islice, product
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("games")
 
 INDEXATION_CSV = """action_id,set_type,detail_1,detail_2
 0,High card,0,
@@ -287,8 +289,6 @@ def determine_set_existence(cards, action_id):
 
 
 def get_from_dynamodb(game_uuid):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
     if len(items) == 1:
@@ -297,16 +297,12 @@ def get_from_dynamodb(game_uuid):
 
 
 def save_in_dynamodb(obj):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     obj["last_modified"] = round(time.time())
     table.put_item(Item=obj)
     return True
 
 
 def update_in_dynamodb(game_uuid, cp_nickname, history):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table("games")
     table.update_item(
         Key={
             'game_uuid': game_uuid
