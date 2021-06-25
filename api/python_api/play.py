@@ -342,7 +342,7 @@ def handle_check(game):
 
     losing_player["n_cards"] += 1
     # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
-    if losing_player["n_cards"] >= game["max_cards"]:
+    if losing_player["n_cards"] > game["max_cards"]:
         losing_player["n_cards"] = 0
         # Check if game is finished
         if sum(p["n_cards"] > 0 for p in game["players"]) == 1:
