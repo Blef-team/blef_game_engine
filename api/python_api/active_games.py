@@ -20,11 +20,15 @@ def response_payload(status_code, body):
         }
 
 
+def error_payload(status_code, body):
+    return response_payload(status_code, {"error": body})
+
+
 def internal_error_payload(err, message=None):
     body = "Internal Lambda function error: {}".format(err)
     if message:
         body = "{}\n{}".format(body, message)
-    return response_payload(500, body)
+    return error_payload(500, body)
 
 
 def query_dynamodb():

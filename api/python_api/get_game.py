@@ -29,25 +29,29 @@ def response_payload(status_code, body):
         }
 
 
+def error_payload(status_code, body):
+    return response_payload(status_code, {"error": body})
+
+
 def internal_error_payload(err, message=None):
     body = "Internal Lambda function error: {}".format(err)
     if message:
         body = "{}\n{}".format(body, message)
-    return response_payload(500, body)
+    return error_payload(500, body)
 
 
 def request_error_payload(request, message=None):
     body = "Bad request payload: '{}'".format(request)
     if message:
         body = "{}\n{}".format(body, message)
-    return response_payload(400, body)
+    return error_payload(400, body)
 
 
 def parameter_error_payload(param_key, param_value, message=None):
     body = "Bad input value in '{}': {}".format(param_key, param_value)
     if message:
         body = "{}\n{}".format(body, message)
-    return response_payload(400, body)
+    return error_payload(400, body)
 
 
 def parse_event(event):
