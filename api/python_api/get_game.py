@@ -99,9 +99,9 @@ def is_active_player(players, nickname):
 def get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname):
     revealed_hands = []
     if round < current_round or current_status == "Finished":
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["player"])]
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
     elif player_authenticated and round == current_round:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["player"]) and hand["player"] == player_nickname]
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
     return revealed_hands
 
 

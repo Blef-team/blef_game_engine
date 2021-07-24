@@ -208,9 +208,9 @@ def is_active_player(players, nickname):
 def get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname):
     revealed_hands = []
     if round < current_round or current_status == "Finished":
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["player"])]
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
     elif player_authenticated and round == current_round:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["player"]) and hand["player"] == player_nickname]
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
     return revealed_hands
 
 
@@ -229,9 +229,7 @@ def draw_cards(players):
     hands = []
     for player in players:
         player_hand = list(islice(card_iterator, 0, int(player["n_cards"])))
-        for card in player_hand:
-            card["player"] = player["nickname"]
-        hands.extend(player_hand)
+        hands.append({"nickname": player['nickname'], "hand": player_hand})
     return hands
 
 
@@ -320,7 +318,8 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
 
 def handle_check(game):
     cp_nickname = game["cp_nickname"]
-    set_exists = determine_set_existence(game["hands"], game["history"][-2]["action_id"])
+    cards = [card for hand in game["hands"] for card in hand["hand"]]
+    set_exists = determine_set_existence(cards, game["history"][-2]["action_id"])
     if set_exists:
         losing_player = get_player_by_nickname(game["players"], game["history"][-1]["player"])
     else:
