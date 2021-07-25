@@ -6,7 +6,7 @@
 
 * **URL**
 
-  /v2/games/create
+  /games/create
 
 * **Method:**
 
@@ -21,15 +21,10 @@
   * **Code:** 200 OK <br />
   **Content:** `{"game_uuid":"f2fdd601-bc82-438b-a4ee-a871dc35561a"}`
 
-* **Error Response:**
-
-  * **Code:** 429 TOO MANY REQUESTS <br />
-  **Content:** `{"message":"Too many games started"}`
-
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/create
+curl <HOST>/games/create
 ```
 
 **Join game**
@@ -38,7 +33,7 @@ curl <IP & PORT>/v2/games/create
 
 * **URL**
 
-  /v2/games/{game_uuid}/join
+  /games/{game_uuid}/join
 
 * **Method:**
 
@@ -61,50 +56,15 @@ curl <IP & PORT>/v2/games/create
   * **Code:** 200 OK <br />
   **Content:** `{"player_uuid":"f65e08df-d82a-46b1-979b-550cbc04d56d"}`
 
-* **Error Response:**
+* **Sample Error Response:**
 
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid game UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Game does not exist"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"The game room is full"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Game already started"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"The game room is full"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Nickname missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Nickname must start with a letter and only contain alphanumeric characters"}`
-
-  OR
-
-  * **Code:** 409 CONFLICT <br />
-  **Content:** `{"error":"Nickname already taken"}`
+  **Content:** `{"error": "Bad input value in 'nickname': 1\nNickname must start with a letter and only contain alphanumeric characters"}`
 
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
 ```
 
 **Start game**
@@ -113,7 +73,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 
 * **URL**
 
-  /v2/games/{game_uuid}/start
+  /games/{game_uuid}/start
 
 * **Method:**
 
@@ -132,39 +92,9 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 * **Success Response:**
 
   * **Code:** 202 Accepted <br />
-  **Content:** `{"message":"Game started"}`
+  **Content:** `"Game started"`
 
-* **Error Response:**
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid game UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Game does not exist"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Game already started"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Admin UUID missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid admin UUID"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Admin UUID does not match"}`
-
-  OR
+* **Sample Error Response:**
 
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"At least 2 players needed to start a game"}`
@@ -172,7 +102,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coo
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **Get game state**
@@ -181,7 +111,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
 
 * **URL**
 
-  /v2/games/{game_uuid}
+  /games/{game_uuid}
 
 * **Method:**
 
@@ -204,42 +134,17 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname":"funky","public":false,"status":"Running","round_number":12,"max_cards":11,"players":[{"nickname":"chunky","n_cards":8},{"nickname":"funky","n_cards":5}],"hands":[{"Nickname":"chunky","Hand":[{"value":5,"colour":2},{"value":4,"colour":3},{"value":4,"colour":1},{"value":4,"colour":0},{"value":3,"colour":2},{"value":3,"colour":1},{"value":2,"colour":0},{"value":1,"colour":1}]},{"Nickname":"funky","Hand":[{"value":5,"colour":1},{"value":5,"colour":0},{"value":3,"colour":3},{"value":0,"colour":1},{"value":0,"colour":0}]}],"cp_nickname":"funky","history":[{"player":"chunky","action_id":"74"},{"player":"funky","action_id":"88"},{"player":"chunky","action_id":"89"}]}`
+  **Content:** `{"admin_nickname": "a", "public": "false", "status": "Running", "round_number": 1, "max_cards": 11, "players": [{"nickname": "b", "n_cards": 1}, {"nickname": "a", "n_cards": 1}], "hands": [{"nickname": "a", "hand": [{"value": 5, "colour": 2}]}], "cp_nickname": "b", "history": []}`
 
-* **Error Response:**
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-
-  OR
+* **Sample Error Response:**
 
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid player UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The game has not reached this round"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The UUID does not match any active player"}`
+  **Content:** `{"error": "Bad input value in 'game_uuid': 2e24183f-419f-443b-8ce9-4b29ae8a75a5\nGame does not exist"}`
 
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 ```
 
 **Play**
@@ -248,7 +153,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 
 * **URL**
 
-  /v2/games/{game_uuid}/play
+  /games/{game_uuid}/play
 
 * **Method:**
 
@@ -272,60 +177,15 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 
   * **Code:** 200 OK <br/>
 
-* **Error Response:**
+* **Sample Error Response:**
 
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has not yet started"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This game has already finished"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Player UUID missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid player UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"The submitted UUID does not match the UUID of the current player"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Action ID must be an integer between 0 and 88"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"This action not allowed right now"}`
+  **Content:** `{"error":"Action ID must be an integer between 0 and 88"}`
 
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
 ```
 
 **Make game public**
@@ -334,7 +194,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 
 * **URL**
 
-  /v2/games/{game_uuid}/make-public
+  /games/{game_uuid}/make-public
 
 * **Method:**
 
@@ -353,47 +213,22 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"message":"Game made public"}`
+  **Content:** `"Game made public"`
 
   OR
 
   * **Code:** 200 OK <br />
-  **Content:** `{"message":"Request redundant - game already public"}`
+  **Content:** `"Request redundant - game already public"`
 
-* **Error Response:**
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-
-  OR
+* **Sample Error Response:**
 
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Cannot make the change - game already started"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Admin UUID missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid admin UUID"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Admin UUID does not match"}`
+  **Content:** `{"error":"Cannot make the change - game already started"}`
 
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **Make game private**
@@ -402,7 +237,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 
 * **URL**
 
-  /v2/games/{game_uuid}/make-private
+  /games/{game_uuid}/make-private
 
 * **Method:**
 
@@ -421,47 +256,22 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"message":"Game made private"}`
+  **Content:** `"Game made private"`
 
   OR
 
   * **Code:** 200 OK <br />
-  **Content:** `{"message":"Request redundant - game already private"}`
+  **Content:** `"Request redundant - game already private"`
 
-* **Error Response:**
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid game UUID"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Game does not exist"}`
-
-  OR
+* **Sample Error Response:**
 
   * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Cannot make the change - game already started"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Admin UUID missing - please supply it"}`
-
-  OR
-
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"message":"Invalid admin UUID"}`
-
-  OR
-
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"message":"Admin UUID does not match"}`
+  **Content:** `{"error":"Cannot make the change - game already started"}`
 
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
 **List public games**
@@ -470,7 +280,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admi
 
 * **URL**
 
-  /v2/games
+  /games
 
 * **Method:**
 
@@ -496,61 +306,7 @@ curl <IP & PORT>/v2/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admi
 * **Sample Call:**
 
 ```
-curl <IP & PORT>/v2/games
-```
-
-**Get the service version**
-  ----
-  Returns the version of the game engine API.
-
-* **URL**
-  
-  /v2/version
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  None
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"version":"2.3.0"}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2/version
-```
-
-**Get the number of active games**
-  ----
-  Returns the number of games which have been modified in the last 30 minutes.
-
-* **URL**
-  
-  /v2/games/active
-
-* **Method:**
-  
-  `GET`
-
-* **URL Params**
-  
-  None
-
-* **Success Response:**
-  
-  * **Code:** 200 OK <br />
-  **Content:** `{"active_games":20}`
-
-* **Sample Call:**
-  
-```
-curl <IP & PORT>/v2/games/active
+curl <HOST>/games
 ```
 
 ## Action IDs
