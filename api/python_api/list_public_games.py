@@ -32,7 +32,7 @@ def internal_error_payload(err, message=None):
 
 def query_dynamodb():
     response = table.scan(
-        FilterExpression=Attr('public').eq(True)
+        FilterExpression=Attr('public').eq(True) & Attr('game_uuid').size().eq(36)
     )
     return response['Items']
 
