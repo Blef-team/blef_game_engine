@@ -136,7 +136,7 @@ def lambda_handler(event, context):
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
         if game.get("status") != "Not started":
-            return response_payload(403, "Game already started")
+            return error_payload(403, "Game already started")
 
         admin_uuid = str(body.get("admin_uuid"))
 
@@ -153,7 +153,7 @@ def lambda_handler(event, context):
 
         n_players = len(game.get("players", []))
         if n_players < 2:
-            return response_payload(403, "At least 2 players needed to start a game")
+            return error_payload(403, "At least 2 players needed to start a game")
 
         public = "false"
         status = "Running"

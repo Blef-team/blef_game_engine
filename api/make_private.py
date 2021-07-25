@@ -115,7 +115,7 @@ def lambda_handler(event, context):
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
         if game.get("status") != "Not started":
-            return response_payload(403, "Cannot make the change - game already started")
+            return error_payload(403, "Cannot make the change - game already started")
 
         admin_uuid = str(body.get("admin_uuid"))
 

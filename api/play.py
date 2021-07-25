@@ -383,9 +383,9 @@ def lambda_handler(event, context):
         current_status = game.get("status")
 
         if current_status == "Not started":
-            return response_payload(400, "This game has not yet started")
+            return error_payload(400, "This game has not yet started")
         if current_status == "Finished":
-            return response_payload(400, "This game has already finished")
+            return error_payload(400, "This game has already finished")
 
         player_uuid = str(body.get("player_uuid"))
         if not player_uuid:
@@ -415,7 +415,7 @@ def lambda_handler(event, context):
         if action_id < 0 or action_id > 88:
             return parameter_error_payload("action_id", action_id, message="Action ID must be an integer between 0 and 88")
         elif not game["history"] and action_id == 88 or game["history"] and action_id <= game["history"][-1]["action_id"]:
-            return response_payload(400, "This action not allowed right now")
+            return error_payload(400, "This action not allowed right now")
 
         game["history"].append({"player": player_nickname, "action_id": action_id})
         

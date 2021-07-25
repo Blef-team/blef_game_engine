@@ -113,10 +113,10 @@ def lambda_handler(event, context):
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
         if game.get("status") != "Not started":
-            return response_payload(403, "Game already started")
+            return error_payload(403, "Game already started")
 
         if len(game.get("players")) == 8:
-            return response_payload(403, "Game room full")
+            return error_payload(403, "Game room full")
 
         nickname = body.get("nickname")
         if not nickname:
