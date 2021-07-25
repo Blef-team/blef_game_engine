@@ -96,15 +96,16 @@ def get_from_dynamodb(game_uuid):
     return None
 
 
-def update_in_dynamodb(game_uuid, status, round_number, max_cards, players, hands, cp_nickname):
+def update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname):
     table.update_item(
         Key={
             'game_uuid': game_uuid
         },
-        UpdateExpression="set last_modified = :last_modified, players = :players, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, cp_nickname = :cp_nickname",
+        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, cp_nickname = :cp_nickname",
         ExpressionAttributeValues={
             ':last_modified': round(time.time()),
             ':players': players,
+            ':public': public,
             ':status': status,
             ':round_number': round_number,
             ':max_cards': max_cards,
@@ -112,6 +113,7 @@ def update_in_dynamodb(game_uuid, status, round_number, max_cards, players, hand
             ':cp_nickname': cp_nickname
         },
         ExpressionAttributeNames={
+            '#game_public': "public",
             '#game_status': "status"
         },
         ReturnValues="NONE"
@@ -153,6 +155,7 @@ def lambda_handler(event, context):
         if n_players < 2:
             return response_payload(403, "At least 2 players needed to start a game")
 
+        public = False
         status = "Running"
         round_number = 1
         max_cards = 11
@@ -167,7 +170,7 @@ def lambda_handler(event, context):
 
         cp_nickname = players[0]["nickname"]
 
-        update_in_dynamodb(game_uuid, status, round_number, max_cards, players, hands, cp_nickname)
+        update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname)
 
         return response_payload(202, "Game started")
 
