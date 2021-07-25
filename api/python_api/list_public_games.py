@@ -1,6 +1,7 @@
 import boto3
 import json
-from boto3.dynamodb.conditions import Attr
+import time
+from boto3.dynamodb.conditions import Attr, Key
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -31,8 +32,12 @@ def internal_error_payload(err, message=None):
 
 
 def query_dynamodb():
-    response = table.scan(
-        FilterExpression=Attr('public').eq(True) & Attr('game_uuid').size().eq(36)
+    now = round(time.time())
+    diff = 1800
+    response = table.query(
+        IndexName="public-index",
+        KeyConditionExpression=Key('public').eq("true"),
+        FilterExpression=Attr('game_uuid').size().eq(36) & Attr('last_modified').gt(now - diff)
     )
     return response['Items']
 

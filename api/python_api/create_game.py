@@ -43,7 +43,7 @@ def lambda_handler(event, context):
         empty_game = {
             "game_uuid": game_uuid,
             "admin_nickname": None,
-            "public": False,
+            "public": "false",
             "status": "Not started",
             "round_number": 0,
             "max_cards": 0,

@@ -155,7 +155,7 @@ def lambda_handler(event, context):
         if n_players < 2:
             return response_payload(403, "At least 2 players needed to start a game")
 
-        public = False
+        public = "false"
         status = "Running"
         round_number = 1
         max_cards = 11

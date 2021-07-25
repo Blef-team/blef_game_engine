@@ -130,10 +130,10 @@ def lambda_handler(event, context):
         if game_admin_uuid != admin_uuid:
             return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
 
-        if game.get("public") == True:
+        if game.get("public") == "true":
             return response_payload(200, "Request redundant - game already public")
 
-        public = True
+        public = "true"
 
         update_in_dynamodb(game_uuid, public)
 
