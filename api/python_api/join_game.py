@@ -118,9 +118,11 @@ def lambda_handler(event, context):
         if len(game.get("players")) == 8:
             return response_payload(403, "Game room full")
 
-        nickname = str(body.get("nickname"))
+        nickname = body.get("nickname")
         if not nickname:
             return parameter_error_payload("nickname", nickname, message="Nickname missing - please supply it")
+        if not isinstance(nickname, str):
+            return parameter_error_payload("nickname", nickname, message="Nickname invalid")
         if not re.match("^[a-zA-Z]\w*$", nickname):
             return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
 
