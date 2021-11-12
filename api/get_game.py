@@ -166,7 +166,7 @@ def lambda_handler(event, context):
             else:
                 return parameter_error_payload("round", round)
 
-        if round is not None and round <= 0:
+        if round and round <= 0:
             return parameter_error_payload("round", round, message="The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank")
         current_round = game["round_number"]
         if round and current_round < round:
