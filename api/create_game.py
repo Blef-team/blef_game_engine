@@ -58,5 +58,4 @@ def lambda_handler(event, context):
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
-        raise
         return internal_error_payload(err)

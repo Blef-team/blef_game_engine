@@ -207,5 +207,4 @@ def lambda_handler(event, context):
         return response_payload(200, visible_game)
 
     except Exception as err:
-        raise
         return internal_error_payload(err)
