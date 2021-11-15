@@ -363,7 +363,27 @@ def handle_check(game):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        return response_payload(200, {})
+        return response_payload(200, game)
+
+
+def censor_game(game, player_authenticated, player_nickname):
+    revealed_hands = get_revealed_hands(game, round, game["round"], game["status"], player_authenticated, player_nickname)
+
+    private_players = []
+    for player in game["players"]:
+        private_players.append({key: player[key] for key in player if key != "uuid"})
+
+    return {
+        "admin_nickname": game["admin_nickname"],
+        "public": game["public"],
+        "status": game["status"],
+        "round_number": game["round_number"],
+        "max_cards": game["max_cards"],
+        "players": private_players,
+        "hands": revealed_hands,
+        "cp_nickname": game["cp_nickname"],
+        "history": game["history"]
+    }
 
 
 def lambda_handler(event, context):
@@ -418,11 +438,12 @@ def lambda_handler(event, context):
             return error_payload(400, "This action not allowed right now")
 
         game["history"].append({"player": player_nickname, "action_id": action_id})
-        
+
         if action_id != 88:
             cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
-                return response_payload(200, {})
+                visible_game = censor_game(game, player_authenticated, player_nickname)
+                return response_payload(200, visible_game)
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
