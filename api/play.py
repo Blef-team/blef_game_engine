@@ -368,7 +368,7 @@ def handle_check(game, player_authenticated, player_nickname):
 
 
 def censor_game(game, player_authenticated, player_nickname):
-    revealed_hands = get_revealed_hands(game, round, game["round"], game["status"], player_authenticated, player_nickname)
+    revealed_hands = get_revealed_hands(game, game["round_number"], game["round_number"], game["status"], player_authenticated, player_nickname)
 
     private_players = []
     for player in game["players"]:
