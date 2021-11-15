@@ -3,6 +3,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 import time
 import json
+import copy
 import decimal
 from random import sample
 from itertools import islice, product
@@ -320,7 +321,8 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
     return True
 
 
-def handle_check(game, player_authenticated, player_nickname):
+def handle_check(game):
+    end_round_game_state = copy.deepcopy(game)
     cp_nickname = game["cp_nickname"]
     cards = [card for hand in game["hands"] for card in hand["hand"]]
     set_exists = determine_set_existence(cards, game["history"][-2]["action_id"])
@@ -363,8 +365,7 @@ def handle_check(game, player_authenticated, player_nickname):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        visible_game = censor_game(game, player_authenticated, player_nickname)
-        return response_payload(200, visible_game)
+        return response_payload(200, end_round_game_state)
 
 
 def censor_game(game, player_authenticated, player_nickname):
@@ -448,7 +449,7 @@ def lambda_handler(event, context):
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
-            return handle_check(game, player_authenticated, player_nickname)
+            return handle_check(game)
 
         raise(Exception("Something went wrong - ended up with no response"))
 
