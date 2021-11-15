@@ -320,7 +320,7 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
     return True
 
 
-def handle_check(game):
+def handle_check(game, player_authenticated, player_nickname):
     cp_nickname = game["cp_nickname"]
     cards = [card for hand in game["hands"] for card in hand["hand"]]
     set_exists = determine_set_existence(cards, game["history"][-2]["action_id"])
@@ -363,7 +363,8 @@ def handle_check(game):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        return response_payload(200, game)
+        visible_game = censor_game(game, player_authenticated, player_nickname)
+        return response_payload(200, visible_game)
 
 
 def censor_game(game, player_authenticated, player_nickname):
@@ -447,7 +448,7 @@ def lambda_handler(event, context):
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
-            return handle_check(game)
+            return handle_check(game, player_authenticated, player_nickname)
 
         raise(Exception("Something went wrong - ended up with no response"))
 
