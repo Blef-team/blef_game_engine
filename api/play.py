@@ -322,7 +322,6 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
 
 
 def handle_check(game):
-    end_round_game_state = copy.deepcopy(game)
     cp_nickname = game["cp_nickname"]
     cards = [card for hand in game["hands"] for card in hand["hand"]]
     set_exists = determine_set_existence(cards, game["history"][-2]["action_id"])
@@ -333,6 +332,7 @@ def handle_check(game):
 
     game["history"].append({"player": losing_player["nickname"], "action_id": 89})
     game["cp_nickname"] = None
+    end_round_game_state = copy.deepcopy(game)
 
     game_uuid = game["game_uuid"]
     # Store the last round separately
@@ -442,8 +442,8 @@ def lambda_handler(event, context):
         game["history"].append({"player": player_nickname, "action_id": action_id})
 
         if action_id != 88:
-            cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
-            if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
+            game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
+            if update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"]):
                 visible_game = censor_game(game, player_authenticated, player_nickname)
                 return response_payload(200, visible_game)
             raise Exception("Something went wrong - could not update game data")
@@ -454,5 +454,4 @@ def lambda_handler(event, context):
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
-        raise
         return internal_error_payload(err)
