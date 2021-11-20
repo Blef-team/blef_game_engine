@@ -3,6 +3,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 import time
 import json
+import copy
 import decimal
 from random import sample
 from itertools import islice, product
@@ -331,6 +332,7 @@ def handle_check(game):
 
     game["history"].append({"player": losing_player["nickname"], "action_id": 89})
     game["cp_nickname"] = None
+    end_round_game_state = copy.deepcopy(game)
 
     game_uuid = game["game_uuid"]
     # Store the last round separately
@@ -363,7 +365,27 @@ def handle_check(game):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        return response_payload(200, {})
+        return response_payload(200, end_round_game_state)
+
+
+def censor_game(game, player_authenticated, player_nickname):
+    revealed_hands = get_revealed_hands(game, game["round_number"], game["round_number"], game["status"], player_authenticated, player_nickname)
+
+    private_players = []
+    for player in game["players"]:
+        private_players.append({key: player[key] for key in player if key != "uuid"})
+
+    return {
+        "admin_nickname": game["admin_nickname"],
+        "public": game["public"],
+        "status": game["status"],
+        "round_number": game["round_number"],
+        "max_cards": game["max_cards"],
+        "players": private_players,
+        "hands": revealed_hands,
+        "cp_nickname": game["cp_nickname"],
+        "history": game["history"]
+    }
 
 
 def lambda_handler(event, context):
@@ -418,11 +440,12 @@ def lambda_handler(event, context):
             return error_payload(400, "This action not allowed right now")
 
         game["history"].append({"player": player_nickname, "action_id": action_id})
-        
+
         if action_id != 88:
-            cp_nickname = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
-            if update_in_dynamodb(game_uuid, cp_nickname, game["history"]):
-                return response_payload(200, {})
+            game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
+            if update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"]):
+                visible_game = censor_game(game, player_authenticated, player_nickname)
+                return response_payload(200, visible_game)
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
@@ -431,5 +454,4 @@ def lambda_handler(event, context):
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
-        raise
         return internal_error_payload(err)
