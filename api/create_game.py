@@ -2,6 +2,7 @@ import uuid
 import boto3
 import time
 import json
+import random
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -44,6 +45,7 @@ def lambda_handler(event, context):
             "game_uuid": game_uuid,
             "admin_nickname": None,
             "public": "false",
+            "room": random.randrange(10, 100),
             "status": "Not started",
             "round_number": 0,
             "max_cards": 0,

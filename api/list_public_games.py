@@ -2,14 +2,22 @@ import boto3
 import json
 import time
 from boto3.dynamodb.conditions import Attr, Key
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return int(obj)
+        return super(DecimalEncoder, self).default(obj)
+
+
 def response_payload(status_code, body):
     return {
             'statusCode': status_code,
-            'body': json.dumps(body),
+            'body': json.dumps(body, cls=DecimalEncoder),
             'headers': {
                 'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
                 'Access-Control-Allow-Origin': '*',
@@ -45,9 +53,8 @@ def query_dynamodb():
 def lambda_handler(event, context):
     try:
         games = query_dynamodb()
-        games_info = [{"game_uuid": game["game_uuid"], "players": [p["nickname"] for p in game["players"]]} for game in games]
+        games_info = [{"game_uuid": game["game_uuid"], "room": game["room"], "players": [p["nickname"] for p in game["players"]]} for game in games]
         return response_payload(200, games_info)
 
     except Exception as err:
-        raise
         return internal_error_payload(err)
