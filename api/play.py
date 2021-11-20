@@ -378,6 +378,7 @@ def censor_game(game, player_authenticated, player_nickname):
     return {
         "admin_nickname": game["admin_nickname"],
         "public": game["public"],
+        "room": game["room"],
         "status": game["status"],
         "round_number": game["round_number"],
         "max_cards": game["max_cards"],
