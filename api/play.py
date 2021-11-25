@@ -210,11 +210,11 @@ def is_active_player(players, nickname):
     return False
 
 
-def get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname):
+def get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname):
     revealed_hands = []
-    if round < current_round or current_status == "Finished":
+    if game["round_number"] < current_round or current_status == "Finished":
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    elif player_authenticated and round == current_round:
+    elif player_authenticated and game["round_number"] == current_round:
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
     return revealed_hands
 
@@ -365,11 +365,11 @@ def handle_check(game):
 
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
-        return response_payload(200, end_round_game_state)
+        return end_round_game_state
 
 
-def censor_game(game, player_authenticated, player_nickname):
-    revealed_hands = get_revealed_hands(game, game["round_number"], game["round_number"], game["status"], player_authenticated, player_nickname)
+def censor_game(game, current_round, player_authenticated, player_nickname):
+    revealed_hands = get_revealed_hands(game, current_round, game["status"], player_authenticated, player_nickname)
 
     private_players = []
     for player in game["players"]:
@@ -445,12 +445,14 @@ def lambda_handler(event, context):
         if action_id != 88:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             if update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"]):
-                visible_game = censor_game(game, player_authenticated, player_nickname)
+                visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
                 return response_payload(200, visible_game)
             raise Exception("Something went wrong - could not update game data")
 
         if action_id == 88:
-            return handle_check(game)
+            end_round_game_state = handle_check(game)
+            visible_game = censor_game(end_round_game_state, game["round_number"], player_authenticated, player_nickname)
+            return response_payload(200, visible_game)
 
         raise(Exception("Something went wrong - ended up with no response"))
 
