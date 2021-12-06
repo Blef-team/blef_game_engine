@@ -1,0 +1,214 @@
+import os
+import uuid
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
+import time
+import json
+import decimal
+import urllib3
+
+watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
+watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
+
+endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
+apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
+
+dynamodb = boto3.resource('dynamodb')
+games_table = dynamodb.Table("games")
+websocket_table = dynamodb.Table("watch_game_websocket_manager")
+
+deserializer = boto3.dynamodb.types.TypeDeserializer()
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return int(obj)
+        return super(DecimalEncoder, self).default(obj)
+
+
+def response_payload(status_code, body):
+    return {
+            'statusCode': status_code,
+            'body': json.dumps(body, cls=DecimalEncoder),
+            'headers': {
+                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+                'Access-Control-Allow-Credentials': True,
+                'Content-Type': 'application/json'
+            },
+        }
+
+
+def error_payload(status_code, body):
+    return response_payload(status_code, {"error": body})
+
+
+def internal_error_payload(err, message=None):
+    body = "Internal Lambda function error: {}".format(err)
+    if message:
+        body = "{}\n{}".format(body, message)
+    return error_payload(500, body)
+
+
+def request_error_payload(request, message=None):
+    body = "Bad request payload: '{}'".format(request)
+    if message:
+        body = "{}\n{}".format(body, message)
+    return error_payload(400, body)
+
+
+def parameter_error_payload(param_key, param_value, message=None):
+    body = "Bad input value in '{}': {}".format(param_key, param_value)
+    if message:
+        body = "{}\n{}".format(body, message)
+    return error_payload(400, body)
+
+
+def is_valid_uuid(value):
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
+
+
+def parse_event(event):
+    # Basic input validation
+    if not isinstance(event, dict):
+        if isinstance(event, str):
+            return json.loads(event)
+        return False
+
+    # Handle both direct triggers and API Gateway
+    body = event.get("body", event)
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except ValueError:
+            return None
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {})
+    body.update(path_params)
+    body.update(query_params)
+    return body
+
+
+def get_game(game_uuid):
+    response = games_table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
+    items = response.get("Items")
+    if len(items) == 1:
+        return items[0]
+    return None
+    
+
+def find_connected_players(game):
+    game_uuid = game["game_uuid"]
+    if isinstance(game_uuid, dict):
+        game_uuid = game_uuid.get("S")
+    response = websocket_table.query(
+        KeyConditionExpression=Key('game_uuid').eq(game_uuid),
+        IndexName="game_uuid-index"
+    )
+    return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items")]
+
+
+def save_connection_object(obj):
+    obj["last_modified"] = round(time.time())
+    websocket_table.put_item(Item=obj)
+    return True
+    
+
+def get_connection_id(event, context, body):
+    if context and hasattr(context, 'get') and context.get("connectionId"):    
+        return context.get("connectionId")
+    if "connectionId" in event.get("requestContext", {}):
+        return event["requestContext"]["connectionId"]
+    if "connectionId" in event:
+        return event["connectionId"]
+    if "connectionId" in body:
+        return body["connectionId"]
+    raise ValueError("Request context is invalid!")
+
+
+def get_player_by_nickname(players, nickname):
+    filtered_players = [p for p in players if p["nickname"] == nickname]
+    if filtered_players:
+        return filtered_players[0]
+    
+
+def get_nickname_by_uuid(players, player_uuid):
+    filtered_players = [p for p in players if p["uuid"] == player_uuid]
+    if filtered_players:
+        return filtered_players[0]["nickname"]
+        
+
+def is_active_player(players, nickname):
+    player = get_player_by_nickname(players, nickname)
+    if player:
+        return player["n_cards"] != 0
+    return False
+
+
+def get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname):
+    revealed_hands = []
+    if game["round_number"] < current_round or current_status == "Finished":
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
+    elif player_authenticated and game["round_number"] == current_round:
+        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
+    return revealed_hands
+        
+
+def censor_game(game, current_round, player_authenticated, player_nickname):
+    revealed_hands = get_revealed_hands(game, current_round, game["status"], player_authenticated, player_nickname)
+
+    private_players = []
+    for player in game["players"]:
+        private_players.append({key: player[key] for key in player if key != "uuid"})
+
+    return {
+        "admin_nickname": game["admin_nickname"],
+        "public": game["public"],
+        "room": game["room"],
+        "status": game["status"],
+        "round_number": game["round_number"],
+        "max_cards": game["max_cards"],
+        "players": private_players,
+        "hands": revealed_hands,
+        "cp_nickname": game["cp_nickname"],
+        "history": game["history"]
+    }
+    
+
+def post_game_state_to_connection(game, connection_id):
+    response = apigateway.post_to_connection(
+        Data=bytes(json.dumps(response_payload(200, game)), encoding="utf-8"),
+        ConnectionId=connection_id
+    )
+    return True
+
+
+def deserialise_dynamodb_stream_event(obj):
+    return {k: deserializer.deserialize(v) for k,v in obj.items()}
+    
+    
+def update_watchers(game):
+     connected_players = find_connected_players(game)
+     for connection_id, player_uuid in connected_players:
+        player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
+        player_authenticated = bool(player_nickname)
+        visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
+        post_game_state_to_connection(visible_game, connection_id)
+
+
+def lambda_handler(event, context):
+    try:
+        games_objects = [obj["dynamodb"] for obj in parse_event(event).get("Records") if "dynamodb" in obj]
+        games = [deserialise_dynamodb_stream_event(obj.get("NewImage", {})) for obj in games_objects]
+        for game in games:
+            update_watchers(game)
+            
+        return response_payload(200, {"message": "All watchers updated"})
+
+    except Exception as err:
+        return internal_error_payload(err)
