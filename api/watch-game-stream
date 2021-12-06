@@ -100,7 +100,7 @@ def get_game(game_uuid):
     if len(items) == 1:
         return items[0]
     return None
-    
+
 
 def find_connected_players(game):
     game_uuid = game["game_uuid"]
@@ -117,10 +117,10 @@ def save_connection_object(obj):
     obj["last_modified"] = round(time.time())
     websocket_table.put_item(Item=obj)
     return True
-    
+
 
 def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):    
+    if context and hasattr(context, 'get') and context.get("connectionId"):
         return context.get("connectionId")
     if "connectionId" in event.get("requestContext", {}):
         return event["requestContext"]["connectionId"]
@@ -135,13 +135,13 @@ def get_player_by_nickname(players, nickname):
     filtered_players = [p for p in players if p["nickname"] == nickname]
     if filtered_players:
         return filtered_players[0]
-    
+
 
 def get_nickname_by_uuid(players, player_uuid):
     filtered_players = [p for p in players if p["uuid"] == player_uuid]
     if filtered_players:
         return filtered_players[0]["nickname"]
-        
+
 
 def is_active_player(players, nickname):
     player = get_player_by_nickname(players, nickname)
@@ -157,7 +157,7 @@ def get_revealed_hands(game, current_round, current_status, player_authenticated
     elif player_authenticated and game["round_number"] == current_round:
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
     return revealed_hands
-        
+
 
 def censor_game(game, current_round, player_authenticated, player_nickname):
     revealed_hands = get_revealed_hands(game, current_round, game["status"], player_authenticated, player_nickname)
@@ -178,11 +178,33 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
         "cp_nickname": game["cp_nickname"],
         "history": game["history"]
     }
-    
 
-def post_game_state_to_connection(game, connection_id):
+
+def get_public_game_info(game):
+    public_game_info = {
+        "game_uuid": game["game_uuid"],
+        "room": game["room"],
+        "public": game["public"]
+    }
+    if game["public"]:
+        public_game_info["players"] = [p["nickname"] for p in game["players"]]
+    return public_game_info
+
+
+def can_get_public_info(game, game_old):
+    return game["public"] == "true" or game_old["public"] == "true"
+
+
+def find_connected_public_games_watchers():
+    response = websocket_table.scan(
+        FilterExpression=Attr('game_uuid').not_exists()
+    )
+    return [(connection["connection_id"]) for connection in response.get("Items")]
+
+
+def post_to_connection(payload, connection_id):
     response = apigateway.post_to_connection(
-        Data=bytes(json.dumps(response_payload(200, game)), encoding="utf-8"),
+        Data=bytes(json.dumps(response_payload(200, payload)), encoding="utf-8"),
         ConnectionId=connection_id
     )
     return True
@@ -190,24 +212,44 @@ def post_game_state_to_connection(game, connection_id):
 
 def deserialise_dynamodb_stream_event(obj):
     return {k: deserializer.deserialize(v) for k,v in obj.items()}
-    
-    
-def update_watchers(game):
-     connected_players = find_connected_players(game)
-     for connection_id, player_uuid in connected_players:
+
+
+def update_game_watchers(game):
+    connected_players = find_connected_players(game)
+    for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
         visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
-        post_game_state_to_connection(visible_game, connection_id)
+        post_to_connection(visible_game, connection_id)
+
+
+def update_public_games_watchers(game, game_old):
+    if not can_get_public_info(game, game_old):
+        return
+    connected_watchers = find_connected_public_games_watchers()
+    for connection_id in connected_watchers:
+        public_game_info = get_public_game_info(game)
+        post_to_connection(public_game_info, connection_id)
+
+
+def update_watchers(game):
+    update_game_watchers(game["new"])
+    update_public_games_watchers(game["new"], game["old"])
 
 
 def lambda_handler(event, context):
     try:
         games_objects = [obj["dynamodb"] for obj in parse_event(event).get("Records") if "dynamodb" in obj]
-        games = [deserialise_dynamodb_stream_event(obj.get("NewImage", {})) for obj in games_objects]
+        games = [
+            {
+                "new": deserialise_dynamodb_stream_event(obj.get("NewImage", {})),
+                "old": deserialise_dynamodb_stream_event(obj.get("OldImage", {}))
+            }
+            for obj in games_objects
+        ]
         for game in games:
             update_watchers(game)
-            
+
         return response_payload(200, {"message": "All watchers updated"})
 
     except Exception as err:
