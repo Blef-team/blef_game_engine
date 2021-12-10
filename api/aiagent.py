@@ -54,7 +54,7 @@ def call_play(action, aiagent_player_uuid, game_uuid):
         Invoke blef-play asynchronously
     """
     payload = {
-        "action": action,
+        "action_id": action,
         "player_uuid": aiagent_player_uuid,
         "game_uuid": game_uuid
     }
