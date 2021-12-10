@@ -40,7 +40,8 @@ def send_queue_message(game):
     """
     try:
         sqs_client.send_message(QueueUrl=get_aiagent_queue_url(),
-                                MessageBody=game)
+                                MessageBody=json.dumps(game, cls=DecimalEncoder),
+                                MessageGroupId=game["game_uuid"])
     except ClientError:
         return
 
@@ -232,7 +233,7 @@ def find_connected_public_games_watchers():
 
 def post_to_connection(payload, connection_id):
     response = apigateway.post_to_connection(
-        Data=bytes(json.dumps(response_payload(200, payload)), encoding="utf-8"),
+        Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
         ConnectionId=connection_id
     )
     return True
@@ -274,8 +275,8 @@ def get_aiagent_player_uuid(game):
 
 
 def queue_aiagent(game):
-    if get_aiagent_player_uuid(game):
-        send_queue_message(game)
+    if get_aiagent_player_uuid(game["new"]):
+        send_queue_message(game["new"])
 
 
 def lambda_handler(event, context):
