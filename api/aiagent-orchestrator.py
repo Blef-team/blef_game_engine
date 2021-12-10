@@ -36,17 +36,31 @@ def call_aiagent(payload):
         Invoke blef-aiagent-[...] asynchronously
     """
     agent_name = get_aiagent_name(payload)
-    if name_valid(agent_name) and lambda_function_exists(agent_name):
+    function_name = f'blef-aiagent-{agent_name}'
+    if name_valid(agent_name) and lambda_function_exists(function_name):
         return lambda_client.invoke(
-            FunctionName=f'blef-aiagent-{agent_name}',
+            FunctionName=function_name,
             InvocationType='Event',
             Payload=json.dumps(payload)
             )
 
 
+def get_game(record):
+    if not record.get("body"):
+        return
+    if not isinstance(record.get("body"), dict):
+        try:
+            return json.loads(record.get("body"))
+        except ValueError as e:
+            return
+
+
 def lambda_handler(event, context):
     for record in event['Records']:
-        call_aiagent(record["body"])
+        game = get_game(record)
+        if not game:
+            continue
+        call_aiagent(game)
     message = "Messages processed"
     return {
         'statusCode': 200,
