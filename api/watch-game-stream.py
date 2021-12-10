@@ -6,6 +6,9 @@ from botocore.exceptions import ClientError
 import time
 import json
 import decimal
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 sqs_client = boto3.client("sqs")
@@ -39,6 +42,12 @@ def send_queue_message(game):
     Sends a message to the AI agent queue.
     """
     try:
+        logger.info('## QUEUE URL')
+        logger.info(get_aiagent_queue_url())
+        logger.info('## GAME')
+        logger.info(game)
+        logger.info('## GAME UUID')
+        logger.info(game["game_uuid"])
         sqs_client.send_message(QueueUrl=get_aiagent_queue_url(),
                                 MessageBody=json.dumps(game, cls=DecimalEncoder),
                                 MessageGroupId=game["game_uuid"])
@@ -281,6 +290,8 @@ def queue_aiagent(game):
 
 def lambda_handler(event, context):
     try:
+        logger.info('## EVENT')
+        logger.info(event)
         games_objects = [obj["dynamodb"] for obj in parse_event(event).get("Records") if "dynamodb" in obj]
         games = [
             {
@@ -290,6 +301,8 @@ def lambda_handler(event, context):
             for obj in games_objects
         ]
         for game in games:
+            logger.info('## GAME')
+            logger.info(game)
             update_watchers(game)
             queue_aiagent(game)
 

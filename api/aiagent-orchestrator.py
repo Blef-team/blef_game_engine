@@ -1,6 +1,10 @@
 import boto3
 import json
 import re
+import logging
+import os
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 lambda_client = boto3.client('lambda')
@@ -36,6 +40,8 @@ def call_aiagent(payload):
         Invoke blef-aiagent-[...] asynchronously
     """
     agent_name = get_aiagent_name(payload)
+    logger.info("## AGENT_NAME")
+    logger.info(agent_name)
     function_name = f'blef-aiagent-{agent_name}'
     if name_valid(agent_name) and lambda_function_exists(function_name):
         return lambda_client.invoke(
@@ -56,8 +62,13 @@ def get_game(record):
 
 
 def lambda_handler(event, context):
+    logger.info('## EVENT')
+    logger.info(event)
+
     for record in event['Records']:
         game = get_game(record)
+        logger.info("## GAME")
+        logger.info(game)
         if not game:
             continue
         call_aiagent(game)

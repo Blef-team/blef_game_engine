@@ -2,6 +2,9 @@ import boto3
 import json
 import os
 import agent
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 AIAGENT_NAME = os.environ.get('AWS_LAMBDA_FUNCTION_NAME').replace("blef-aiagent-", "")
@@ -58,25 +61,32 @@ def call_play(action, aiagent_player_uuid, game_uuid):
         "player_uuid": aiagent_player_uuid,
         "game_uuid": game_uuid
     }
+    logger.info('## PAYLOAD')
+    logger.info(payload)
     return lambda_client.invoke(
-        FunctionName=f'blef-play',
+        FunctionName='blef-play',
         InvocationType='Event',
         Payload=json.dumps(payload)
         )
 
 
 def lambda_handler(event, context):
+    logger.info('## EVENT')
+    logger.info(event)
     game = parse_event(event)
+    logger.info('## GAME')
+    logger.info(game)
     assert game
 
     aiagent_player_uuid = get_aiagent_player_uuid(game)
     assert aiagent_player_uuid
 
     action = agent.determine_action(game)
+    logger.info('## ACTION')
+    logger.info(action)
     assert is_legal(action, game["history"])
 
     call_play(action, aiagent_player_uuid, game["game_uuid"])
-
     message = "Action made"
     return {
         'statusCode': 200,
