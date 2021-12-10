@@ -2,10 +2,14 @@ import os
 import uuid
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
+from botocore.exceptions import ClientError
 import time
 import json
 import decimal
-import urllib3
+
+
+sqs_client = boto3.client("sqs")
+AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
 watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
@@ -18,6 +22,28 @@ games_table = dynamodb.Table("games")
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 deserializer = boto3.dynamodb.types.TypeDeserializer()
+
+
+def get_aiagent_queue_url():
+    """
+    Returns the URL of an existing Amazon SQS queue.
+    """
+    try:
+        return sqs_client.get_queue_url(QueueName=AIAGENT_QUEUE_NAME)['QueueUrl']
+    except ClientError:
+        return
+
+
+def send_queue_message(game):
+    """
+    Sends a message to the AI agent queue.
+    """
+    try:
+        sqs_client.send_message(QueueUrl=get_aiagent_queue_url(),
+                                MessageBody=game)
+    except ClientError:
+        return
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -239,6 +265,19 @@ def update_watchers(game):
     update_public_games_watchers(game["new"], game["old"])
 
 
+def get_aiagent_player_uuid(game):
+    current_player = game["cp_nickname"]
+    player_obj = get_player_by_nickname(game["players"], current_player)
+    if not player_obj.get("ai_agent"):
+        return
+    return player_obj.get("uuid")
+
+
+def queue_aiagent(game):
+    if get_aiagent_player_uuid(game):
+        send_queue_message(game)
+
+
 def lambda_handler(event, context):
     try:
         games_objects = [obj["dynamodb"] for obj in parse_event(event).get("Records") if "dynamodb" in obj]
@@ -251,6 +290,7 @@ def lambda_handler(event, context):
         ]
         for game in games:
             update_watchers(game)
+            queue_aiagent(game)
 
         return response_payload(200, {"message": "All watchers updated"})
 
