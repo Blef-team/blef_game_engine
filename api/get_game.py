@@ -202,7 +202,8 @@ def lambda_handler(event, context):
             "players": private_players,
             "hands": revealed_hands,
             "cp_nickname": game["cp_nickname"],
-            "history": game["history"]
+            "history": game["history"],
+            "last_modified": game["last_modified"]
         }
 
         return response_payload(200, visible_game)

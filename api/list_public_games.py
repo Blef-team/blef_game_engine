@@ -53,7 +53,14 @@ def query_dynamodb():
 def lambda_handler(event, context):
     try:
         games = query_dynamodb()
-        games_info = [{"game_uuid": game["game_uuid"], "room": game["room"], "players": [p["nickname"] for p in game["players"]]} for game in games]
+        games_info = [
+            {
+                "game_uuid": game["game_uuid"],
+                "room": game["room"],
+                "players": [p["nickname"] for p in game["players"]],
+                "last_modified": game["last_modified"]
+                } for game in games
+            ]
         return response_payload(200, games_info)
 
     except Exception as err:

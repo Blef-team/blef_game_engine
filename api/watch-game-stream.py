@@ -176,7 +176,8 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
         "players": private_players,
         "hands": revealed_hands,
         "cp_nickname": game["cp_nickname"],
-        "history": game["history"]
+        "history": game["history"],
+        "last_modified": game["last_modified"]
     }
 
 
@@ -184,7 +185,8 @@ def get_public_game_info(game):
     public_game_info = {
         "game_uuid": game["game_uuid"],
         "room": game["room"],
-        "public": game["public"]
+        "public": game["public"],
+        "last_modified": game["last_modified"]
     }
     if game["public"]:
         public_game_info["players"] = [p["nickname"] for p in game["players"]]
