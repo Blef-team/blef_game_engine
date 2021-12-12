@@ -385,7 +385,8 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
         "players": private_players,
         "hands": revealed_hands,
         "cp_nickname": game["cp_nickname"],
-        "history": game["history"]
+        "history": game["history"],
+        "last_modified": game["last_modified"]
     }
 
 
