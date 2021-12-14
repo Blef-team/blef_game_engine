@@ -168,7 +168,8 @@ def lambda_handler(event, context):
 
         update_in_dynamodb(game_uuid, players)
 
-        return response_payload(200, f"{nickname} joined the game")
+        payload = {"message": f"{nickname} joined the game"}
+        return response_payload(200, payload)
 
     except Exception as err:
         return internal_error_payload(err)
