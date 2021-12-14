@@ -102,7 +102,7 @@ def update_in_dynamodb(game_uuid, players):
 
 
 def format_name(agent_name, num):
-    enumerated_name = f"{agent_name}_{num}" if num else agent_name
+    enumerated_name = f"{agent_name}_{num+1}" if num else agent_name
     return f"{enumerated_name}_(AI)"
 
 
