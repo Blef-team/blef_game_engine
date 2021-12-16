@@ -129,12 +129,14 @@ def parse_event(event):
     body.update(query_params)
     return body
 
+
 def find_connected_players(game):
     game_uuid = game["game_uuid"]
     if isinstance(game_uuid, dict):
         game_uuid = game_uuid.get("S")
+    watched_game_uuid = game_uuid.split("_")[0]
     response = websocket_table.query(
-        KeyConditionExpression=Key('game_uuid').eq(game_uuid),
+        KeyConditionExpression=Key('game_uuid').eq(watched_game_uuid),
         IndexName="game_uuid-index"
     )
     return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items")]
