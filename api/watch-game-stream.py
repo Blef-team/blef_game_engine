@@ -129,15 +129,6 @@ def parse_event(event):
     body.update(query_params)
     return body
 
-
-def get_game(game_uuid):
-    response = games_table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
 def find_connected_players(game):
     game_uuid = game["game_uuid"]
     if isinstance(game_uuid, dict):
