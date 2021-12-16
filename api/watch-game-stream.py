@@ -252,7 +252,8 @@ def update_game_watchers(game):
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
-        visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
+        current_round = game["round_number"] + 1 if any(str(val["action_id"])=="89" for val in game.get("history")) else game["round_number"]
+        visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
         post_to_connection(visible_game, connection_id)
 
 
