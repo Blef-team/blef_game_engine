@@ -2,10 +2,17 @@ import os
 import uuid
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
+from botocore.exceptions import ClientError
 import time
 import json
 import decimal
-import urllib3
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+
+sqs_client = boto3.client("sqs")
+AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
 watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
@@ -18,6 +25,35 @@ games_table = dynamodb.Table("games")
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 deserializer = boto3.dynamodb.types.TypeDeserializer()
+
+
+def get_aiagent_queue_url():
+    """
+    Returns the URL of an existing Amazon SQS queue.
+    """
+    try:
+        return sqs_client.get_queue_url(QueueName=AIAGENT_QUEUE_NAME)['QueueUrl']
+    except ClientError:
+        return
+
+
+def send_queue_message(game):
+    """
+    Sends a message to the AI agent queue.
+    """
+    try:
+        logger.info('## QUEUE URL')
+        logger.info(get_aiagent_queue_url())
+        logger.info('## GAME')
+        logger.info(game)
+        logger.info('## GAME UUID')
+        logger.info(game["game_uuid"])
+        sqs_client.send_message(QueueUrl=get_aiagent_queue_url(),
+                                MessageBody=json.dumps(game, cls=DecimalEncoder),
+                                MessageGroupId=game["game_uuid"])
+    except ClientError:
+        return
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -206,7 +242,7 @@ def find_connected_public_games_watchers():
 
 def post_to_connection(payload, connection_id):
     response = apigateway.post_to_connection(
-        Data=bytes(json.dumps(response_payload(200, payload)), encoding="utf-8"),
+        Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
         ConnectionId=connection_id
     )
     return True
@@ -239,8 +275,23 @@ def update_watchers(game):
     update_public_games_watchers(game["new"], game["old"])
 
 
+def get_aiagent_player_uuid(game):
+    current_player = game["cp_nickname"]
+    player_obj = get_player_by_nickname(game["players"], current_player)
+    if not player_obj.get("ai_agent"):
+        return
+    return player_obj.get("uuid")
+
+
+def queue_aiagent(game):
+    if get_aiagent_player_uuid(game["new"]):
+        send_queue_message(game["new"])
+
+
 def lambda_handler(event, context):
     try:
+        logger.info('## EVENT')
+        logger.info(event)
         games_objects = [obj["dynamodb"] for obj in parse_event(event).get("Records") if "dynamodb" in obj]
         games = [
             {
@@ -250,7 +301,10 @@ def lambda_handler(event, context):
             for obj in games_objects
         ]
         for game in games:
+            logger.info('## GAME')
+            logger.info(game)
             update_watchers(game)
+            queue_aiagent(game)
 
         return response_payload(200, {"message": "All watchers updated"})
 

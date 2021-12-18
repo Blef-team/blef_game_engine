@@ -164,7 +164,7 @@ def lambda_handler(event, context):
     try:
         body = parse_event(event)
 
-        connection_id = get_connection_id(event, context, body) #DEBUG
+        connection_id = get_connection_id(event, context, body)
 
         game_uuid = event.get("headers", {}).get("game_uuid") if "game_uuid" not in body else body["game_uuid"]
         player_uuid = event.get("headers", {}).get("player_uuid") if "player_uuid" not in body else body["player_uuid"]
