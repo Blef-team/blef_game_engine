@@ -1,21 +1,14 @@
 # Game engine service for `Blef`
 > The API service to create manage and run games of Blef
 
-![Test locally](https://github.com/Blef-team/blef_game_engine/workflows/Test%20locally/badge.svg)
-![Deploy dev](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20dev/badge.svg?branch=develop)
-![Deploy staging](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20staging/badge.svg?branch=staging)
-![Deploy prod](https://github.com/maciej-pomykala/blef_game_engine/workflows/Deploy%20prod/badge.svg?branch=master)
-
 This repository contains the code to run the Blef game engine API service.
-
-At the initial stage it consists of a few basic endpoints, to create, join, start and run a game.
-
-Game states are currently stored in and retrieved from `.rds` files. When necessary, this data will be migrated to an appropriate database, which will run alongside the API, or on separate infrastructure.
 
 ## See also
  * [Blef Shiny app](https://github.com/Blef-team/blef_shiny_web_app)
 
  * [<img src="https://repository-images.githubusercontent.com/254896653/3600ad80-9bc8-11ea-9e93-4dd5abbacdef" height="30px" width="30px"> Blef iOS app](https://github.com/Blef-team/blef_ios_app)
+ 
+ * [Blef Android app](https://github.com/Blef-team/blef_android_app)
 
  * [Blef AI](https://github.com/Blef-team/blef_ai)
 
@@ -72,7 +65,7 @@ where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and
 
 ## How we implement the game
 
-The game is implemented in the form of an API service deployed on a remote (AWS) server. The API has endpoints fulfilling the following roles respectively:
+The game is implemented in the form of an API service deployed using a serverless infrastructure on Amazon Web Services. The API has endpoints fulfilling the following roles respectively:
 
 * letting a user create a game room
 * letting a player join a game room
@@ -82,7 +75,7 @@ The game is implemented in the form of an API service deployed on a remote (AWS)
 
 ### Creating a game
 
-At first, a user has to create a game. This action creates and saves a game object on the API server. As part of this, the relevatn API endpoint provisions a unique UUID for the game and informs the user who created the game of this UUID.
+At first, a user has to create a game. This action creates and saves a game object on the API server. As part of this, the relevant API endpoint provisions a unique UUID for the game and informs the user who created the game of this UUID.
 
 ### Joining a game
 
@@ -120,16 +113,14 @@ There is an endpoint dedicated to letting the current player make a move. The pl
 
 ### Public / private games
 
-A game can be public or private. A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. However, these changes can only be made before the game starts.
+A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. This feature is intended to facilitate players joining a game and therefore, when a game starts, it is made private.
 
-Finally, there is an endpoint which allows a user to see all public games (their UUID, list of players and an indication whether they have started).
+Finally, there is an endpoint which allows a user to see all public games (their UUID and list of players).
 
 ### Full API documentation
 
-In order to play using the API, one should use the full API documentation available in the [API readme](api/README.md).
+In order to interact with the engine using a custom app or a basic HTTP interface, one should use the full API documentation available in the [API readme](api/README.md).
 
 ## Deployment
-
-The service is deployed to EC2 with CodeDeploy integration.
 
 The deployment instructions are in the [deployment readme](deployment/README.md)
