@@ -130,23 +130,16 @@ def parse_event(event):
     return body
 
 
-def get_game(game_uuid):
-    response = games_table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
 def find_connected_players(game):
     game_uuid = game["game_uuid"]
     if isinstance(game_uuid, dict):
         game_uuid = game_uuid.get("S")
+    watched_game_uuid = game_uuid.split("_")[0]
     response = websocket_table.query(
-        KeyConditionExpression=Key('game_uuid').eq(game_uuid),
+        KeyConditionExpression=Key('game_uuid').eq(watched_game_uuid),
         IndexName="game_uuid-index"
     )
-    return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items")]
+    return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items", [])]
 
 
 def save_connection_object(obj):
@@ -169,7 +162,7 @@ def get_connection_id(event, context, body):
 
 def get_player_by_nickname(players, nickname):
     filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
+    if filtered_players and filtered_players[0]:
         return filtered_players[0]
 
 
@@ -230,7 +223,7 @@ def get_public_game_info(game):
 
 
 def can_get_public_info(game, game_old):
-    return game["public"] == "true" or game_old["public"] == "true"
+    return game.get("public") == "true" or game_old.get("public") == "true"
 
 
 def find_connected_public_games_watchers():
@@ -241,6 +234,8 @@ def find_connected_public_games_watchers():
 
 
 def post_to_connection(payload, connection_id):
+    logger.info('## POSTING TO CONNECTION')
+    logger.info(connection_id)
     response = apigateway.post_to_connection(
         Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
         ConnectionId=connection_id
@@ -257,7 +252,8 @@ def update_game_watchers(game):
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
-        visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
+        current_round = game["round_number"] + 1 if any(str(val["action_id"])=="89" for val in game.get("history")) else game["round_number"]
+        visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
         post_to_connection(visible_game, connection_id)
 
 
@@ -277,6 +273,8 @@ def update_watchers(game):
 
 def get_aiagent_player_uuid(game):
     current_player = game["cp_nickname"]
+    if not current_player:
+        return
     player_obj = get_player_by_nickname(game["players"], current_player)
     if not player_obj.get("ai_agent"):
         return
