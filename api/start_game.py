@@ -4,7 +4,7 @@ from boto3.dynamodb.conditions import Key
 import time
 import json
 from math import floor
-from random import shuffle, sample
+from random import shuffle, sample, choice
 from itertools import islice, product
 
 dynamodb = boto3.resource('dynamodb')
@@ -88,6 +88,33 @@ def draw_cards(players):
     return hands
 
 
+def arrange_players(players):
+    """
+        Order the human and AI players
+        for optimal gameplay
+    """
+    num_total = len(players)
+    num_ais = sum(1 for p in players if p.get("ai_agent"))
+    offset = choice(range(num_total))
+
+    ai_positions_from_zero = [floor(i * num_total / num_ais) for i in range(num_ais)]
+    ai_positions = [(i + offset) % num_total for i in ai_positions_from_zero]
+    ai_players = [p for p in players if p.get("ai_agent")]
+    
+    human_players = [p for p in players if not p.get("ai_agent")]
+    shuffle(human_players)
+    
+    players = []
+
+    for i in range(num_total):
+        if i in ai_positions and ai_players:
+            players.append(ai_players.pop(0))
+        elif human_players:
+            players.append(human_players.pop(0))
+
+    return players
+
+
 def get_from_dynamodb(game_uuid):
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
@@ -164,7 +191,7 @@ def lambda_handler(event, context):
 
         for player in players:
             player["n_cards"] = 1
-        shuffle(players)
+        players = arrange_players(players)
 
         hands = draw_cards(players)
 
