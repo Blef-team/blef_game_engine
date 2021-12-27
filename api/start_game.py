@@ -100,10 +100,10 @@ def arrange_players(players):
     ai_positions_from_zero = [floor(i * num_total / num_ais) for i in range(num_ais)]
     ai_positions = [(i + offset) % num_total for i in ai_positions_from_zero]
     ai_players = [p for p in players if p.get("ai_agent")]
-    
+
     human_players = [p for p in players if not p.get("ai_agent")]
     shuffle(human_players)
-    
+
     players = []
 
     for i in range(num_total):
@@ -199,7 +199,7 @@ def lambda_handler(event, context):
 
         update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname)
 
-        return response_payload(202, "Game started")
+        return response_payload(202, {"message": "Game started"})
 
     except Exception as err:
         return internal_error_payload(err)
