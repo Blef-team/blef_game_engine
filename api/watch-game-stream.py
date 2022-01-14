@@ -58,7 +58,9 @@ def send_queue_message(game):
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
