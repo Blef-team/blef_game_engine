@@ -143,7 +143,7 @@ def find_connected_players(game):
 
 
 def save_connection_object(obj):
-    obj["last_modified"] = time.time()
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     websocket_table.put_item(Item=obj)
     return True
 

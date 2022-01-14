@@ -90,7 +90,7 @@ def update_in_dynamodb(game_uuid, players, admin_nickname):
         UpdateExpression="set players = :players, last_modified = :last_modified, admin_nickname = :admin_nickname",
         ExpressionAttributeValues={
             ':players': players,
-            ':last_modified': time.time(),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':admin_nickname': admin_nickname
         },
         ReturnValues="NONE"

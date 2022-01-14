@@ -300,7 +300,7 @@ def get_from_dynamodb(game_uuid):
 
 
 def save_in_dynamodb(obj):
-    obj["last_modified"] = time.time()
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     table.put_item(Item=obj)
     return True
 
@@ -312,7 +312,7 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
         },
         UpdateExpression="set last_modified = :last_modified, cp_nickname = :cp_nickname, history = :history",
         ExpressionAttributeValues={
-            ':last_modified': time.time(),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':cp_nickname': cp_nickname,
             ':history': history
         },
