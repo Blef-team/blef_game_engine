@@ -89,7 +89,7 @@ def update_in_dynamodb(game_uuid, public):
         },
         UpdateExpression="set last_modified = :last_modified, #game_public = :public",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': time.time(),
             ':public': public
         },
         ExpressionAttributeNames={

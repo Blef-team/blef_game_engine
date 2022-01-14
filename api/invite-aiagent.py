@@ -94,7 +94,7 @@ def update_in_dynamodb(game_uuid, players):
         UpdateExpression="set players = :players, last_modified = :last_modified",
         ExpressionAttributeValues={
             ':players': players,
-            ':last_modified': round(time.time())
+            ':last_modified': time.time()
         },
         ReturnValues="NONE"
     )

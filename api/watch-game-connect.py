@@ -91,7 +91,7 @@ def get_game(game_uuid):
 
 
 def save_connection_object(obj):
-    obj["last_modified"] = round(time.time())
+    obj["last_modified"] = time.time()
     websocket_table.put_item(Item=obj)
     return True
 

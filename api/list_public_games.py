@@ -40,7 +40,7 @@ def internal_error_payload(err, message=None):
 
 
 def query_dynamodb():
-    now = round(time.time())
+    now = time.time()
     diff = 1800
     response = table.query(
         IndexName="public-index",
