@@ -4,9 +4,12 @@ from boto3.dynamodb.conditions import Key
 import time
 import re
 import json
+import decimal
+
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
+
 
 def response_payload(status_code, body):
     return {

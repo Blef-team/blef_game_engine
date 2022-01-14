@@ -3,6 +3,7 @@ import boto3
 import time
 import json
 import random
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")

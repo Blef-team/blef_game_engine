@@ -6,6 +6,8 @@ import json
 from math import floor
 from random import shuffle, sample, choice
 from itertools import islice, product
+import decimal
+
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")

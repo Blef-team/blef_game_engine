@@ -4,6 +4,8 @@ from boto3.dynamodb.conditions import Key
 import time
 import json
 from itertools import islice, product
+import decimal
+
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")

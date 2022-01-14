@@ -4,6 +4,7 @@ import json
 import uuid
 import boto3
 from boto3.dynamodb.conditions import Key
+import decimal
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))

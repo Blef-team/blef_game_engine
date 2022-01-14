@@ -2,6 +2,7 @@ import boto3
 import json
 import time
 from boto3.dynamodb.conditions import Attr, Key
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
