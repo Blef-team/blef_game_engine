@@ -3,6 +3,7 @@ import boto3
 import time
 import json
 import random
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -33,7 +34,7 @@ def internal_error_payload(err, message=None):
 
 
 def save_in_dynamodb(obj):
-    obj["last_modified"] = round(time.time())
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     table.put_item(Item=obj)
     return True
 

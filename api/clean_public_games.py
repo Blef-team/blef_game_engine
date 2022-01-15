@@ -2,6 +2,7 @@ import boto3
 import json
 import time
 from boto3.dynamodb.conditions import Attr, Key
+import decimal
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -47,7 +48,7 @@ def set_game_private(game_uuid, public):
         },
         UpdateExpression="set last_modified = :last_modified, #game_public = :public",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':public': public
         },
         ExpressionAttributeNames={
@@ -64,7 +65,7 @@ def is_too_old(game, now, diff = 600):
 
 def lambda_handler(event, context):
     try:
-        now = round(time.time())
+        now = decimal.Decimal(str(time.time()))
         old_games = [game for game in get_public_games() if is_too_old(game, now)]
         for game in old_games:
             set_game_private(game["game_uuid"], "false")

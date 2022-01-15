@@ -10,7 +10,9 @@ table = dynamodb.Table("games")
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -40,7 +42,7 @@ def internal_error_payload(err, message=None):
 
 
 def query_dynamodb():
-    now = round(time.time())
+    now = decimal.Decimal(str(time.time()))
     diff = 1800
     response = table.query(
         IndexName="public-index",

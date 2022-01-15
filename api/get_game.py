@@ -11,7 +11,9 @@ table = dynamodb.Table("games")
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -124,7 +126,7 @@ def update_in_dynamodb(game_uuid, public):
         },
         UpdateExpression="set last_modified = :last_modified, #game_public = :public",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':public': public
         },
         ExpressionAttributeNames={

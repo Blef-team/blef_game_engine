@@ -58,7 +58,9 @@ def send_queue_message(game):
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -143,7 +145,7 @@ def find_connected_players(game):
 
 
 def save_connection_object(obj):
-    obj["last_modified"] = round(time.time())
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     websocket_table.put_item(Item=obj)
     return True
 

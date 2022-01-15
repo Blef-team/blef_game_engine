@@ -12,7 +12,9 @@ websocket_table = dynamodb.Table("watch_game_websocket_manager")
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -91,7 +93,7 @@ def get_game(game_uuid):
 
 
 def save_connection_object(obj):
-    obj["last_modified"] = round(time.time())
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     websocket_table.put_item(Item=obj)
     return True
 

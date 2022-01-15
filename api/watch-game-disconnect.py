@@ -11,7 +11,9 @@ websocket_table = dynamodb.Table("watch_game_websocket_manager")
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -87,10 +89,10 @@ def delete_connection_object(connection_id):
                 'connection_id': connection_id
             })
     return True
-    
+
 
 def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):    
+    if context and hasattr(context, 'get') and context.get("connectionId"):
         return context.get("connectionId")
     if "connectionId" in event.get("requestContext", {}):
         return event["requestContext"]["connectionId"]
@@ -106,12 +108,12 @@ def lambda_handler(event, context):
         body = parse_event(event)
         if not body:
             return request_error_payload(event)
-            
+
         connection_id = get_connection_id(event, context, body)
-        
+
         if delete_connection_object(connection_id):
             return response_payload(200, {"message": "Disconnected"})
-        
+
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:

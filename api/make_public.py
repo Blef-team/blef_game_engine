@@ -4,6 +4,8 @@ from boto3.dynamodb.conditions import Key
 import time
 import json
 from itertools import islice, product
+import decimal
+
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -89,7 +91,7 @@ def update_in_dynamodb(game_uuid, public):
         },
         UpdateExpression="set last_modified = :last_modified, #game_public = :public",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':public': public
         },
         ExpressionAttributeNames={

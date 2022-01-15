@@ -121,7 +121,9 @@ def load_indexation():
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
-            return int(obj)
+            if obj.as_tuple().exponent == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 
@@ -300,7 +302,7 @@ def get_from_dynamodb(game_uuid):
 
 
 def save_in_dynamodb(obj):
-    obj["last_modified"] = round(time.time())
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
     table.put_item(Item=obj)
     return True
 
@@ -312,7 +314,7 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
         },
         UpdateExpression="set last_modified = :last_modified, cp_nickname = :cp_nickname, history = :history",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':cp_nickname': cp_nickname,
             ':history': history
         },

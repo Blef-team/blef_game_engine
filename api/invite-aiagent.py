@@ -4,6 +4,7 @@ import json
 import uuid
 import boto3
 from boto3.dynamodb.conditions import Key
+import decimal
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
@@ -94,7 +95,7 @@ def update_in_dynamodb(game_uuid, players):
         UpdateExpression="set players = :players, last_modified = :last_modified",
         ExpressionAttributeValues={
             ':players': players,
-            ':last_modified': round(time.time())
+            ':last_modified': decimal.Decimal(str(time.time()))
         },
         ReturnValues="NONE"
     )

@@ -6,6 +6,8 @@ import json
 from math import floor
 from random import shuffle, sample, choice
 from itertools import islice, product
+import decimal
+
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
@@ -130,7 +132,7 @@ def update_in_dynamodb(game_uuid, public, status, round_number, max_cards, playe
         },
         UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, cp_nickname = :cp_nickname",
         ExpressionAttributeValues={
-            ':last_modified': round(time.time()),
+            ':last_modified': decimal.Decimal(str(time.time())),
             ':players': players,
             ':public': public,
             ':status': status,
