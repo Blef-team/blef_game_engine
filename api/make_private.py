@@ -133,13 +133,13 @@ def lambda_handler(event, context):
             return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
 
         if game.get("public") == "false":
-            return response_payload(200, "Request redundant - game already private")
+            return response_payload(200, {"message": "Request redundant - game already private"})
 
         public = "false"
 
         update_in_dynamodb(game_uuid, public)
 
-        return response_payload(200, "Game made private")
+        return response_payload(200, {"message": "Game made private"})
 
     except Exception as err:
         return internal_error_payload(err)
