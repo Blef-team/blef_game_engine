@@ -1,13 +1,11 @@
 import boto3
 import json
-import os
 import agent
 import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-AIAGENT_NAME = os.environ.get('AWS_LAMBDA_FUNCTION_NAME').replace("blef-aiagent-", "")
 lambda_client = boto3.client('lambda')
 
 
@@ -39,8 +37,6 @@ def get_player_by_nickname(players, nickname):
 def get_aiagent_player_uuid(game):
     current_player = game["cp_nickname"]
     player_obj = get_player_by_nickname(game["players"], current_player)
-    if player_obj.get("ai_agent") != AIAGENT_NAME:
-        return
     return player_obj.get("uuid")
 
 
