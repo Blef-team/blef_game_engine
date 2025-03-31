@@ -117,7 +117,7 @@ def get_nickname_by_uuid(players, player_uuid):
         return filtered_players[0]["nickname"]
 
 
-def register_game_watcher(game_uuid, player_uuid, connection_id):
+def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):
     if game_uuid and not is_valid_uuid(game_uuid):
         return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
 
@@ -136,27 +136,32 @@ def register_game_watcher(game_uuid, player_uuid, connection_id):
     connection_object = {
         "connection_id": connection_id,
         "game_uuid": game_uuid,
-        "player_uuid": player_uuid
+        "player_uuid": player_uuid,
+        "reactions_enabled": reactions_enabled
     }
 
     if save_connection_object(connection_object):
         return response_payload(200, {"message": "Connected"})
 
 
-def register_public_games_watcher(connection_id):
+def register_public_games_watcher(reactions_enabled, connection_id):
     connection_object = {
-        "connection_id": connection_id
+        "connection_id": connection_id,
+        "reactions_enabled": reactions_enabled
     }
 
     if save_connection_object(connection_object):
         return response_payload(200, {"message": "Connected"})
 
 
-def register_watcher(game_uuid, player_uuid, connection_id):
+def register_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):
+    if reactions_enabled != "true":
+        reactions_enabled = "false"    
+    
     if not game_uuid and not player_uuid:
-        payload = register_public_games_watcher(connection_id)
+        payload = register_public_games_watcher(reactions_enabled, connection_id)
     else:
-        payload = register_game_watcher(game_uuid, player_uuid, connection_id)
+        payload = register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id)
 
     if payload:
         return payload
@@ -170,8 +175,9 @@ def lambda_handler(event, context):
 
         game_uuid = event.get("headers", {}).get("game_uuid") if "game_uuid" not in body else body["game_uuid"]
         player_uuid = event.get("headers", {}).get("player_uuid") if "player_uuid" not in body else body["player_uuid"]
+        reactions_enabled = event.get("headers", {}).get("reactions_enabled") if "reactions_enabled" not in body else body["reactions_enabled"]
 
-        payload = register_watcher(game_uuid, player_uuid, connection_id)
+        payload = register_watcher(game_uuid, player_uuid, reactions_enabled, connection_id)
 
         if payload:
             return payload

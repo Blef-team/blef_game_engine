@@ -144,12 +144,6 @@ def find_connected_players(game):
     return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items", [])]
 
 
-def save_connection_object(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
-    websocket_table.put_item(Item=obj)
-    return True
-
-
 def get_connection_id(event, context, body):
     if context and hasattr(context, 'get') and context.get("connectionId"):
         return context.get("connectionId")
