@@ -245,6 +245,8 @@ def deserialise_dynamodb_stream_event(obj):
 
 def update_game_watchers(game):
     connected_players = find_connected_players(game)
+    logger.info('## CONNECTED PLAYERS')
+    logger.info(connected_players)
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
@@ -270,15 +272,18 @@ def update_watchers(game):
 def get_aiagent_player_uuid(game):
     current_player = game["cp_nickname"]
     if not current_player:
+        logger.info('## THERE IS NO CURRENT PLAYER')
         return
     player_obj = get_player_by_nickname(game["players"], current_player)
     if not player_obj.get("ai_agent"):
+        logger.info('## THE CURRENT PLAYER IS NOT AN AI AGENT')
         return
     return player_obj.get("uuid")
 
 
 def queue_aiagent(game):
     if get_aiagent_player_uuid(game["new"]):
+        logger.info('## SENDING AI AGENT QUEUE MESSAGE')
         send_queue_message(game["new"])
 
 
