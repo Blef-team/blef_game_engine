@@ -177,14 +177,14 @@ def lambda_handler(event, context):
         connection_id = get_connection_id(event, context, body)
 
         game_uuid = event.get("headers", {}).get("game_uuid") if "game_uuid" not in body else body["game_uuid"]
-        if game_uuid:
-            logger.info('## GAME UUID: ' + game_uuid)
+        logger.info('## GAME UUID:')
+        logger.info(game_uuid)
         player_uuid = event.get("headers", {}).get("player_uuid") if "player_uuid" not in body else body["player_uuid"]
-        if player_uuid:
-            logger.info('## PLAYER UUID: ' + player_uuid)
+        logger.info('## PLAYER UUID:')
+        logger.info(player_uuid)
         reactions_enabled = event.get("headers", {}).get("reactions_enabled") if "reactions_enabled" not in body else body["reactions_enabled"]
-        if reactions_enabled:
-            logger.info('## REACTIONS ENABLED: ' + reactions_enabled)
+        logger.info('## REACTIONS ENABLED:')
+        logger.info(reactions_enabled)
 
         payload = register_watcher(game_uuid, player_uuid, reactions_enabled, connection_id)
 
