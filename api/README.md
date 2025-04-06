@@ -309,6 +309,52 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a
 curl <HOST>/games
 ```
 
+**Send reaction**
+  ----
+  Allows users to send reactions to specific games or to the public game lobby.
+
+* **URL**
+
+  /send-reaction
+
+* **Method:**
+
+  `GET`
+
+* **URL Params**
+
+  NONE
+
+* **Data Params**
+
+  **Required:**
+
+  `"reaction"=string`
+
+  **Optional:**
+
+  `"player_uuid"=string`
+
+  `"game_uuid"=string`
+
+  `"nickname"=integer`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message": "Reaction received"}`
+
+* **Sample Error Response:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error": "This reaction contains forbidden characters or forbidden content"}`
+
+* **Sample Call:**
+
+```
+curl <HOST>/send-reaction?game_uuid=6f3e8308-1170-4b3d-87b9-b62916df330f&nickname=Rando&reaction=🤨
+```
+
 ## Action IDs
 
 The table below details what action ID a player should use to make a specific move. Action IDs between 0 and 87 cover bets, while 88 is a check. The way the actions are arranged, a set with a higher action ID is more senior than one with a lower action ID. Therefore, an action with ID `k` can only be followed by an action with an ID higher than `k`.

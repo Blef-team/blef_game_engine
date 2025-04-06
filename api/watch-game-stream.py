@@ -232,10 +232,14 @@ def find_connected_public_games_watchers():
 def post_to_connection(payload, connection_id):
     logger.info('## POSTING TO CONNECTION')
     logger.info(connection_id)
-    response = apigateway.post_to_connection(
-        Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
-        ConnectionId=connection_id
-    )
+    try:
+        response = apigateway.post_to_connection(
+            Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
+            ConnectionId=connection_id
+        )
+    except Exception as err:
+        logger.info('## ERROR: COULD NOT POST TO CONNECTION')
+        logger.info(str(err))
     return True
 
 
@@ -245,6 +249,8 @@ def deserialise_dynamodb_stream_event(obj):
 
 def update_game_watchers(game):
     connected_players = find_connected_players(game)
+    logger.info('## CONNECTED PLAYERS')
+    logger.info(connected_players)
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
@@ -254,12 +260,13 @@ def update_game_watchers(game):
 
 
 def update_public_games_watchers(game, game_old):
+    logger.info('## UPDATING PUBLIC GAMES WATCHERS')
     if not can_get_public_info(game, game_old):
         return
     connected_watchers = find_connected_public_games_watchers()
     for connection_id in connected_watchers:
         public_game_info = get_public_game_info(game)
-        post_to_connection(public_game_info, connection_id)
+        post_to_connection(public_game_info, connection_id)    
 
 
 def update_watchers(game):
@@ -270,15 +277,20 @@ def update_watchers(game):
 def get_aiagent_player_uuid(game):
     current_player = game["cp_nickname"]
     if not current_player:
+        logger.info('## THERE IS NO CURRENT PLAYER:')
         return
     player_obj = get_player_by_nickname(game["players"], current_player)
     if not player_obj.get("ai_agent"):
+        logger.info('## THE CURRENT PLAYER IS NOT AN AI AGENT')
         return
+    logger.info('## AI AGENT UUID:')
+    logger.info(player_obj.get("uuid"))
     return player_obj.get("uuid")
 
 
 def queue_aiagent(game):
     if get_aiagent_player_uuid(game["new"]):
+        logger.info('## SENDING AI AGENT QUEUE MESSAGE')
         send_queue_message(game["new"])
 
 
@@ -297,7 +309,9 @@ def lambda_handler(event, context):
         for game in games:
             logger.info('## GAME')
             logger.info(game)
+            logger.info('## UPDATING WATCHERS')
             update_watchers(game)
+            logger.info('## QUEUEING AI IF NEEDED')
             queue_aiagent(game)
 
         return response_payload(200, {"message": "All watchers updated"})
