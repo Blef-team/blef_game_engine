@@ -144,6 +144,12 @@ def find_connected_players(game):
     return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items", [])]
 
 
+def save_connection_object(obj):
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
+    websocket_table.put_item(Item=obj)
+    return True
+
+
 def get_connection_id(event, context, body):
     if context and hasattr(context, 'get') and context.get("connectionId"):
         return context.get("connectionId")
@@ -253,6 +259,7 @@ def update_game_watchers(game):
         current_round = game["round_number"] + 1 if any(str(val["action_id"])=="89" for val in game.get("history")) else game["round_number"]
         visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
         post_to_connection(visible_game, connection_id)
+    logger.info('## GAME WATCHERS UPDATED')
 
 
 def update_public_games_watchers(game, game_old):
@@ -271,17 +278,21 @@ def update_watchers(game):
 
 def get_aiagent_player_uuid(game):
     current_player = game["cp_nickname"]
+    logger.info('## CURRENT PLAYER:')
+    logger.info(current_player)
     if not current_player:
-        logger.info('## THERE IS NO CURRENT PLAYER')
         return
     player_obj = get_player_by_nickname(game["players"], current_player)
     if not player_obj.get("ai_agent"):
         logger.info('## THE CURRENT PLAYER IS NOT AN AI AGENT')
         return
+    logger.info('## AI AGENT UUID:')
+    logger.info(player_obj.get("uuid"))
     return player_obj.get("uuid")
 
 
 def queue_aiagent(game):
+    logger.info('## SEEING IF CURRENT PLAYER IS AI')
     if get_aiagent_player_uuid(game["new"]):
         logger.info('## SENDING AI AGENT QUEUE MESSAGE')
         send_queue_message(game["new"])
@@ -302,8 +313,10 @@ def lambda_handler(event, context):
         for game in games:
             logger.info('## GAME')
             logger.info(game)
-            update_watchers(game)
+            logger.info('## QUEUEING AI IF NEEDED')
             queue_aiagent(game)
+            logger.info('## UPDATING WATCHERS')
+            update_watchers(game)
 
         return response_payload(200, {"message": "All watchers updated"})
 
