@@ -65,10 +65,7 @@ for f in "$API_DIR"/*.py; do
         continue
     fi
 
-    # ** REMOVED problematic 'cd -' line **
-
     # --- Check if zip file exists ---
-    # This check should now work correctly
     if [ ! -f "deployment_${filename}.zip" ]; then
         echo "Error: Zip file deployment_${filename}.zip was not found after creation."
         rm -rf "$TEMP_DIR" # Clean up temp dir
@@ -76,15 +73,15 @@ for f in "$API_DIR"/*.py; do
     fi
 
     # --- Update Lambda Function ---
-    # Assumes Lambda function name == original filename
-    function_name="$filename"
-    echo "Updating function: $function_name"
-    aws lambda update-function-code --function-name "blef-$function_name" --zip-file "fileb://deployment_${filename}.zip"
+    # Convert filename underscores to dashes for the AWS function name
+    aws_function_name="${filename//_/-}"
+    echo "Updating function: blef-$aws_function_name" # Include the 'blef-' prefix here
+    aws lambda update-function-code --function-name "blef-$aws_function_name" --zip-file "fileb://deployment_${filename}.zip"
 
     if [ $? -eq 0 ]; then
-        echo "Successfully updated $function_name."
+        echo "Successfully updated blef-$aws_function_name."
     else
-        echo "Error: Failed to update $function_name."
+        echo "Error: Failed to update blef-$aws_function_name."
         # Consider adding retry logic or specific error handling
     fi
 
