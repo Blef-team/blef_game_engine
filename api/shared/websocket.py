@@ -52,7 +52,7 @@ try:
         if not api_endpoint:
              raise ValueError(f"Could not retrieve API Endpoint for API ID {WEBSOCKET_API_ID}")
 
-        endpoint_url = f"https://{api_endpoint}/{WEBSOCKET_API_STAGE}"
+        endpoint_url = f"https://{api_endpoint}/{WEBSOCKET_API_STAGE}".replace("wss://", "https://")
         logger.info(f"Initializing APIGatewayManagementAPI client for endpoint: {endpoint_url}")
         apigateway_management_client = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
 
