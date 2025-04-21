@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 
 # Import shared modules using the new style
 from shared import db as db # Use alias to avoid conflict
-from api.shared import game # Use direct name
+from shared import game # Use direct name
 
 # Assuming logger is configured elsewhere
 logger = logging.getLogger()
