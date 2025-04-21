@@ -1,52 +1,24 @@
 import uuid
-import boto3
-import time
-import json
 import random
-import decimal
+import logging
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+# Shared utilities using the new import style
+from shared import response, db
 
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def save_in_dynamodb(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
-    table.put_item(Item=obj)
-    return True
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    logger.info("Received request to create game.")
     try:
         game_uuid = str(uuid.uuid4())
+        room_number = random.randrange(1000, 9999)
+
         empty_game = {
             "game_uuid": game_uuid,
             "admin_nickname": None,
             "public": "false",
-            "room": random.randrange(10, 100),
+            "room": room_number,
             "status": "Not started",
             "round_number": 0,
             "max_cards": 0,
@@ -55,10 +27,20 @@ def lambda_handler(event, context):
             "cp_nickname": None,
             "history": []
         }
+        logger.info(f"Generated new game template with UUID: {game_uuid}, Room: {room_number}")
 
-        if save_in_dynamodb(empty_game):
-            return response_payload(200, {"game_uuid": game_uuid})
-        raise(Exception("Something went wrong - ended up with no response"))
+        # Use db module
+        success = db.save_game_to_db(empty_game)
 
-    except Exception as err:
-        return internal_error_payload(err)
+        if success:
+            logger.info(f"Successfully saved new game {game_uuid} to DynamoDB.")
+            # Use response module
+            return response.success_response({"game_uuid": game_uuid})
+        else:
+             logger.error(f"Failed to save game {game_uuid} (save returned false).")
+             raise RuntimeError("Failed to save game to database")
+
+    except Exception as e:
+        logger.exception("Error creating game.")
+        # Use response module
+        return response.internal_error_response(e, "Error creating new game")

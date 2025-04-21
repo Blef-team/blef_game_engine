@@ -1,120 +1,29 @@
-import boto3
-from boto3.dynamodb.conditions import Key, Attr
-import json
-import decimal
-import uuid
+import logging
 
+# Shared utilities using the new import style
+from shared import response, input, websocket
 
-dynamodb = boto3.resource('dynamodb')
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def delete_connection_object(connection_id):
-    websocket_table.delete_item(
-            Key={
-                'connection_id': connection_id
-            })
-    return True
-
-
-def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):
-        return context.get("connectionId")
-    if "connectionId" in event.get("requestContext", {}):
-        return event["requestContext"]["connectionId"]
-    if "connectionId" in event:
-        return event["connectionId"]
-    if "connectionId" in body:
-        return body["connectionId"]
-    raise ValueError("Request context is invalid!")
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    logger.info("WebSocket disconnect request received.")
+    connection_id = None
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
+        # 1. Get Connection ID - Use input module
+        connection_id = input.get_connection_id(event)
+        logger.info(f"Unregistering connection ID: {connection_id}")
 
-        connection_id = get_connection_id(event, context, body)
+        # 2. Delete Connection Info from DB - Use websocket module
+        success = websocket.delete_connection(connection_id)
 
-        if delete_connection_object(connection_id):
-            return response_payload(200, {"message": "Disconnected"})
+        # 3. Return Success Response - Use response module
+        logger.info(f"Connection {connection_id} processing finished (DB delete success: {success}).")
+        return response.format_response(200, {"message": "Disconnected"})
 
-        raise(Exception("Something went wrong - ended up with no response"))
-
-    except Exception as err:
-        return internal_error_payload(err)
+    except ValueError as ve: # From get_connection_id
+         logger.error(f"Value error during disconnect: {ve}")
+         return response.format_response(400, {"error": str(ve)})
+    except Exception as e:
+        logger.exception(f"Error handling WebSocket disconnect for connection {connection_id}")
+        return response.format_response(200, {"message": "Disconnect processed with error"}) # Still return 200

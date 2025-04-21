@@ -1,76 +1,53 @@
-import boto3
-import json
-import time
-from boto3.dynamodb.conditions import Attr, Key
-import decimal
+import logging
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+# Shared utilities using the new import style
+from shared import response, db, game
 
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def get_public_games():
-    response = table.query(
-        IndexName="public-index",
-        KeyConditionExpression=Key('public').eq("true"),
-        ProjectionExpression="game_uuid,last_modified"
-    )
-    return response['Items']
-
-
-def set_game_private(game_uuid, public):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, #game_public = :public",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':public': public
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public"
-        },
-        ReturnValues="NONE"
-    )
-    return True
-
-
-def is_too_old(game, now, diff = 600):
-    return (now - game["last_modified"]) > diff
-
+MAX_GAME_AGE_SECONDS = 600 # 10 minutes
 
 def lambda_handler(event, context):
-    try:
-        now = decimal.Decimal(str(time.time()))
-        old_games = [game for game in get_public_games() if is_too_old(game, now)]
-        for game in old_games:
-            set_game_private(game["game_uuid"], "false")
-        return response_payload(200, [g["game_uuid"] for g in old_games])
+    logger.info("Starting clean_public_games task.")
+    cleaned_game_uuids = []
+    errors = []
 
-    except Exception as err:
-        raise
-        return internal_error_payload(err)
+    try:
+        # Use db module
+        public_games_metadata = db.get_public_games_for_cleanup()
+        logger.info(f"Found {len(public_games_metadata)} public games to check.")
+
+        for game_meta in public_games_metadata:
+            game_uuid = game_meta.get("game_uuid")
+            if not game_uuid:
+                logger.warning(f"Found public game entry with missing UUID: {game_meta}")
+                continue
+
+            # Use game module for logic
+            if game.is_game_too_old(game_meta, MAX_GAME_AGE_SECONDS):
+                logger.info(f"Game {game_uuid} is older than {MAX_GAME_AGE_SECONDS} seconds. Setting to private.")
+                try:
+                    # Use db module
+                    success = db.update_game_public_status(game_uuid, is_public=False)
+                    if success:
+                        cleaned_game_uuids.append(game_uuid)
+                        logger.info(f"Successfully set game {game_uuid} to private.")
+                    else:
+                        logger.error(f"Failed to set game {game_uuid} to private (update returned false).")
+                        errors.append(f"Failed to update {game_uuid}")
+                except Exception as update_err:
+                    logger.exception(f"Error updating game {game_uuid} to private.")
+                    errors.append(f"Error updating {game_uuid}: {update_err}")
+
+        logger.info(f"Clean-up task finished. Set {len(cleaned_game_uuids)} games to private.")
+        if errors:
+             logger.warning(f"Encountered errors during cleanup: {errors}")
+
+        # Use response module
+        return response.success_response(cleaned_game_uuids)
+
+    except Exception as e:
+        logger.exception("Fatal error during clean_public_games task.")
+        # Use response module
+        return response.internal_error_response(e, "Error during game cleanup")

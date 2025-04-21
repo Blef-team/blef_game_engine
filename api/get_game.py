@@ -1,214 +1,54 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
-import time
-import json
-import decimal
+import logging
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+# Shared utilities using the new import style
+from shared import response, input, db, game
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def get_player_by_nickname(players, nickname):
-    filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
-        return filtered_players[0]
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
-
-
-def is_active_player(players, nickname):
-    player = get_player_by_nickname(players, nickname)
-    if player:
-        return player["n_cards"] != 0
-    return False
-
-
-def get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname):
-    revealed_hands = []
-    if round < current_round or current_status == "Finished":
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    elif player_authenticated and round == current_round:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
-    return revealed_hands
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
-def update_in_dynamodb(game_uuid, public):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, #game_public = :public",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':public': public
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public"
-        },
-        ReturnValues="NONE"
-    )
-    return True
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    params = None # Define params for logging in except block
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
+        logger.info(f"Received get_game request: {event.get('pathParameters')}, {event.get('queryStringParameters')}")
+        # 1. Parse Input
+        params = input.parse_api_gateway_event(event)
+        if not params:
+            logger.error(f"Failed to parse event: {event}")
+            return response.bad_request_response(str(event))
 
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
+        game_uuid = params.get("game_uuid")
+        player_uuid = params.get("player_uuid")
+        # round_param = params.get("round") # Add round logic if needed
 
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
+        # 2. Validate Inputs
+        if not input.is_valid_uuid(game_uuid):
+            return response.bad_parameter_response("game_uuid", game_uuid, "Invalid game UUID format")
+        if player_uuid and not input.is_valid_uuid(player_uuid):
+            return response.bad_parameter_response("player_uuid", player_uuid, "Invalid player UUID format")
 
-        current_status = game.get("status")
+        # 3. Fetch Game Data
+        # TODO: Add logic for historical round fetching if round_param is used
+        game_data = db.get_game_from_db(game_uuid)
+        if not game_data:
+            logger.warning(f"Game not found for UUID: {game_uuid}")
+            return response.error_response("Game not found", status_code=404)
 
-        player_uuid = body.get("player_uuid")
+        # 4. Authorize (Check if provided player_uuid belongs to this game)
+        if player_uuid and not game.get_player_by_uuid(game_data.get("players", []), player_uuid):
+             logger.warning(f"Player UUID {player_uuid} not found in game {game_uuid}.")
+             return response.error_response("Player UUID does not match any player in this game", status_code=403)
 
-        if player_uuid and not is_valid_uuid(player_uuid):
-            return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
+        # 5. Censor Game State for Response
+        visible_game = game.censor_game_state(game_data, player_uuid)
+        if not visible_game:
+             logger.error(f"Failed to censor game state for game {game_uuid}")
+             raise RuntimeError("Failed to censor game state")
 
-        round = body.get("round")
+        logger.info(f"Successfully retrieved and censored game state for {game_uuid}")
+        # 6. Return Response
+        return response.success_response(visible_game)
 
-        if round:
-            if isinstance(round, str) and round.isdigit():
-                round = int(round)
-            elif isinstance(round, int):
-                pass
-            else:
-                return parameter_error_payload("round", round)
-
-        if round and round <= 0:
-            return parameter_error_payload("round", round, message="The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank")
-        current_round = game["round_number"]
-        if round and current_round < round:
-            return parameter_error_payload("round", round, message="The game has not reached this round")
-
-        if round and (round != current_round or current_status != "Running"):
-            game = get_from_dynamodb(f"{game_uuid}_{round}")
-        else:
-            round = current_round
-
-        if player_uuid:
-            player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-            player_authenticated = bool(player_nickname)
-            if not player_authenticated:
-                return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-        else:
-            player_authenticated = False
-            player_nickname = ''
-
-        revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
-
-        private_players = []
-        for player in game["players"]:
-            private_players.append({key: player[key] for key in player if key != "uuid"})
-
-        visible_game = {
-            "admin_nickname": game["admin_nickname"],
-            "public": game["public"],
-            "room": game["room"],
-            "status": game["status"],
-            "round_number": game["round_number"],
-            "max_cards": game["max_cards"],
-            "players": private_players,
-            "hands": revealed_hands,
-            "cp_nickname": game["cp_nickname"],
-            "history": game["history"],
-            "last_modified": game["last_modified"]
-        }
-
-        return response_payload(200, visible_game)
-
-    except Exception as err:
-        return internal_error_payload(err)
+    except Exception as e:
+        game_id_log = params.get('game_uuid') if params else 'unknown'
+        logger.exception(f"Error processing get_game request for UUID {game_id_log}")
+        return response.internal_error_response(e)

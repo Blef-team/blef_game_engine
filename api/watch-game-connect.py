@@ -1,197 +1,61 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
-import time
-import json
-import decimal
 import logging
+
+# Shared utilities using the new import style
+from shared import response, input, db, game, websocket
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-dynamodb = boto3.resource('dynamodb')
-games_table = dynamodb.Table("games")
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def get_game(game_uuid):
-    response = games_table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
-def save_connection_object(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
-    websocket_table.put_item(Item=obj)
-    return True
-
-
-def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):
-        return context.get("connectionId")
-    if "connectionId" in event.get("requestContext", {}):
-        return event["requestContext"]["connectionId"]
-    if "connectionId" in event:
-        return event["connectionId"]
-    if "connectionId" in body:
-        return body["connectionId"]
-    raise ValueError("Request context is invalid!")
-
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
-
-
-def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):
-    if game_uuid and not is_valid_uuid(game_uuid):
-        return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
-
-    game = get_game(game_uuid)
-    if not game:
-        return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-    if player_uuid:
-        if not is_valid_uuid(player_uuid):
-            return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
-        player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
-        if not player_authenticated:
-            return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-
-    connection_object = {
-        "connection_id": connection_id,
-        "game_uuid": game_uuid,
-        "player_uuid": player_uuid,
-        "reactions_enabled": reactions_enabled
-    }
-
-    if save_connection_object(connection_object):
-        return response_payload(200, {"message": "Connected"})
-
-
-def register_public_games_watcher(reactions_enabled, connection_id):
-    connection_object = {
-        "connection_id": connection_id,
-        "reactions_enabled": reactions_enabled
-    }
-
-    if save_connection_object(connection_object):
-        return response_payload(200, {"message": "Connected"})
-
-
-def register_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):
-    if reactions_enabled != "true":
-        reactions_enabled = "false"    
-    
-    if not game_uuid and not player_uuid:
-        payload = register_public_games_watcher(reactions_enabled, connection_id)
-    else:
-        payload = register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id)
-
-    if payload:
-        return payload
-
-
 def lambda_handler(event, context):
+    logger.info("WebSocket connect request received.")
+    connection_id = None
     try:
-        body = parse_event(event)
+        # 1. Get Connection ID (Essential) - Use input module
+        connection_id = input.get_connection_id(event)
+        logger.info(f"Registering connection ID: {connection_id}")
 
-        connection_id = get_connection_id(event, context, body)
+        # 2. Extract Optional Parameters
+        query_params = event.get('queryStringParameters') or {}
+        game_uuid = query_params.get('game_uuid')
+        player_uuid = query_params.get('player_uuid')
+        reactions_enabled_str = query_params.get('reactions_enabled', 'false')
+        logger.info(f"Connection Params - Game: {game_uuid}, Player: {player_uuid}, Reactions: {reactions_enabled_str}")
 
-        game_uuid = event.get("headers", {}).get("game_uuid") if "game_uuid" not in body else body["game_uuid"]
-        logger.info('## GAME UUID:')
-        logger.info(game_uuid)
-        player_uuid = event.get("headers", {}).get("player_uuid") if "player_uuid" not in body else body["player_uuid"]
-        logger.info('## PLAYER UUID:')
-        logger.info(player_uuid)
-        reactions_enabled = event.get("headers", {}).get("reactions_enabled") if "reactions_enabled" not in body else body["reactions_enabled"]
-        logger.info('## REACTIONS ENABLED:')
-        logger.info(reactions_enabled)
+        # 3. Validate Parameters - Use input module
+        if game_uuid and not input.is_valid_uuid(game_uuid):
+             return response.format_response(400, {"error": "Invalid game_uuid format"})
+        if player_uuid and not input.is_valid_uuid(player_uuid):
+             return response.format_response(400, {"error": "Invalid player_uuid format"})
 
-        payload = register_watcher(game_uuid, player_uuid, reactions_enabled, connection_id)
+        # 4. Validate Game/Player Existence (Optional)
+        if game_uuid:
+             # Use db module
+             game_data = db.get_game_from_db(game_uuid)
+             if not game_data:
+                 return response.format_response(404, {"error": "Game not found"})
+             if player_uuid:
+                  # Use game module
+                  nickname = game.get_nickname_by_uuid(game_data.get("players", []), player_uuid)
+                  if not nickname:
+                      return response.format_response(403, {"error": "Player not found in specified game"})
 
-        if payload:
-            return payload
+        # 5. Save Connection Info - Use websocket module
+        reactions_enabled = reactions_enabled_str.lower() == 'true'
+        success = websocket.save_connection(
+            connection_id, game_uuid, player_uuid, reactions_enabled
+        )
 
-        raise(Exception("Something went wrong - ended up with no response"))
+        # 6. Return Success Response - Use response module
+        if success:
+            logger.info(f"Connection {connection_id} registered successfully.")
+            return response.format_response(200, {"message": "Connected"})
+        else:
+            logger.error(f"Failed to save connection {connection_id} to database.")
+            return response.format_response(500, {"error": "Failed to register connection"})
 
-    except Exception as err:
-        return internal_error_payload(err)
+    except ValueError as ve: # From get_connection_id
+         logger.error(f"Value error during connect: {ve}")
+         return response.format_response(400, {"error": str(ve)})
+    except Exception as e:
+        logger.exception(f"Error handling WebSocket connect for connection {connection_id}")
+        return response.format_response(500, {"error": "Internal server error during connection"})

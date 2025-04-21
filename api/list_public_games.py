@@ -1,69 +1,35 @@
-import boto3
-import json
-import time
-from boto3.dynamodb.conditions import Attr, Key
-import decimal
+import logging
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+# Shared utilities using the new import style
+from shared import response, db
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def query_dynamodb():
-    now = decimal.Decimal(str(time.time()))
-    diff = 1800
-    response = table.query(
-        IndexName="public-index",
-        KeyConditionExpression=Key('public').eq("true"),
-        FilterExpression=Attr('game_uuid').size().eq(36) & Attr('last_modified').gt(now - diff)
-    )
-    return response['Items']
-
+MAX_LISTING_AGE_SECONDS = 1800 # 30 minutes
 
 def lambda_handler(event, context):
+    logger.info("Received request to list public games.")
     try:
-        games = query_dynamodb()
-        games_info = [
-            {
-                "game_uuid": game["game_uuid"],
-                "room": game["room"],
-                "players": [p["nickname"] for p in game["players"]],
-                "last_modified": game["last_modified"]
-                } for game in games
-            ]
-        return response_payload(200, games_info)
+        # 1. Fetch recently active public games from DB
+        games_data = db.get_recently_active_public_games(MAX_LISTING_AGE_SECONDS)
+        logger.info(f"Found {len(games_data)} recently active public games.")
 
-    except Exception as err:
-        return internal_error_payload(err)
+        # 2. Format the response payload
+        games_info = []
+        for game_item in games_data:
+             players_list = game_item.get("players", [])
+             player_nicknames = [p.get("nickname") for p in players_list if p.get("nickname")]
+             games_info.append({
+                 "game_uuid": game_item.get("game_uuid"),
+                 "room": game_item.get("room"),
+                 "players": player_nicknames,
+                 "last_modified": game_item.get("last_modified")
+             })
+
+        # 3. Return the formatted list
+        return response.success_response(games_info)
+
+    except Exception as e:
+        logger.exception("Error listing public games.")
+        return response.internal_error_response(e, "Error retrieving public game list")

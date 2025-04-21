@@ -1,145 +1,64 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
-import time
-import json
-from itertools import islice, product
-import decimal
+import logging
 
+# Shared utilities using the new import style
+from shared import response, input, db, game
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
-def update_in_dynamodb(game_uuid, public):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, #game_public = :public",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':public': public
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public"
-        },
-        ReturnValues="NONE"
-    )
-    return True
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    logger.info("Received request to make game private.")
+    params = None
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
+        # 1. Parse Input
+        params = input.parse_api_gateway_event(event)
+        if not params:
+            return response.bad_request_response(str(event))
 
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
+        game_uuid = params.get("game_uuid")
+        admin_uuid = params.get("admin_uuid")
 
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-        if game.get("status") != "Not started":
-            return error_payload(403, "Cannot make the change - game already started")
-
-        admin_uuid = str(body.get("admin_uuid"))
-
+        # 2. Validate Inputs
+        if not input.is_valid_uuid(game_uuid):
+            return response.bad_parameter_response("game_uuid", game_uuid, "Invalid game UUID format")
         if not admin_uuid:
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID missing - please supply it")
+             return response.bad_parameter_response("admin_uuid", admin_uuid, "Admin UUID missing")
+        if not input.is_valid_uuid(admin_uuid):
+            return response.bad_parameter_response("admin_uuid", admin_uuid, "Invalid admin UUID format")
 
-        if not is_valid_uuid(admin_uuid):
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Invalid admin UUID")
+        # 3. Fetch Game Data
+        game_data = db.get_game_from_db(game_uuid)
+        if not game_data:
+            return response.error_response("Game not found", status_code=404)
 
-        players = game.get("players")
-        game_admin_uuid = [player["uuid"] for player in players if player["nickname"] == game.get("admin_nickname")][0]
-        if game_admin_uuid != admin_uuid:
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
+        # 4. Authorization & Preconditions
+        if game_data.get("status") != "Not started":
+            return response.error_response("Cannot change setting: Game has already started", status_code=403)
 
-        if game.get("public") == "false":
-            return response_payload(200, {"message": "Request redundant - game already private"})
+        players = game_data.get("players", [])
+        admin_player = game.get_player_by_nickname(players, game_data.get("admin_nickname"))
 
-        public = "false"
+        if not admin_player or admin_player.get("uuid") != admin_uuid:
+             logger.warning(f"Admin UUID mismatch for make_private request. Game: {game_uuid}, Request UUID: {admin_uuid}")
+             return response.error_response("Provided admin UUID does not match the game admin", status_code=403)
 
-        update_in_dynamodb(game_uuid, public)
+        if game_data.get("public") == "false":
+             logger.info(f"Game {game_uuid} is already private. No action needed.")
+             return response.success_response({"message": "Game is already private"})
 
-        return response_payload(200, {"message": "Game made private"})
+        # 5. Perform Action: Update public status
+        logger.info(f"Setting game {game_uuid} to private.")
+        success = db.update_game_public_status(game_uuid, is_public=False)
 
-    except Exception as err:
-        return internal_error_payload(err)
+        # 6. Return Response
+        if success:
+            logger.info(f"Successfully set game {game_uuid} to private.")
+            return response.success_response({"message": "Game successfully set to private"})
+        else:
+            logger.error(f"Failed to update game {game_uuid} to private.")
+            raise RuntimeError("Failed to update game status in database")
+
+    except Exception as e:
+        game_id_log = params.get('game_uuid') if params else 'unknown'
+        logger.exception(f"Error making game private for game {game_id_log}")
+        return response.internal_error_response(e)

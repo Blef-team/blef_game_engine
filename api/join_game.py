@@ -1,150 +1,76 @@
 import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
-import time
-import re
-import json
-import decimal
+import logging
 
+# Shared utilities using the new import style
+from shared import response, input, db, game
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
-def update_in_dynamodb(game_uuid, players, admin_nickname):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set players = :players, last_modified = :last_modified, admin_nickname = :admin_nickname",
-        ExpressionAttributeValues={
-            ':players': players,
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':admin_nickname': admin_nickname
-        },
-        ReturnValues="NONE"
-    )
-    return True
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    logger.info("Received request to join game.")
+    params = None
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
+        # 1. Parse Input
+        params = input.parse_api_gateway_event(event)
+        if not params:
+            return response.bad_request_response(str(event))
 
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
+        game_uuid = params.get("game_uuid")
+        nickname = params.get("nickname")
 
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-        if game.get("status") != "Not started":
-            return error_payload(403, "Game already started")
-
-        if len(game.get("players")) == 8:
-            return error_payload(403, "Game room full")
-
-        nickname = body.get("nickname")
+        # 2. Validate Inputs
+        if not input.is_valid_uuid(game_uuid):
+            return response.bad_parameter_response("game_uuid", game_uuid, "Invalid game UUID format")
         if not nickname:
-            return parameter_error_payload("nickname", nickname, message="Nickname missing - please supply it")
-        if not isinstance(nickname, str):
-            return parameter_error_payload("nickname", nickname, message="Nickname invalid")
-        if not re.match("^[a-zA-Z]\w*$", nickname):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+             return response.bad_parameter_response("nickname", nickname, "Nickname missing")
+        if not input.is_valid_player_nickname(nickname):
+             return response.bad_parameter_response("nickname", nickname, "Nickname must start with a letter and contain only letters, numbers, or underscore")
 
-        players = game.get("players")
-        if nickname in [p["nickname"] for p in players]:
-            return parameter_error_payload("nickname", nickname, message="Nickname already taken")
+        # 3. Fetch Game Data
+        game_data = db.get_game_from_db(game_uuid)
+        if not game_data:
+            return response.error_response("Game not found", status_code=404)
 
+        # 4. Authorization & Preconditions
+        if game_data.get("status") != "Not started":
+            return response.error_response("Cannot join game: Game has already started", status_code=403)
+
+        players = game_data.get("players", [])
+        if len(players) >= 8:
+            return response.error_response("Cannot join game: Game room is full", status_code=403)
+
+        existing_nicknames = [p.get("nickname") for p in players if p.get("nickname")]
+        if nickname in existing_nicknames:
+             return response.bad_parameter_response("nickname", nickname, "Nickname is already taken in this game")
+
+        # 5. Perform Action: Add Player
         player_uuid = str(uuid.uuid4())
-        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0}
-        players.append(player)
+        new_player = { "uuid": player_uuid, "nickname": nickname, "n_cards": 0 }
+        players.append(new_player)
+        logger.info(f"Prepared new player: {new_player}")
 
-        admin_nickname = game.get("admin_nickname")
-        if len(players) == 1:
-            admin_nickname = nickname
+        admin_nickname = game_data.get("admin_nickname")
+        needs_admin_update = False
+        if not admin_nickname and len(players) == 1:
+             admin_nickname = nickname
+             needs_admin_update = True
+             logger.info(f"Player {nickname} is the first player, setting as admin.")
 
-        update_in_dynamodb(game_uuid, players, admin_nickname)
+        # 6. Update Game State in DB
+        if needs_admin_update:
+             success = db.update_game_players(game_uuid, players, admin_nickname)
+        else:
+             success = db.update_game_players(game_uuid, players)
 
-        response = {"player_uuid": player_uuid}
-        return response_payload(200, response)
+        if success:
+            logger.info(f"Successfully added player {nickname} to game {game_uuid}.")
+            return response.success_response({"player_uuid": player_uuid})
+        else:
+            logger.error(f"Failed to update game {game_uuid} with new player {nickname}.")
+            raise RuntimeError("Failed to update game state in database")
 
-    except Exception as err:
-        return internal_error_payload(err)
+    except Exception as e:
+        game_id_log = params.get('game_uuid') if params else 'unknown'
+        logger.exception(f"Error joining game {game_id_log}")
+        return response.internal_error_response(e)
