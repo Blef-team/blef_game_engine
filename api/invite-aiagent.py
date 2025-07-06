@@ -8,17 +8,10 @@ import decimal
 from shared.response import * 
 from shared.db import *
 from shared.api_gateway import parse_event
+from shared.inputs import is_valid_uuid
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
 
 
 def update_in_dynamodb(game_uuid, players):

@@ -8,14 +8,7 @@ import decimal
 from shared.response import * 
 from shared.db import *
 from shared.api_gateway import parse_event
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
+from shared.inputs import is_valid_uuid
 
 
 def update_in_dynamodb(game_uuid, public):

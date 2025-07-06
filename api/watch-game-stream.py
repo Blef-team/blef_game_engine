@@ -58,14 +58,6 @@ def send_queue_message(game):
         return
 
 
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
 def find_connected_players(game):
     game_uuid = game["game_uuid"]
     if isinstance(game_uuid, dict):

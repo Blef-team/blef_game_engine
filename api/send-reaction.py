@@ -14,6 +14,7 @@ from shared.response import *
 from shared.db import *
 from shared.api_gateway import parse_event
 from shared.game import get_nickname_by_uuid
+from shared.inputs import is_valid_uuid
 
 
 sqs_client = boto3.client("sqs")
@@ -50,14 +51,6 @@ def send_queue_message(message):
                                 MessageBody=json.dumps(message, cls=DecimalEncoder))
     except ClientError:
         return
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
 
 
 def lambda_handler(event, context):

@@ -8,13 +8,8 @@ from shared.response import *
 from shared.db import * 
 from shared.api_gateway import parse_event
 from shared.game import get_nickname_by_uuid, get_revealed_hands
+from shared.inputs import is_valid_uuid
 
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
 
 
 

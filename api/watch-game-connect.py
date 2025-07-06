@@ -8,20 +8,13 @@ import logging
 from shared.response import * 
 from shared.api_gateway import parse_event
 from shared.game import get_nickname_by_uuid
+from shared.inputs import is_valid_uuid
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource('dynamodb')
 games_table = dynamodb.Table("games")
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
 
 
 def get_game(game_uuid):

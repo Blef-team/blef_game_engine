@@ -11,14 +11,6 @@ dynamodb = boto3.resource('dynamodb')
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
 def delete_connection_object(connection_id):
     websocket_table.delete_item(
             Key={

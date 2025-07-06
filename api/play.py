@@ -11,6 +11,7 @@ from shared.response import *
 from shared.db import *
 from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game
+from shared.inputs import is_valid_uuid
 
 
 INDEXATION_CSV = """action_id,set_type,detail_1,detail_2
@@ -118,15 +119,6 @@ def load_indexation():
                            "detail_2": detail_2
                            })
     return indexation
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
 
 
 def find_next_active_player(players, cp_nickname):
