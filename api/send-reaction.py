@@ -1,10 +1,7 @@
 import os
-import uuid
 import boto3
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import json
-import decimal
 from random import sample
 import re
 from shared.response import * 

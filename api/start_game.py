@@ -1,11 +1,6 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
 import time
-import json
 from math import floor
-from random import shuffle, sample, choice
-from itertools import islice, product
+from random import shuffle, choice
 import decimal
 from shared.response import * 
 from shared.db import table, get_from_dynamodb

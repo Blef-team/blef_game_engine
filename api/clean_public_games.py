@@ -1,7 +1,5 @@
-import boto3
-import json
 import time
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Key
 import decimal
 from shared.response import * 
 from shared.db import table

@@ -2,8 +2,6 @@ import os
 import time
 import json
 import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
 import decimal
 from shared.response import * 
 from shared.db import table, get_from_dynamodb

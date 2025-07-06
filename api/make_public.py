@@ -1,9 +1,4 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
 import time
-import json
-from itertools import islice, product
 import decimal
 from shared.response import * 
 from shared.db import table, get_from_dynamodb

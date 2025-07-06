@@ -2,7 +2,6 @@ import os
 import boto3
 from boto3.dynamodb.conditions import Key
 import json
-import decimal
 from shared.response import * 
 from shared.api_gateway import parse_event
 from shared.logging import logger

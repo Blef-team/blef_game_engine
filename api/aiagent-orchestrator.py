@@ -1,7 +1,6 @@
 import boto3
 import json
 import re
-import os
 from shared.game import get_player_by_nickname
 from shared.logging import logger
 

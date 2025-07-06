@@ -1,11 +1,8 @@
 import os
-import uuid
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
-import time
 import json
-import decimal
 from shared.response import * 
 from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game

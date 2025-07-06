@@ -1,8 +1,5 @@
-import uuid
-import boto3
 from boto3.dynamodb.conditions import Key
 import time
-import json
 import decimal
 from shared.response import * 
 from shared.api_gateway import parse_event, get_connection_id
@@ -10,7 +7,6 @@ from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 from shared.db import table as games_table, websocket_table
-
 
 
 def get_game(game_uuid):
