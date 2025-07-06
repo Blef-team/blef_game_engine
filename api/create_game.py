@@ -1,13 +1,19 @@
 import uuid
 import random
+import re
 from shared.response import * 
 from shared.db import save_in_dynamodb
+from shared.api_gateway import parse_event
 
 
 def lambda_handler(event, context):
     try:
+        body = parse_event(event)
+        if not body:
+            return request_error_payload(event)
+
         game_uuid = str(uuid.uuid4())
-        empty_game = {
+        game = {
             "game_uuid": game_uuid,
             "admin_nickname": None,
             "public": "false",
@@ -21,8 +27,20 @@ def lambda_handler(event, context):
             "history": []
         }
 
-        if save_in_dynamodb(empty_game):
-            return response_payload(200, {"game_uuid": game_uuid})
+        nickname = body.get("nickname")
+        if not nickname:
+            if save_in_dynamodb(game):
+                return response_payload(200, {"game_uuid": game_uuid})
+        else:
+            if not isinstance(nickname, str):
+                return parameter_error_payload("nickname", nickname, message="Nickname invalid")
+            if not re.match("^[a-zA-Z]\w*$", nickname):
+                return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+            player_uuid = str(uuid.uuid4())
+            player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0}
+            game.update({"players": [player], "admin_nickname": nickname})
+            if save_in_dynamodb(game):
+                return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player_uuid})
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
