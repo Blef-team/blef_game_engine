@@ -29,18 +29,6 @@ def find_connected_players(game_uuid):
     return [connection["connection_id"] for connection in response.get("Items", []) if connection.get("reactions_enabled") == "true"]
 
 
-def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):
-        return context.get("connectionId")
-    if "connectionId" in event.get("requestContext", {}):
-        return event["requestContext"]["connectionId"]
-    if "connectionId" in event:
-        return event["connectionId"]
-    if "connectionId" in body:
-        return body["connectionId"]
-    raise ValueError("Request context is invalid!")
-
-
 def post_to_connection(payload, connection_id):
     logger.info('## POSTING TO CONNECTION')
     logger.info(connection_id)

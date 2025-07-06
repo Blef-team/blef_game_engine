@@ -6,7 +6,7 @@ import json
 import decimal
 import logging
 from shared.response import * 
-from shared.api_gateway import parse_event
+from shared.api_gateway import parse_event, get_connection_id
 from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
 logger = logging.getLogger()
@@ -29,19 +29,6 @@ def save_connection_object(obj):
     obj["last_modified"] = decimal.Decimal(str(time.time()))
     websocket_table.put_item(Item=obj)
     return True
-
-
-def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):
-        return context.get("connectionId")
-    if "connectionId" in event.get("requestContext", {}):
-        return event["requestContext"]["connectionId"]
-    if "connectionId" in event:
-        return event["connectionId"]
-    if "connectionId" in body:
-        return body["connectionId"]
-    raise ValueError("Request context is invalid!")
-
 
 
 def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):

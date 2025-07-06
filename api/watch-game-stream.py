@@ -70,18 +70,6 @@ def find_connected_players(game):
     return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items", [])]
 
 
-def get_connection_id(event, context, body):
-    if context and hasattr(context, 'get') and context.get("connectionId"):
-        return context.get("connectionId")
-    if "connectionId" in event.get("requestContext", {}):
-        return event["requestContext"]["connectionId"]
-    if "connectionId" in event:
-        return event["connectionId"]
-    if "connectionId" in body:
-        return body["connectionId"]
-    raise ValueError("Request context is invalid!")
-
-
 def get_public_game_info(game):
     public_game_info = {
         "game_uuid": game["game_uuid"],

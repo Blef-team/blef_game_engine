@@ -21,3 +21,14 @@ def parse_event(event):
     return body
 
 
+def get_connection_id(event, context, body):
+    if context and hasattr(context, 'get') and context.get("connectionId"):
+        return context.get("connectionId")
+    if "connectionId" in event.get("requestContext", {}):
+        return event["requestContext"]["connectionId"]
+    if "connectionId" in event:
+        return event["connectionId"]
+    if "connectionId" in body:
+        return body["connectionId"]
+    raise ValueError("Request context is invalid!")
+
