@@ -7,6 +7,7 @@ import decimal
 from shared.response import * 
 from shared.db import * 
 from shared.api_gateway import parse_event
+from shared.game import get_nickname_by_uuid, get_revealed_hands
 
 def is_valid_uuid(value):
     try:
@@ -15,33 +16,6 @@ def is_valid_uuid(value):
     except ValueError:
         return False
 
-
-def get_player_by_nickname(players, nickname):
-    filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
-        return filtered_players[0]
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
-
-
-def is_active_player(players, nickname):
-    player = get_player_by_nickname(players, nickname)
-    if player:
-        return player["n_cards"] != 0
-    return False
-
-
-def get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname):
-    revealed_hands = []
-    if round < current_round or current_status == "Finished":
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    elif player_authenticated and round == current_round:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
-    return revealed_hands
 
 
 def update_in_dynamodb(game_uuid, public):
@@ -113,7 +87,7 @@ def lambda_handler(event, context):
             player_authenticated = False
             player_nickname = ''
 
-        revealed_hands = get_revealed_hands(game, round, current_round, current_status, player_authenticated, player_nickname)
+        revealed_hands = get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname)
 
         private_players = []
         for player in game["players"]:

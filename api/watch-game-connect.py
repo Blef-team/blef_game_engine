@@ -7,6 +7,7 @@ import decimal
 import logging
 from shared.response import * 
 from shared.api_gateway import parse_event
+from shared.game import get_nickname_by_uuid
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -48,12 +49,6 @@ def get_connection_id(event, context, body):
         return body["connectionId"]
     raise ValueError("Request context is invalid!")
 
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
 
 
 def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_id):

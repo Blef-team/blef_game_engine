@@ -13,6 +13,7 @@ import re
 from shared.response import * 
 from shared.db import *
 from shared.api_gateway import parse_event
+from shared.game import get_nickname_by_uuid
 
 
 sqs_client = boto3.client("sqs")
@@ -57,12 +58,6 @@ def is_valid_uuid(value):
         return True
     except ValueError:
         return False
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
 
 
 def lambda_handler(event, context):
