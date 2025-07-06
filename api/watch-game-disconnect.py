@@ -4,29 +4,11 @@ import json
 import decimal
 import uuid
 from shared.response import * 
+from shared.api_gateway import parse_event
 
 
 dynamodb = boto3.resource('dynamodb')
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
 
 
 def is_valid_uuid(value):

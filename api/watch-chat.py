@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 from shared.response import * 
+from shared.api_gateway import parse_event
 
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
@@ -17,25 +18,6 @@ apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
 
 dynamodb = boto3.resource('dynamodb')
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
 
 
 def find_connected_players(game_uuid):

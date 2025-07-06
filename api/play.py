@@ -9,6 +9,7 @@ from random import sample
 from itertools import islice, product
 from shared.response import * 
 from shared.db import *
+from shared.api_gateway import parse_event
 
 
 INDEXATION_CSV = """action_id,set_type,detail_1,detail_2
@@ -116,25 +117,6 @@ def load_indexation():
                            "detail_2": detail_2
                            })
     return indexation
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
 
 
 def is_valid_uuid(value):

@@ -6,6 +6,7 @@ import json
 import decimal
 import logging
 from shared.response import * 
+from shared.api_gateway import parse_event
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -20,25 +21,6 @@ def is_valid_uuid(value):
         return True
     except ValueError:
         return False
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
 
 
 def get_game(game_uuid):
