@@ -8,10 +8,7 @@ from random import shuffle, sample, choice
 from itertools import islice, product
 import decimal
 from shared.response import * 
-
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+from shared.db import *
 
 
 def parse_event(event):
@@ -78,14 +75,6 @@ def arrange_players(players):
             players.append(human_players.pop(0))
 
     return players
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
 
 
 def update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname):

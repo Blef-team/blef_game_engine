@@ -6,12 +6,10 @@ import boto3
 from boto3.dynamodb.conditions import Key
 import decimal
 from shared.response import * 
+from shared.db import *
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
 
 
 def parse_event(event):
@@ -39,14 +37,6 @@ def is_valid_uuid(value):
         return True
     except ValueError:
         return False
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
 
 
 def update_in_dynamodb(game_uuid, players):

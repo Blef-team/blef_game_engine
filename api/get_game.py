@@ -5,9 +5,7 @@ import time
 import json
 import decimal
 from shared.response import * 
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+from shared.db import * 
 
 
 def parse_event(event):
@@ -63,14 +61,6 @@ def get_revealed_hands(game, round, current_round, current_status, player_authen
     elif player_authenticated and round == current_round:
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
     return revealed_hands
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
 
 
 def update_in_dynamodb(game_uuid, public):

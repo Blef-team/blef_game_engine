@@ -5,15 +5,7 @@ import json
 import random
 import decimal
 from shared.response import * 
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
-
-
-def save_in_dynamodb(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
-    table.put_item(Item=obj)
-    return True
+from shared.db import *
 
 
 def lambda_handler(event, context):

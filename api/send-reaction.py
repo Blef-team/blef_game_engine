@@ -11,10 +11,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 import re
 from shared.response import * 
+from shared.db import *
 
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
 
 sqs_client = boto3.client("sqs")
 REACTION_QUEUE_NAME = os.environ.get("reaction_queue_name")
@@ -83,14 +81,6 @@ def get_nickname_by_uuid(players, player_uuid):
     filtered_players = [p for p in players if p["uuid"] == player_uuid]
     if filtered_players:
         return filtered_players[0]["nickname"]
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
 
 
 def lambda_handler(event, context):
