@@ -1,11 +1,9 @@
 import boto3
 import json
 import re
-import logging
 import os
 from shared.game import get_player_by_nickname
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from shared.logging import logger
 
 
 lambda_client = boto3.client('lambda')

@@ -6,15 +6,13 @@ from botocore.exceptions import ClientError
 import json
 import decimal
 from random import sample
-import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 import re
 from shared.response import * 
 from shared.db import *
 from shared.api_gateway import parse_event
 from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
+from shared.logging import logger
 
 
 sqs_client = boto3.client("sqs")

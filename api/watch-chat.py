@@ -3,11 +3,9 @@ import boto3
 from boto3.dynamodb.conditions import Key
 import json
 import decimal
-import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 from shared.response import * 
 from shared.api_gateway import parse_event
+from shared.logging import logger
 
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")

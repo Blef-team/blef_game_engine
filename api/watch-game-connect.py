@@ -4,13 +4,11 @@ from boto3.dynamodb.conditions import Key
 import time
 import json
 import decimal
-import logging
 from shared.response import * 
 from shared.api_gateway import parse_event, get_connection_id
 from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from shared.logging import logger
 
 dynamodb = boto3.resource('dynamodb')
 games_table = dynamodb.Table("games")
