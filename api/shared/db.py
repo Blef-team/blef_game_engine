@@ -5,6 +5,7 @@ import time
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table("games")
+websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 def get_from_dynamodb(game_uuid):
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))

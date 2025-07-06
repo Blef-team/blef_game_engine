@@ -4,9 +4,7 @@ import time
 from boto3.dynamodb.conditions import Attr, Key
 import decimal
 from shared.response import * 
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
+from shared.db import table
 
 
 def get_public_games():

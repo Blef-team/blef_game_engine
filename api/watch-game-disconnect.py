@@ -5,10 +5,8 @@ import decimal
 import uuid
 from shared.response import * 
 from shared.api_gateway import parse_event, get_connection_id
+from shared.db import websocket_table
 
-
-dynamodb = boto3.resource('dynamodb')
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 
 def delete_connection_object(connection_id):

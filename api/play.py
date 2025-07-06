@@ -8,7 +8,7 @@ import decimal
 from random import sample
 from itertools import islice, product
 from shared.response import * 
-from shared.db import *
+from shared.db import table, get_from_dynamodb, save_in_dynamodb
 from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, draw_cards
 from shared.inputs import is_valid_uuid

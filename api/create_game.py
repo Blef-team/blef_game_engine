@@ -5,7 +5,7 @@ import json
 import random
 import decimal
 from shared.response import * 
-from shared.db import *
+from shared.db import save_in_dynamodb
 
 
 def lambda_handler(event, context):

@@ -9,10 +9,8 @@ from shared.api_gateway import parse_event, get_connection_id
 from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
+from shared.db import table as games_table, websocket_table
 
-dynamodb = boto3.resource('dynamodb')
-games_table = dynamodb.Table("games")
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 
 def get_game(game_uuid):

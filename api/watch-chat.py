@@ -6,6 +6,7 @@ import decimal
 from shared.response import * 
 from shared.api_gateway import parse_event
 from shared.logging import logger
+from shared.db import websocket_table
 
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
@@ -13,9 +14,6 @@ watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage"
 
 endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
 apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
-
-dynamodb = boto3.resource('dynamodb')
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 
 def find_connected_players(game_uuid):

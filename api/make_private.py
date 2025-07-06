@@ -6,7 +6,7 @@ import json
 from itertools import islice, product
 import decimal
 from shared.response import * 
-from shared.db import *
+from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 

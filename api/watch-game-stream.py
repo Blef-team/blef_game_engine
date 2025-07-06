@@ -10,7 +10,7 @@ from shared.response import *
 from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game
 from shared.logging import logger
-
+from shared.db import websocket_table
 
 sqs_client = boto3.client("sqs")
 AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
@@ -20,10 +20,6 @@ watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage"
 
 endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
 apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
-
-dynamodb = boto3.resource('dynamodb')
-games_table = dynamodb.Table("games")
-websocket_table = dynamodb.Table("watch_game_websocket_manager")
 
 deserializer = boto3.dynamodb.types.TypeDeserializer()
 
