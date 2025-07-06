@@ -10,7 +10,7 @@ from itertools import islice, product
 from shared.response import * 
 from shared.db import *
 from shared.api_gateway import parse_event
-from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game
+from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, draw_cards
 from shared.inputs import is_valid_uuid
 
 
@@ -126,18 +126,6 @@ def find_next_active_player(players, cp_nickname):
     current_player_order = [i for i, player in enumerate(active_players) if player["nickname"] == cp_nickname][0]
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
-
-
-def draw_cards(players):
-    possible_cards = product(range(6), range(4))
-    all_cards_raw = sample(list(possible_cards), sum(int(p["n_cards"]) for p in players))
-    all_cards = [{"value": tup[0], "colour": tup[1]} for tup in all_cards_raw]
-    card_iterator = iter(all_cards)
-    hands = []
-    for player in players:
-        player_hand = list(islice(card_iterator, 0, int(player["n_cards"])))
-        hands.append({"nickname": player['nickname'], "hand": player_hand})
-    return hands
 
 
 def determine_set_existence(cards, action_id):
