@@ -6,6 +6,7 @@ import decimal
 import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+from shared.response import * 
 
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
@@ -16,15 +17,6 @@ apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
 
 dynamodb = boto3.resource('dynamodb')
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
-
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
 
 
 def parse_event(event):
@@ -44,20 +36,6 @@ def parse_event(event):
     body.update(path_params)
     body.update(query_params)
     return body
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
 
 
 def find_connected_players(game_uuid):
