@@ -28,19 +28,19 @@ def lambda_handler(event, context):
         }
 
         nickname = body.get("nickname")
-        if not nickname:
-            if save_in_dynamodb(game):
+        if not nickname and save_in_dynamodb(game):
                 return response_payload(200, {"game_uuid": game_uuid})
-        else:
-            if not isinstance(nickname, str):
-                return parameter_error_payload("nickname", nickname, message="Nickname invalid")
-            if not re.match("^[a-zA-Z]\w*$", nickname):
-                return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
-            player_uuid = str(uuid.uuid4())
-            player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0}
-            game.update({"players": [player], "admin_nickname": nickname})
-            if save_in_dynamodb(game):
-                return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player_uuid})
+
+        if not isinstance(nickname, str):
+            return parameter_error_payload("nickname", nickname, message="Nickname invalid")
+        if not re.match("^[a-zA-Z]\w*$", nickname):
+            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+        player_uuid = str(uuid.uuid4())
+        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0}
+        game.update({"players": [player], "admin_nickname": nickname})
+        if save_in_dynamodb(game):
+            return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player_uuid})
+
         raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
