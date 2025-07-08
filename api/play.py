@@ -1,15 +1,13 @@
-import uuid
-import boto3
-from boto3.dynamodb.conditions import Key
 import time
-import json
 import copy
 import decimal
 from random import sample
-from itertools import islice, product
+from shared.response import * 
+from shared.db import table, get_from_dynamodb, save_in_dynamodb
+from shared.api_gateway import parse_event
+from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, draw_cards
+from shared.inputs import is_valid_uuid
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
 
 INDEXATION_CSV = """action_id,set_type,detail_1,detail_2
 0,High card,0,
@@ -118,126 +116,11 @@ def load_indexation():
     return indexation
 
 
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def get_player_by_nickname(players, nickname):
-    filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
-        return filtered_players[0]
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
-
-
-def is_active_player(players, nickname):
-    player = get_player_by_nickname(players, nickname)
-    if player:
-        return player["n_cards"] != 0
-    return False
-
-
-def get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname):
-    revealed_hands = []
-    if game["round_number"] < current_round or current_status == "Finished":
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    elif player_authenticated and game["round_number"] == current_round:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
-    return revealed_hands
-
-
 def find_next_active_player(players, cp_nickname):
     active_players = [player for player in players if player["n_cards"] != 0 or player["nickname"] == cp_nickname]
     current_player_order = [i for i, player in enumerate(active_players) if player["nickname"] == cp_nickname][0]
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
-
-
-def draw_cards(players):
-    possible_cards = product(range(6), range(4))
-    all_cards_raw = sample(list(possible_cards), sum(int(p["n_cards"]) for p in players))
-    all_cards = [{"value": tup[0], "colour": tup[1]} for tup in all_cards_raw]
-    card_iterator = iter(all_cards)
-    hands = []
-    for player in players:
-        player_hand = list(islice(card_iterator, 0, int(player["n_cards"])))
-        hands.append({"nickname": player['nickname'], "hand": player_hand})
-    return hands
 
 
 def determine_set_existence(cards, action_id):
@@ -291,20 +174,6 @@ def determine_set_existence(cards, action_id):
 
     except Exception as err:
         raise type(err)(f"{err} \n Failed in determine_set_existence")
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
-
-
-def save_in_dynamodb(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
-    table.put_item(Item=obj)
-    return True
 
 
 def update_in_dynamodb(game_uuid, cp_nickname, history):
@@ -368,28 +237,6 @@ def handle_check(game):
     # Overwrite the game object - for simplicity (instead of elaborate update)
     if save_in_dynamodb(game):
         return end_round_game_state
-
-
-def censor_game(game, current_round, player_authenticated, player_nickname):
-    revealed_hands = get_revealed_hands(game, current_round, game["status"], player_authenticated, player_nickname)
-
-    private_players = []
-    for player in game["players"]:
-        private_players.append({key: player[key] for key in player if key != "uuid"})
-
-    return {
-        "admin_nickname": game["admin_nickname"],
-        "public": game["public"],
-        "room": game["room"],
-        "status": game["status"],
-        "round_number": game["round_number"],
-        "max_cards": game["max_cards"],
-        "players": private_players,
-        "hands": revealed_hands,
-        "cp_nickname": game["cp_nickname"],
-        "history": game["history"],
-        "last_modified": game["last_modified"]
-    }
 
 
 def lambda_handler(event, context):

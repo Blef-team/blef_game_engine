@@ -1,19 +1,11 @@
 import boto3
 import json
 import re
-import logging
-import os
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from shared.game import get_player_by_nickname
+from shared.logging import logger
 
 
 lambda_client = boto3.client('lambda')
-
-
-def get_player_by_nickname(players, nickname):
-    filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
-        return filtered_players[0]
 
 
 def get_aiagent_name(game):

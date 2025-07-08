@@ -1,19 +1,16 @@
 import os
-import uuid
 import boto3
-from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import json
-import decimal
 from random import sample
-import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 import re
+from shared.response import * 
+from shared.db import get_from_dynamodb
+from shared.api_gateway import parse_event
+from shared.game import get_nickname_by_uuid
+from shared.inputs import is_valid_uuid
+from shared.logging import logger
 
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table("games")
 
 sqs_client = boto3.client("sqs")
 REACTION_QUEUE_NAME = os.environ.get("reaction_queue_name")
@@ -49,96 +46,6 @@ def send_queue_message(message):
                                 MessageBody=json.dumps(message, cls=DecimalEncoder))
     except ClientError:
         return
-
-
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            if obj.as_tuple().exponent == 0:
-                return int(obj)
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-
-def response_payload(status_code, body):
-    return {
-            'statusCode': status_code,
-            'body': json.dumps(body, cls=DecimalEncoder),
-            'headers': {
-                'Access-Control-Allow-Headers':'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-api-key,X-Amz-Security-Token',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-                'Access-Control-Allow-Credentials': True,
-                'Content-Type': 'application/json'
-            },
-        }
-
-
-def error_payload(status_code, body):
-    return response_payload(status_code, {"error": body})
-
-
-def internal_error_payload(err, message=None):
-    body = "Internal Lambda function error: {}".format(err)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(500, body)
-
-
-def request_error_payload(request, message=None):
-    body = "Bad request payload: '{}'".format(request)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parameter_error_payload(param_key, param_value, message=None):
-    body = "Bad input value in '{}': {}".format(param_key, param_value)
-    if message:
-        body = "{}\n{}".format(body, message)
-    return error_payload(400, body)
-
-
-def parse_event(event):
-    # Basic input validation
-    if not isinstance(event, dict):
-        return False
-
-    # Handle both direct triggers and API Gateway
-    body = event.get("body", event)
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except ValueError:
-            return None
-    path_params = event.get("pathParameters", {})
-    query_params = event.get("queryStringParameters", {})
-    body.update(path_params)
-    body.update(query_params)
-    return body
-
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(str(value))
-        return True
-    except ValueError:
-        return False
-
-
-def get_nickname_by_uuid(players, player_uuid):
-    filtered_players = [p for p in players if p["uuid"] == player_uuid]
-    if filtered_players:
-        return filtered_players[0]["nickname"]
-
-
-def get_from_dynamodb(game_uuid):
-    response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
-    items = response.get("Items")
-    if len(items) == 1:
-        return items[0]
-    return None
 
 
 def lambda_handler(event, context):
