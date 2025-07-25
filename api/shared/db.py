@@ -14,7 +14,9 @@ def get_from_dynamodb(game_uuid):
         return items[0]
     return None
 
-def save_in_dynamodb(obj):
+def save_in_dynamodb(obj, game_uuid=None):
+    if game_uuid:
+        obj['game_uuid'] = game_uuid
     obj["last_modified"] = decimal.Decimal(str(time.time()))
     table.put_item(Item=obj)
     return True

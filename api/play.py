@@ -1,243 +1,213 @@
 import time
-import copy
 import decimal
-from random import sample
-from shared.response import * 
-from shared.db import table, get_from_dynamodb, save_in_dynamodb
+import os
+import boto3
+from itertools import combinations
+from shared.response import *
+from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
-from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, draw_cards
+from shared.logging import logger
+from shared.game import get_nickname_by_uuid, censor_game, find_next_active_player, end_round, start_player_timer, get_action_ids
 from shared.inputs import is_valid_uuid
 
+sqs_client = boto3.client("sqs")
+TIME_LIMIT_QUEUE_NAME = os.environ.get("time_limit_queue_name")
 
-INDEXATION_CSV = """action_id,set_type,detail_1,detail_2
-0,High card,0,
-1,High card,1,
-2,High card,2,
-3,High card,3,
-4,High card,4,
-5,High card,5,
-6,Pair,0,
-7,Pair,1,
-8,Pair,2,
-9,Pair,3,
-10,Pair,4,
-11,Pair,5,
-12,Two pairs,1,0
-13,Two pairs,2,0
-14,Two pairs,2,1
-15,Two pairs,3,0
-16,Two pairs,3,1
-17,Two pairs,3,2
-18,Two pairs,4,0
-19,Two pairs,4,1
-20,Two pairs,4,2
-21,Two pairs,4,3
-22,Two pairs,5,0
-23,Two pairs,5,1
-24,Two pairs,5,2
-25,Two pairs,5,3
-26,Two pairs,5,4
-27,Small straight,,
-28,Big straight,,
-29,Great straight,,
-30,Three of a kind,0,
-31,Three of a kind,1,
-32,Three of a kind,2,
-33,Three of a kind,3,
-34,Three of a kind,4,
-35,Three of a kind,5,
-36,Full house,0,1
-37,Full house,0,2
-38,Full house,0,3
-39,Full house,0,4
-40,Full house,0,5
-41,Full house,1,0
-42,Full house,1,2
-43,Full house,1,3
-44,Full house,1,4
-45,Full house,1,5
-46,Full house,2,0
-47,Full house,2,1
-48,Full house,2,3
-49,Full house,2,4
-50,Full house,2,5
-51,Full house,3,0
-52,Full house,3,1
-53,Full house,3,2
-54,Full house,3,4
-55,Full house,3,5
-56,Full house,4,0
-57,Full house,4,1
-58,Full house,4,2
-59,Full house,4,3
-60,Full house,4,5
-61,Full house,5,0
-62,Full house,5,1
-63,Full house,5,2
-64,Full house,5,3
-65,Full house,5,4
-66,Colour,0,
-67,Colour,1,
-68,Colour,2,
-69,Colour,3,
-70,Four of a kind,0,
-71,Four of a kind,1,
-72,Four of a kind,2,
-73,Four of a kind,3,
-74,Four of a kind,4,
-75,Four of a kind,5,
-76,Small flush,0,
-77,Small flush,1,
-78,Small flush,2,
-79,Small flush,3,
-80,Big flush,0,
-81,Big flush,1,
-82,Big flush,2,
-83,Big flush,3,
-84,Great flush,0,
-85,Great flush,1,
-86,Great flush,2,
-87,Great flush,3,"""
+def get_set_details_from_action_id(action_id, deck_size=24):
+    """
+    Determines the set type and details from the action_id and deck size.
+    """
+    action_id = int(action_id)
+    # Define base parameters based on deck size
+    if deck_size == 24:
+        vals = 6
+        straight_types = {
+            "Small straight": list(range(5)),
+            "Big straight": list(range(1, 6)),
+            "Great straight": list(range(6)),
+        }
+        flush_straight_types = straight_types
+    else:  # deck_size == 32
+        vals = 8
+        straight_types = {f"Straight {i+1}": list(range(i, i + 5)) for i in range(4)}
+        flush_straight_types = {f"Straight flush {i+1}": list(range(i, i + 5)) for i in range(4)}
 
+    # Dynamically calculate the boundaries for each set type
+    current_boundary = 0
+    boundaries = {}
+    boundaries["High card"] = current_boundary + vals
+    current_boundary = boundaries["High card"]
+    boundaries["Pair"] = current_boundary + vals
+    current_boundary = boundaries["Pair"]
+    boundaries["Two pairs"] = current_boundary + (vals * (vals - 1)) // 2
+    current_boundary = boundaries["Two pairs"]
+    boundaries["Straight"] = current_boundary + len(straight_types)
+    current_boundary = boundaries["Straight"]
+    boundaries["Three of a kind"] = current_boundary + vals
+    current_boundary = boundaries["Three of a kind"]
+    boundaries["Full house"] = current_boundary + (vals * (vals - 1))
+    current_boundary = boundaries["Full house"]
+    boundaries["Colour"] = current_boundary + 4
+    current_boundary = boundaries["Colour"]
+    boundaries["Four of a kind"] = current_boundary + vals
+    current_boundary = boundaries["Four of a kind"]
+    boundaries["Straight flush"] = current_boundary + (len(flush_straight_types) * 4)
+    current_boundary = boundaries["Straight flush"]
 
-def load_indexation():
-    header = None
-    indexation = []
-    for line in INDEXATION_CSV.split("\n"):
-        if not header:
-            header = line
-            continue
-        action_id, set_type, detail_1, detail_2 = line.split(",")
-        indexation.append({"action_id": action_id,
-                           "set_type": set_type,
-                           "detail_1": detail_1,
-                           "detail_2": detail_2
-                           })
-    return indexation
+    if action_id < boundaries["High card"]:
+        return {"set_type": "High card", "detail_1": action_id}
+    if action_id < boundaries["Pair"]:
+        return {"set_type": "Pair", "detail_1": action_id - boundaries["High card"]}
+    if action_id < boundaries["Two pairs"]:
+        offset = action_id - boundaries["Pair"]
+        pairs = list(combinations(reversed(range(vals)), 2))
+        pair_index = len(pairs) - 1 - offset
+        d1, d2 = pairs[pair_index]
+        return {"set_type": "Two pairs", "detail_1": d1, "detail_2": d2}
+    if action_id < boundaries["Straight"]:
+        offset = action_id - boundaries["Two pairs"]
+        set_name, details = list(straight_types.items())[offset]
+        return {"set_type": set_name, "details": details}
+    if action_id < boundaries["Three of a kind"]:
+        return {"set_type": "Three of a kind", "detail_1": action_id - boundaries["Straight"]}
+    if action_id < boundaries["Full house"]:
+        offset = action_id - boundaries["Three of a kind"]
+        d1 = offset // (vals - 1)
+        d2 = offset % (vals - 1)
+        if d2 >= d1: d2 += 1
+        return {"set_type": "Full house", "detail_1": d1, "detail_2": d2}
+    if action_id < boundaries["Colour"]:
+        return {"set_type": "Colour", "detail_1": action_id - boundaries["Full house"]}
+    if action_id < boundaries["Four of a kind"]:
+        return {"set_type": "Four of a kind", "detail_1": action_id - boundaries["Colour"]}
+    if action_id < boundaries["Straight flush"]:
+        offset = action_id - boundaries["Four of a kind"]
+        suit = offset % 4
+        straight_type_index = offset // 4
+        set_name, details = list(flush_straight_types.items())[straight_type_index]
+        # Rename to a generic "Straight flush" for the check logic
+        return {"set_type": "Straight flush", "detail_1": suit, "details": details}
 
+    return None # Should not be reached with a valid action_id
 
-def find_next_active_player(players, cp_nickname):
-    active_players = [player for player in players if player["n_cards"] != 0 or player["nickname"] == cp_nickname]
-    current_player_order = [i for i, player in enumerate(active_players) if player["nickname"] == cp_nickname][0]
-    next_active_player = (active_players * 2)[current_player_order + 1]
-    return next_active_player
+def check_high_card(cards, value, num_jokers):
+    return cards.count(value) + num_jokers >= 1
 
+def check_pair(cards, value, num_jokers):
+    return cards.count(value) + num_jokers >= 2
 
-def determine_set_existence(cards, action_id):
+def check_two_pairs(cards, value1, value2, num_jokers):
+    count1 = cards.count(value1)
+    jokers_for_1 = min(num_jokers, 2 - count1)
+    remaining_jokers = num_jokers - jokers_for_1
+    return count1 + jokers_for_1 >= 2 and cards.count(value2) + remaining_jokers >= 2
+
+def check_straight(cards, required_values, num_jokers):
+    for value in required_values:
+        if cards.count(value) == 0:
+            if num_jokers > 0:
+                num_jokers -= 1
+            else:
+                return False
+    return True
+
+def check_three_of_a_kind(cards, value, num_jokers):
+    return cards.count(value) + num_jokers >= 3
+
+def check_full_house(cards, value1, value2, num_jokers):
+    count1 = cards.count(value1)
+    jokers_for_3 = min(num_jokers, 3 - count1)
+    remaining_jokers = num_jokers - jokers_for_3
+    return count1 + jokers_for_3 >= 3 and cards.count(value2) + remaining_jokers >= 2
+
+def check_flush(cards_by_color, color, num_jokers):
+    return cards_by_color.get(color, 0) + num_jokers >= 5
+
+def check_four_of_a_kind(cards, value, num_jokers):
+    return cards.count(value) + num_jokers >= 4
+
+def check_straight_flush(cards_with_color, color, required_values, num_jokers):
+    for value in required_values:
+        if (value, color) not in cards_with_color:
+            if num_jokers > 0:
+                num_jokers -= 1
+            else:
+                return False
+    return True
+
+def determine_set_existence(cards, action_id, rules):
     try:
-        action_id = int(action_id)
-        indexation = load_indexation()
-        set_row = indexation[action_id]
-        set_type = set_row["set_type"]
-        detail_1 = int(set_row["detail_1"]) if set_row["detail_1"] else None
-        detail_2 = int(set_row["detail_2"]) if set_row["detail_2"] else None
-        card_values = [card["value"] for card in cards]
-        card_colours = [card["colour"] for card in cards]
+        logger.info(f"Checking action_id: {action_id}")
+        logger.info(f"Raw cards input: {cards}")
+        set_details = get_set_details_from_action_id(action_id, rules.get("deck_size", 24))
+        if not set_details:
+            logger.error("Could not get set details from action_id.")
+            return False
+        logger.info(f"Set details from action_id: {set_details}")
+
+        set_type = set_details["set_type"]
+        detail_1 = set_details.get("detail_1")
+        detail_2 = set_details.get("detail_2")
+        details = set_details.get("details")
+
+        num_jokers = sum(1 for card in cards if int(card["value"]) == -1)
+        card_values = [int(card["value"]) for card in cards if int(card["value"]) not in [-1, -2]]
+        card_colours = [int(card["colour"]) for card in cards if int(card["colour"]) not in [-1, -2]]
+        cards_with_color = [(int(c["value"]), int(c["colour"])) for c in cards if int(c["value"]) not in [-1, -2]]
+        cards_by_color = {color: card_colours.count(color) for color in set(card_colours)}
 
         if set_type == "High card":
-            return card_values.count(detail_1) >= 1
+            return check_high_card(card_values, detail_1, num_jokers)
         elif set_type == "Pair":
-            return card_values.count(detail_1) >= 2
+            return check_pair(card_values, detail_1, num_jokers)
         elif set_type == "Two pairs":
-            return card_values.count(detail_1) >= 2 and card_values.count(detail_2) >= 2
-        elif set_type == "Small straight":
-            return card_values.count(0) > 0 and card_values.count(1) > 0 and card_values.count(2) > 0 and card_values.count(3) > 0 and card_values.count(4) > 0
-        elif set_type == "Big straight":
-            return card_values.count(1) > 0 and card_values.count(2) > 0 and card_values.count(3) > 0 and card_values.count(4) > 0 and card_values.count(5) > 0
-        elif set_type == "Great straight":
-            return card_values.count(0) > 0 and card_values.count(1) > 0 and card_values.count(2) > 0 and card_values.count(3) > 0 and card_values.count(4) > 0 and card_values.count(5) > 0
+            return check_two_pairs(card_values, detail_1, detail_2, num_jokers)
+        elif "straight" in set_type.lower() and "flush" not in set_type.lower():
+            return check_straight(card_values, details, num_jokers)
         elif set_type == "Three of a kind":
-            return card_values.count(detail_1) >= 3
+            return check_three_of_a_kind(card_values, detail_1, num_jokers)
         elif set_type == "Full house":
-            return card_values.count(detail_1) >= 3 and card_values.count(detail_2) >= 2
+            return check_full_house(card_values, detail_1, detail_2, num_jokers)
         elif set_type == "Colour":
-            return card_colours.count(detail_1) >= 5
+            return check_flush(cards_by_color, detail_1, num_jokers)
         elif set_type == "Four of a kind":
-            return card_values.count(detail_1) >= 4
-        elif set_type == "Small flush":
-            relevant_values = [card["value"] for card in cards if card["colour"] == detail_1]
-            if not relevant_values:
-                return False
-            return relevant_values.count(0) > 0 and relevant_values.count(1) > 0 and relevant_values.count(2) > 0 and relevant_values.count(3) > 0 and relevant_values.count(4) > 0
-        elif set_type == "Big flush":
-            relevant_values = [card["value"] for card in cards if card["colour"] == detail_1]
-            if not relevant_values:
-                return False
-            return relevant_values.count(1) > 0 and relevant_values.count(2) > 0 and relevant_values.count(3) > 0 and relevant_values.count(4) > 0 and relevant_values.count(5) > 0
-        elif set_type == "Great flush":
-            relevant_values = [card["value"] for card in cards if card["colour"] == detail_1]
-            if not relevant_values:
-                return False
-            return relevant_values.count(0) > 0 and relevant_values.count(1) > 0 and relevant_values.count(2) > 0 and relevant_values.count(3) > 0 and relevant_values.count(4) > 0 and relevant_values.count(5) > 0
-
+            return check_four_of_a_kind(card_values, detail_1, num_jokers)
+        elif "straight flush" in set_type.lower():
+            return check_straight_flush(cards_with_color, detail_1, details, num_jokers)
         return False
-
     except Exception as err:
-        raise type(err)(f"{err} \n Failed in determine_set_existence")
-
+        print(f"Error in determine_set_existence: {err}")
+        return False
 
 def update_in_dynamodb(game_uuid, cp_nickname, history):
     table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, cp_nickname = :cp_nickname, history = :history",
+        Key={'game_uuid': game_uuid},
+        UpdateExpression="set last_modified = :t, cp_nickname = :c, history = :h",
         ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':cp_nickname': cp_nickname,
-            ':history': history
-        },
-        ReturnValues="NONE"
+            ':t': decimal.Decimal(str(time.time())),
+            ':c': cp_nickname,
+            ':h': history
+        }
     )
     return True
 
-
 def handle_check(game):
-    cp_nickname = game["cp_nickname"]
-    cards = [card for hand in game["hands"] for card in hand["hand"]]
-    set_exists = determine_set_existence(cards, game["history"][-2]["action_id"])
-    if set_exists:
-        losing_player = get_player_by_nickname(game["players"], game["history"][-1]["player"])
+    """
+    Determines the loser of a check and then calls the shared end_round function.
+    """
+    rules = game.get("rules", {})
+    all_cards = [card for hand in game["hands"] for card in hand["hand"]]
+    all_cards.extend(game.get("common_hand", []))
+
+    set_exists = determine_set_existence(all_cards, game["history"][-2]["action_id"], rules)
+
+    standard_order = rules.get("standard_order", True)
+    if (set_exists and standard_order) or (not set_exists and not standard_order):
+        losing_player_nickname = game["history"][-1]["player"]
     else:
-        losing_player = get_player_by_nickname(game["players"], game["history"][-2]["player"])
+        losing_player_nickname = game["history"][-2]["player"]
 
-    game["history"].append({"player": losing_player["nickname"], "action_id": 89})
-    game["cp_nickname"] = None
-    end_round_game_state = copy.deepcopy(game)
-
-    game_uuid = game["game_uuid"]
-    # Store the last round separately
-    game["game_uuid"] += "_" + str(int(game['round_number']))
-    if not save_in_dynamodb(game):
-        raise Exception("Can't save game data")
-    game["game_uuid"] = game_uuid
-
-    losing_player["n_cards"] += 1
-    # If a player surpasses max cards, make them inactive (set their n_cards to 0) and either finish the game or set up next round
-    if losing_player["n_cards"] > game["max_cards"]:
-        losing_player["n_cards"] = 0
-        # Check if game is finished
-        if sum(p["n_cards"] > 0 for p in game["players"]) == 1:
-            game["status"] = "Finished"
-        else:
-            # If the checking player was eliminated, figure out the next player
-            # Otherwise the current player doesn't change
-            if losing_player["nickname"] == cp_nickname:
-                game["cp_nickname"] = find_next_active_player(game["players"], cp_nickname)["nickname"]
-            else:
-                game["cp_nickname"] = cp_nickname
-    else:
-        # If no one is kicked out, picking the next player is easier
-        game["cp_nickname"] = losing_player["nickname"]
-
-    game["round_number"] += 1
-    game["history"] = []
-    game["hands"] = draw_cards(game["players"])
-
-    # Overwrite the game object - for simplicity (instead of elaborate update)
-    if save_in_dynamodb(game):
-        return end_round_game_state
-
+    return end_round(game, losing_player_nickname)
 
 def lambda_handler(event, context):
     try:
@@ -247,64 +217,57 @@ def lambda_handler(event, context):
 
         game_uuid = str(body.get("game_uuid"))
         if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
+            return parameter_error_payload("game_uuid", game_uuid, "Invalid game UUID")
 
         game = get_from_dynamodb(game_uuid)
         if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-        current_status = game.get("status")
-
-        if current_status == "Not started":
-            return error_payload(400, "This game has not yet started")
-        if current_status == "Finished":
-            return error_payload(400, "This game has already finished")
+            return parameter_error_payload("game_uuid", game_uuid, "Game does not exist")
+        if game.get("status") != "Running":
+            return error_payload(400, "This game is not currently running")
 
         player_uuid = str(body.get("player_uuid"))
-        if not player_uuid:
-            return parameter_error_payload("player_uuid", player_uuid, message="Player UUID missing - please supply it")
-        if not is_valid_uuid(player_uuid):
-            return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
-
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
-        is_current_player = player_nickname == game["cp_nickname"]
-        if player_uuid and not player_authenticated:
-            return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-        if not is_current_player:
-            return parameter_error_payload("player_uuid", player_uuid, message="The submitted UUID does not match the UUID of the current player")
+        if not player_nickname or player_nickname != game["cp_nickname"]:
+            return parameter_error_payload("player_uuid", player_uuid, "Not your turn or invalid player UUID")
 
         action_id = body.get("action_id")
-
-        if not action_id:
-            parameter_error_payload("action_id", action_id, message="Action ID missing - please supply it")
-        if isinstance(action_id, str) and action_id.isdigit():
+        try:
             action_id = int(action_id)
-        elif isinstance(action_id, int):
-            pass
-        else:
-            return parameter_error_payload("action_id", action_id)
+        except (ValueError, TypeError):
+            return parameter_error_payload("action_id", action_id, "Action ID must be an integer")
 
-        if action_id < 0 or action_id > 88:
-            return parameter_error_payload("action_id", action_id, message="Action ID must be an integer between 0 and 88")
-        elif not game["history"] and action_id == 88 or game["history"] and action_id <= game["history"][-1]["action_id"]:
-            return error_payload(400, "This action not allowed right now")
+        rules = game.get("rules", {})
+        action_ids = get_action_ids(rules)
+        check_action = action_ids["check"]
+        standard_order = rules.get("standard_order", True)
+
+        if not (0 <= action_id <= check_action):
+            return parameter_error_payload("action_id", action_id, f"Action ID must be between 0 and {check_action}")
+
+        last_action_id = game["history"][-1]["action_id"] if game.get("history") else -1
+
+        if action_id == check_action:
+            if last_action_id == -1:
+                return error_payload(400, "Cannot check as the first action of a round.")
+        elif standard_order:
+            if action_id <= last_action_id:
+                return error_payload(400, "Action must be of a higher rank")
+        else:
+            if action_id >= last_action_id and last_action_id != -1:
+                 return error_payload(400, "Action must be of a lower rank")
 
         game["history"].append({"player": player_nickname, "action_id": action_id})
 
-        if action_id != 88:
+        if action_id != check_action:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
-            if update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"]):
-                visible_game = censor_game(game, game["round_number"], player_authenticated, player_nickname)
-                return response_payload(200, visible_game)
-            raise Exception("Something went wrong - could not update game data")
+            update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"])
+            start_player_timer(game)
+            return response_payload(200, censor_game(game, game["round_number"], True, player_nickname))
 
-        if action_id == 88:
+        else:
             end_round_game_state = handle_check(game)
-            visible_game = censor_game(end_round_game_state, game["round_number"], player_authenticated, player_nickname)
+            visible_game = censor_game(end_round_game_state, end_round_game_state["round_number"] + 1, True, player_nickname)
             return response_payload(200, visible_game)
-
-        raise(Exception("Something went wrong - ended up with no response"))
 
     except Exception as err:
         return internal_error_payload(err)

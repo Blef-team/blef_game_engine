@@ -12,7 +12,7 @@ This repository contains the code to run the Blef game engine API service.
 
  * [Blef AI](https://github.com/Blef-team/blef_ai)
 
-## The rules of the game
+## The standard rules of the game
 
 *Blef* is a Polish* card game inspired by Poker. In the game, each player has a certain number of playing cards between 9 and Ace, each card only known to its owner, and players have to make guesses about other players' cards.
 

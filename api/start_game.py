@@ -1,64 +1,8 @@
-import time
-from math import floor
-from random import shuffle, choice
-import decimal
-from shared.response import * 
-from shared.db import table, get_from_dynamodb
+from shared.response import *
+from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
-from shared.game import draw_cards
-
-
-def arrange_players(players):
-    """
-        Order the human and AI players
-        for optimal gameplay
-    """
-    num_total = len(players)
-    num_ais = sum(1 for p in players if p.get("ai_agent"))
-    offset = choice(range(num_total))
-
-    ai_positions_from_zero = [floor(i * num_total / num_ais) for i in range(num_ais)]
-    ai_positions = [(i + offset) % num_total for i in ai_positions_from_zero]
-    ai_players = [p for p in players if p.get("ai_agent")]
-
-    human_players = [p for p in players if not p.get("ai_agent")]
-    shuffle(human_players)
-
-    players = []
-
-    for i in range(num_total):
-        if i in ai_positions and ai_players:
-            players.append(ai_players.pop(0))
-        elif human_players:
-            players.append(human_players.pop(0))
-
-    return players
-
-
-def update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, cp_nickname = :cp_nickname",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':players': players,
-            ':public': public,
-            ':status': status,
-            ':round_number': round_number,
-            ':max_cards': max_cards,
-            ':hands': hands,
-            ':cp_nickname': cp_nickname
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public",
-            '#game_status': "status"
-        },
-        ReturnValues="NONE"
-    )
-    return True
+from shared.game import start_game
 
 
 def lambda_handler(event, context):
@@ -95,22 +39,7 @@ def lambda_handler(event, context):
         if n_players < 2:
             return error_payload(403, "At least 2 players needed to start a game")
 
-        public = "false"
-        status = "Running"
-        round_number = 1
-        max_cards = 11
-        if n_players > 2:
-            max_cards = floor(24 / n_players)
-
-        for player in players:
-            player["n_cards"] = 1
-        players = arrange_players(players)
-
-        hands = draw_cards(players)
-
-        cp_nickname = players[0]["nickname"]
-
-        update_in_dynamodb(game_uuid, public, status, round_number, max_cards, players, hands, cp_nickname)
+        start_game(game)
 
         return response_payload(202, {"message": "Game started"})
 

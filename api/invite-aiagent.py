@@ -3,7 +3,7 @@ import time
 import json
 import uuid
 import decimal
-from shared.response import * 
+from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
@@ -13,6 +13,9 @@ AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
 
 
 def update_in_dynamodb(game_uuid, players):
+    # # Unset readiness for all human players after AI joins - too annoying for now when people mostly play with friends or try to learn the game
+    # players = unset_human_readiness(players)
+
     table.update_item(
         Key={
             'game_uuid': game_uuid
@@ -88,7 +91,8 @@ def lambda_handler(event, context):
             "uuid": player_uuid,
             "nickname": nickname,
             "n_cards": 0,
-            "ai_agent": agent_type
+            "ai_agent": agent_type,
+            "ready": True
             }
         players.append(player)
 

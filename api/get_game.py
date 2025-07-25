@@ -1,28 +1,8 @@
-import time
-import decimal
-from shared.response import * 
-from shared.db import table, get_from_dynamodb
+from shared.response import *
+from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.game import get_nickname_by_uuid, get_revealed_hands
 from shared.inputs import is_valid_uuid
-
-
-def update_in_dynamodb(game_uuid, public):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set last_modified = :last_modified, #game_public = :public",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':public': public
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public"
-        },
-        ReturnValues="NONE"
-    )
-    return True
 
 
 def lambda_handler(event, context):
@@ -91,9 +71,11 @@ def lambda_handler(event, context):
             "max_cards": game["max_cards"],
             "players": private_players,
             "hands": revealed_hands,
+            "common_hand": game.get("common_hand", []),
             "cp_nickname": game["cp_nickname"],
             "history": game["history"],
-            "last_modified": game["last_modified"]
+            "last_modified": game["last_modified"],
+            "rules": game.get("rules", {})
         }
 
         return response_payload(200, visible_game)

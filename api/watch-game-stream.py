@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 import json
 from shared.response import * 
 from shared.api_gateway import parse_event
-from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game
+from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, get_action_ids, is_game_about_to_finish
 from shared.logging import logger
 from shared.db import websocket_table
 
@@ -109,7 +109,9 @@ def update_game_watchers(game):
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         player_authenticated = bool(player_nickname)
-        current_round = game["round_number"] + 1 if any(str(val["action_id"])=="89" for val in game.get("history")) else game["round_number"]
+        action_ids = get_action_ids(game.get("rules", {}))
+        is_end_of_round = any(str(val.get("action_id")) == str(action_ids["lose_round"]) for val in game.get("history", []))
+        current_round = game["round_number"] + 1 if is_end_of_round else game["round_number"]
         visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
         post_to_connection(visible_game, connection_id)
 
@@ -164,6 +166,19 @@ def lambda_handler(event, context):
         for game in games:
             logger.info('## GAME')
             logger.info(game)
+
+            # If it's a timed game, it's the EOR state and the game isn't about to finish, skip update
+            # That's because this state will cause a flicker at best (fraction of a second before the 'waiting state') or glitching UI at worst
+            new_game_state = game.get("new", {})
+            if not new_game_state:
+                continue
+            is_snapshot = "_" in new_game_state.get("game_uuid", "")
+            is_timed_game = new_game_state.get("rules", {}).get("time_limit", 0) > 0
+            if is_snapshot and is_timed_game:
+                if not is_game_about_to_finish(new_game_state):
+                    logger.info('## SKIPPING EOR SNAPSHOT BROADCAST FOR TIMED GAME (NOT FINISHING)')
+                    continue
+
             logger.info('## UPDATING WATCHERS')
             update_watchers(game)
             logger.info('## QUEUEING AI IF NEEDED')

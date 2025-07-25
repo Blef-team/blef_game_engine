@@ -2,13 +2,16 @@ import uuid
 import time
 import re
 import decimal
-from shared.response import * 
+from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 
 
 def update_in_dynamodb(game_uuid, players, admin_nickname):
+    # # Unset readiness for all human players after any join - too annoying for now when people mostly play with friends or try to learn the game
+    # players = unset_human_readiness(players)
+
     table.update_item(
         Key={
             'game_uuid': game_uuid
@@ -57,7 +60,7 @@ def lambda_handler(event, context):
             return parameter_error_payload("nickname", nickname, message="Nickname already taken")
 
         player_uuid = str(uuid.uuid4())
-        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0}
+        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False}
         players.append(player)
 
         admin_nickname = game.get("admin_nickname")
