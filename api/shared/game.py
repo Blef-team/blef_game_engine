@@ -64,7 +64,8 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
 def calculate_common_cards(players, rules):
     common_cards_rule = int(rules.get("common_cards", 0))
     if common_cards_rule == -1:
-        return min(int(p.get("n_cards", 1)) for p in players)
+        player_cards = [int(p.get("n_cards")) for p in players]
+        return min(n for n in player_cards if n>0)
     else:
         return common_cards_rule
 
