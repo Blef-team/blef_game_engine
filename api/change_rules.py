@@ -63,19 +63,12 @@ def lambda_handler(event, context):
             if rule not in rules:
                 continue
 
-            # Type conversion for numeric and boolean rules
+            # Type conversion for numeric rules
             if rule in ["time_limit", "deck_size", "common_cards", "jokers", "blanks"]:
                 try:
                     value = int(value)
                 except (ValueError, TypeError):
                      return parameter_error_payload(rule, value, "Rule must be an integer.")
-            elif rule == "standard_order":
-                if value == 'True':
-                    value = True
-                elif value == 'False':
-                    value = False
-                else:
-                    return parameter_error_payload(rule, value, "Standard order must be a boolean string ('True' or 'False').")
 
             # Validation logic
             if rule == "time_limit":

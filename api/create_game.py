@@ -30,8 +30,7 @@ def lambda_handler(event, context):
                 "deck_size": 24,
                 "common_cards": 0,
                 "jokers": 0,
-                "blanks": 0,
-                "standard_order": True
+                "blanks": 0
             }
         }
 

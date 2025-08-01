@@ -129,7 +129,6 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
     * `common_cards`: integer (0-12)
     * `jokers`: integer (0-12)
     * `blanks`: integer (0-12)
-    * `standard_order`: boolean
 
 * **Sample Call:**
 
@@ -401,7 +400,7 @@ Action IDs are determined dynamically based on the `deck_size` rule.
 * **24-Card Deck:** `action_id` ranges from 0 to 87 for bets. **88 is a check.**
 * **32-Card Deck:** `action_id` ranges from 0 to 139 for bets. **140 is a check.**
 
-The seniority of bets is calculated programmatically. A higher `action_id` represents betting on a more senior set. However, if the betting order is reversed, players can only bet on less senior sets (or check, if applicable).
+A higher `action_id` represents betting on a more senior set.
 
 | Action ID | Set description                      |
 |-----------|--------------------------------------|

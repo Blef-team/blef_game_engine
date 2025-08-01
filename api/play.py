@@ -201,8 +201,7 @@ def handle_check(game):
 
     set_exists = determine_set_existence(all_cards, game["history"][-2]["action_id"], rules)
 
-    standard_order = rules.get("standard_order", True)
-    if (set_exists and standard_order) or (not set_exists and not standard_order):
+    if set_exists:
         losing_player_nickname = game["history"][-1]["player"]
     else:
         losing_player_nickname = game["history"][-2]["player"]
@@ -239,7 +238,6 @@ def lambda_handler(event, context):
         rules = game.get("rules", {})
         action_ids = get_action_ids(rules)
         check_action = action_ids["check"]
-        standard_order = rules.get("standard_order", True)
 
         if not (0 <= action_id <= check_action):
             return parameter_error_payload("action_id", action_id, f"Action ID must be between 0 and {check_action}")
@@ -249,12 +247,8 @@ def lambda_handler(event, context):
         if action_id == check_action:
             if last_action_id == -1:
                 return error_payload(400, "Cannot check as the first action of a round.")
-        elif standard_order:
-            if action_id <= last_action_id:
-                return error_payload(400, "Action must be of a higher rank")
-        else:
-            if action_id >= last_action_id and last_action_id != -1:
-                 return error_payload(400, "Action must be of a lower rank")
+        elif action_id <= last_action_id:
+            return error_payload(400, "Action must be of a higher rank")
 
         game["history"].append({"player": player_nickname, "action_id": action_id})
 

@@ -322,8 +322,7 @@ def are_rules_unsupported_by_ai(rules):
         int(rules.get("deck_size", 24)) != 24 or
         int(rules.get("common_cards", 0)) != 0 or
         int(rules.get("jokers", 0)) != 0 or
-        int(rules.get("blanks", 0)) != 0 or
-        not rules.get("standard_order", True)
+        int(rules.get("blanks", 0)) != 0
     )
 
 def update_ai_readiness(players, rules):
