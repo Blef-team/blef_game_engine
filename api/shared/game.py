@@ -61,12 +61,19 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
         "rules": game.get("rules", {})
     }
 
+def get_common_cards_rate_by_id(rule):
+    if rule == -2:
+        return 1/5
+    if rule == -1:
+        return 1/3
+    return False
+
 def calculate_common_cards(players, rules):
     common_cards_rule = int(rules.get("common_cards", 0))
     if common_cards_rule in (-1, -2):
-        player_hand_sizes = [int(p.get("n_cards")) for p in players]
-        smallest_hand_size = min(n for n in player_hand_sizes if n>0)
-        return int((smallest_hand_size+1)/2) if common_cards_rule == -2 else smallest_hand_size
+        extra_cards_per_hand = [hs-1 for hs in [int(p.get("n_cards")) for p in players] if hs>0]
+        rate = get_common_cards_rate_by_id(common_cards_rule)
+        return int(1 + sum(extra_cards_per_hand) * rate)
     else:
         return common_cards_rule
 
@@ -148,17 +155,20 @@ def start_game(game):
     players = game["players"]
     rules = game.get("rules", {})
     n_players = len(players)
-    deck_size = rules.get("deck_size", 24)
+    deck_size = int(rules.get("deck_size", 24))
     common_cards_rule = int(rules.get("common_cards", 0))
 
     for player in players:
         player["n_cards"] = 1
 
-    num_common_cards = calculate_common_cards(players, rules)
-
-    numerator = deck_size - num_common_cards if common_cards_rule > 0 else deck_size
-    denominator = n_players + 1 if common_cards_rule in (-1, -2) else n_players
-    max_cards = floor(numerator / denominator)
+    # Max cards calculation: maximum cards that can be dealt accounting for the common cards rule but excluding jokers and blanks
+    # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
+    # x*n*(1+rate) < deck_size + (n*rate)  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
+    if common_cards_rule in (-1, -2):
+        rate = get_common_cards_rate_by_id(common_cards_rule)
+        max_cards = int((deck_size + n_players * rate) / (n_players * (1 + rate)) - 0.001)
+    else:
+        max_cards = int((deck_size - common_cards_rule) / n_players)
     if max_cards > 11: max_cards = 11
 
     public = "false"
