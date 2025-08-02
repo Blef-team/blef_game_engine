@@ -103,13 +103,12 @@ def check_two_pairs(cards, value1, value2, num_jokers):
     return count1 + jokers_for_1 >= 2 and cards.count(value2) + remaining_jokers >= 2
 
 def check_straight(cards, required_values, num_jokers):
+    unique_cards = set(cards)
+    missing_cards = 0
     for value in required_values:
-        if cards.count(value) == 0:
-            if num_jokers > 0:
-                num_jokers -= 1
-            else:
-                return False
-    return True
+        if value not in unique_cards:
+            missing_cards += 1
+    return missing_cards <= num_jokers
 
 def check_three_of_a_kind(cards, value, num_jokers):
     return cards.count(value) + num_jokers >= 3
@@ -127,18 +126,18 @@ def check_four_of_a_kind(cards, value, num_jokers):
     return cards.count(value) + num_jokers >= 4
 
 def check_straight_flush(cards_with_color, color, required_values, num_jokers):
+    card_set = set(cards_with_color)
+    missing_cards = 0
     for value in required_values:
-        if (value, color) not in cards_with_color:
-            if num_jokers > 0:
-                num_jokers -= 1
-            else:
-                return False
-    return True
+        if (value, color) not in card_set:
+            missing_cards += 1
+    return missing_cards <= num_jokers
 
-def determine_set_existence(cards, action_id, rules):
+def determine_set_existence(all_cards, action_id, rules, num_jokers):
+    """
+    Checks if a given set exists within a list of cards, using a specified number of jokers.
+    """
     try:
-        logger.info(f"Checking action_id: {action_id}")
-        logger.info(f"Raw cards input: {cards}")
         set_details = get_set_details_from_action_id(action_id, rules.get("deck_size", 24))
         if not set_details:
             logger.error("Could not get set details from action_id.")
@@ -150,10 +149,9 @@ def determine_set_existence(cards, action_id, rules):
         detail_2 = set_details.get("detail_2")
         details = set_details.get("details")
 
-        num_jokers = sum(1 for card in cards if int(card["value"]) == -1)
-        card_values = [int(card["value"]) for card in cards if int(card["value"]) not in [-1, -2]]
-        card_colours = [int(card["colour"]) for card in cards if int(card["colour"]) not in [-1, -2]]
-        cards_with_color = [(int(c["value"]), int(c["colour"])) for c in cards if int(c["value"]) not in [-1, -2]]
+        card_values = [int(card["value"]) for card in all_cards if int(card["value"]) not in [-1, -2]]
+        card_colours = [int(card["colour"]) for card in all_cards if int(card["colour"]) not in [-1, -2]]
+        cards_with_color = [(int(c["value"]), int(c["colour"])) for c in all_cards if int(c["value"]) not in [-1, -2]]
         cards_by_color = {color: card_colours.count(color) for color in set(card_colours)}
 
         if set_type == "High card":
@@ -193,18 +191,31 @@ def update_in_dynamodb(game_uuid, cp_nickname, history):
 
 def handle_check(game):
     """
-    Determines the loser of a check and then calls the shared end_round function.
+    Gathers all necessary data and calls the determine_set_existence and end_round functions.
     """
     rules = game.get("rules", {})
-    all_cards = [card for hand in game["hands"] for card in hand["hand"]]
+    history = game.get("history", [])
+    
+    # Identify the player who made the bet that is being checked
+    better_nickname = history[-2]["player"]
+    action_id_being_checked = history[-2]["action_id"]
+
+    # Gather all cards from all players and the common hand
+    all_cards = [card for hand in game.get("hands", []) for card in hand.get("hand", [])]
     all_cards.extend(game.get("common_hand", []))
+    
+    # Calculate the number of usable jokers based on the new rule
+    better_hand_obj = next((hand for hand in game.get("hands", []) if hand.get("nickname") == better_nickname), None)
+    better_hand = better_hand_obj.get("hand", []) if better_hand_obj else []
+    common_hand = game.get("common_hand", [])
+    
+    num_jokers = sum(1 for card in better_hand if int(card.get("value")) == -1)
+    num_jokers += sum(1 for card in common_hand if int(card.get("value")) == -1)
 
-    set_exists = determine_set_existence(all_cards, game["history"][-2]["action_id"], rules)
+    # Call the pure evaluation function
+    set_exists = determine_set_existence(all_cards, action_id_being_checked, rules, num_jokers)
 
-    if set_exists:
-        losing_player_nickname = game["history"][-1]["player"]
-    else:
-        losing_player_nickname = game["history"][-2]["player"]
+    losing_player_nickname = history[-1]["player"] if set_exists else better_nickname
 
     return end_round(game, losing_player_nickname)
 
