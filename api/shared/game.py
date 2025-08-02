@@ -63,12 +63,12 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
 
 def calculate_common_cards(players, rules):
     common_cards_rule = int(rules.get("common_cards", 0))
-    if common_cards_rule == -1:
-        player_cards = [int(p.get("n_cards")) for p in players]
-        return min(n for n in player_cards if n>0)
+    if common_cards_rule in (-1, -2):
+        player_hand_sizes = [int(p.get("n_cards")) for p in players]
+        smallest_hand_size = min(n for n in player_hand_sizes if n>0)
+        return int((smallest_hand_size+1)/2) if common_cards_rule == -2 else smallest_hand_size
     else:
         return common_cards_rule
-
 
 def draw_cards(players, rules):
     """
@@ -157,7 +157,7 @@ def start_game(game):
     num_common_cards = calculate_common_cards(players, rules)
 
     numerator = deck_size - num_common_cards if common_cards_rule > 0 else deck_size
-    denominator = n_players + 1 if common_cards_rule == -1 else n_players
+    denominator = n_players + 1 if common_cards_rule in (-1, -2) else n_players
     max_cards = floor(numerator / denominator)
     if max_cards > 11: max_cards = 11
 

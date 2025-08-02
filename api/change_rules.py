@@ -78,7 +78,7 @@ def lambda_handler(event, context):
                 if value not in [24, 32]:
                     return parameter_error_payload(rule, value, "Deck size must be 24 or 32")
             elif rule == "common_cards":
-                if not (-1 <= value <= 12):
+                if not (-2 <= value <= 12):
                     return parameter_error_payload(rule, value, "Common cards must be an integer between 0 and 12")
             elif rule in ["jokers", "blanks"]:
                 if not (0 <= value <= 12):
