@@ -58,7 +58,9 @@ def censor_game(game, current_round, player_authenticated, player_nickname):
         "cp_nickname": game["cp_nickname"],
         "history": game["history"],
         "last_modified": game["last_modified"],
-        "rules": game.get("rules", {})
+        "rules": game.get("rules", {}),
+        "move_deadline": game.get("move_deadline"),
+        "update_time": time.time()
     }
 
 def get_common_cards_rate_by_id(rule):
@@ -131,7 +133,10 @@ def arrange_players(players):
     return final_players
 
 def start_player_timer(game):
-    """Checks for a time limit and sends an SQS message if active."""
+    """
+    Checks for a time limit, sends an SQS message if active,
+    and returns the calculated move deadline.
+    """
     rules = game.get("rules", {})
     time_limit = int(rules.get("time_limit", 0))
     logger.info(f"## Checking for game {game.get('game_uuid')}")
@@ -141,7 +146,6 @@ def start_player_timer(game):
         player_to_time = get_player_by_nickname(game.get("players", []), game.get("cp_nickname"))
         if player_to_time:
             history_len = len(game.get("history", []))
-            logger.info(f"START_PLAYER_TIMER: Scheduling timeout for {player_to_time['nickname']} with history length {history_len}")
             send_time_limit_message(
                 game["game_uuid"],
                 player_to_time["uuid"],
@@ -149,6 +153,8 @@ def start_player_timer(game):
                 time_limit,
                 history_len
             )
+            return decimal.Decimal(str(time.time() + time_limit))
+    return None
 
 def calculate_max_cards(n_players, rules):
     deck_size = int(rules.get("deck_size", 24))
@@ -158,7 +164,7 @@ def calculate_max_cards(n_players, rules):
     # Max cards calculation: maximum cards that can be dealt accounting for the common cards rule and number of players
     # For nicer gameplay, jokers decrease max cards acting as if the deck was smaller, by 4 cards for the first joker and 2 for each next joker
     # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
-    # x*n*(1+rate) < deck_size + (n*rate)  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
+    # x*n*(1+rate) < deck_size + n*rate  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
     pretend_deck_size = deck_size
     if n_jokers > 0:
         pretend_deck_size -= (2 + 2 * n_jokers)
@@ -186,9 +192,13 @@ def start_game(game):
     hands, common_hand = draw_cards(players, rules)
     cp_nickname = players[0]["nickname"]
 
+    game['round_number'] = round_number
+    game['cp_nickname'] = cp_nickname
+    move_deadline = start_player_timer(game)
+
     table.update_item(
         Key={'game_uuid': game_uuid},
-        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname",
+        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
         ExpressionAttributeValues={
             ':last_modified': decimal.Decimal(str(time.time())),
             ':players': players,
@@ -198,17 +208,14 @@ def start_game(game):
             ':max_cards': max_cards,
             ':hands': hands,
             ':common_hand': common_hand,
-            ':cp_nickname': cp_nickname
+            ':cp_nickname': cp_nickname,
+            ':move_deadline': move_deadline
         },
         ExpressionAttributeNames={
             '#game_public': "public",
             '#game_status': "status"
         }
     )
-
-    game['round_number'] = round_number
-    game['cp_nickname'] = cp_nickname
-    start_player_timer(game)
     return True
 
 def start_next_round(game):
@@ -243,9 +250,10 @@ def start_next_round(game):
     game["round_number"] += 1
     game["history"] = []
     game["hands"], game["common_hand"] = draw_cards(game["players"], game.get("rules", {}))
-    save_in_dynamodb(game)
     
-    start_player_timer(game)
+    game["move_deadline"] = start_player_timer(game)
+    
+    save_in_dynamodb(game)
     return True
 
 def get_action_ids(rules):
@@ -265,6 +273,7 @@ def end_round(game, losing_player_nickname):
     action_ids = get_action_ids(game.get("rules", {}))
     game["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
     game["cp_nickname"] = None
+    game["move_deadline"] = None
     end_of_round_state = copy.deepcopy(game)
     save_in_dynamodb(end_of_round_state, f"{end_of_round_state['game_uuid']}_{int(end_of_round_state['round_number'])}")
 

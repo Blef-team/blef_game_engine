@@ -1,7 +1,7 @@
 from shared.response import *
 from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
-from shared.game import get_nickname_by_uuid, get_revealed_hands
+from shared.game import get_nickname_by_uuid, censor_game
 from shared.inputs import is_valid_uuid
 
 
@@ -26,26 +26,26 @@ def lambda_handler(event, context):
         if player_uuid and not is_valid_uuid(player_uuid):
             return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
 
-        round = body.get("round")
+        round_param = body.get("round")
 
-        if round:
-            if isinstance(round, str) and round.isdigit():
-                round = int(round)
-            elif isinstance(round, int):
+        if round_param:
+            if isinstance(round_param, str) and round_param.isdigit():
+                round_param = int(round_param)
+            elif isinstance(round_param, int):
                 pass
             else:
-                return parameter_error_payload("round", round)
+                return parameter_error_payload("round", round_param)
 
-        if round and round <= 0:
-            return parameter_error_payload("round", round, message="The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank")
+        if round_param and round_param <= 0:
+            return parameter_error_payload("round", round_param, message="The round parameter is invalid - must be an integer between 1 and the current round, or -1, or blank")
         current_round = game["round_number"]
-        if round and current_round < round:
-            return parameter_error_payload("round", round, message="The game has not reached this round")
+        if round_param and current_round < round_param:
+            return parameter_error_payload("round", round_param, message="The game has not reached this round")
 
-        if round and (round != current_round or current_status != "Running"):
-            game = get_from_dynamodb(f"{game_uuid}_{round}")
+        if round_param and (round_param != current_round or current_status != "Running"):
+            game = get_from_dynamodb(f"{game_uuid}_{round_param}")
         else:
-            round = current_round
+            round_param = current_round
 
         if player_uuid:
             player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
@@ -56,27 +56,7 @@ def lambda_handler(event, context):
             player_authenticated = False
             player_nickname = ''
 
-        revealed_hands = get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname)
-
-        private_players = []
-        for player in game["players"]:
-            private_players.append({key: player[key] for key in player if key != "uuid"})
-
-        visible_game = {
-            "admin_nickname": game["admin_nickname"],
-            "public": game["public"],
-            "room": game["room"],
-            "status": game["status"],
-            "round_number": game["round_number"],
-            "max_cards": game["max_cards"],
-            "players": private_players,
-            "hands": revealed_hands,
-            "common_hand": game.get("common_hand", []),
-            "cp_nickname": game["cp_nickname"],
-            "history": game["history"],
-            "last_modified": game["last_modified"],
-            "rules": game.get("rules", {})
-        }
+        visible_game = censor_game(game, round_param, player_authenticated, player_nickname)
 
         return response_payload(200, visible_game)
 

@@ -175,14 +175,15 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
         print(f"Error in determine_set_existence: {err}")
         return False
 
-def update_in_dynamodb(game_uuid, cp_nickname, history):
+def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline):
     table.update_item(
         Key={'game_uuid': game_uuid},
-        UpdateExpression="set last_modified = :t, cp_nickname = :c, history = :h",
+        UpdateExpression="set last_modified = :t, cp_nickname = :c, history = :h, move_deadline = :d",
         ExpressionAttributeValues={
             ':t': decimal.Decimal(str(time.time())),
             ':c': cp_nickname,
-            ':h': history
+            ':h': history,
+            ':d': move_deadline
         }
     )
     return True
@@ -262,8 +263,8 @@ def lambda_handler(event, context):
 
         if action_id != check_action:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
-            update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"])
-            start_player_timer(game)
+            game["move_deadline"] = start_player_timer(game)
+            update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"], game["move_deadline"])
             return response_payload(200, censor_game(game, game["round_number"], True, player_nickname))
 
         else:
