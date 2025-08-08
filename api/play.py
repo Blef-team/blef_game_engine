@@ -265,11 +265,11 @@ def lambda_handler(event, context):
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             game["move_deadline"] = start_player_timer(game)
             update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"], game["move_deadline"])
-            return response_payload(200, censor_game(game, game["round_number"], True, player_nickname))
+            return response_payload(200, censor_game(game, game["round_number"], player_nickname))
 
         else:
             end_round_game_state = handle_check(game)
-            visible_game = censor_game(end_round_game_state, end_round_game_state["round_number"] + 1, True, player_nickname)
+            visible_game = censor_game(end_round_game_state, end_round_game_state["round_number"] + 1, player_nickname)
             return response_payload(200, visible_game)
 
     except Exception as err:

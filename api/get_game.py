@@ -47,16 +47,13 @@ def lambda_handler(event, context):
         else:
             round_param = current_round
 
+        player_nickname = None
         if player_uuid:
             player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-            player_authenticated = bool(player_nickname)
-            if not player_authenticated:
+            if not player_nickname:
                 return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
-        else:
-            player_authenticated = False
-            player_nickname = ''
 
-        visible_game = censor_game(game, round_param, player_authenticated, player_nickname)
+        visible_game = censor_game(game, round_param, player_nickname)
 
         return response_payload(200, visible_game)
 

@@ -30,18 +30,14 @@ def find_next_active_player(players, cp_nickname):
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
 
-def get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname):
+def censor_game(game, current_round, player_nickname):
     revealed_hands = []
-    if current_status == "Finished":
+    if game["status"] == "Finished":
         revealed_hands = game["hands"]
-    elif game["round_number"] < current_round or current_status == "Waiting for ready":
+    elif game["round_number"] < current_round or game["status"] == "Waiting for ready":
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    elif player_authenticated and game["round_number"] == current_round:
+    elif player_nickname and game["round_number"] == current_round:
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
-    return revealed_hands
-
-def censor_game(game, current_round, player_authenticated, player_nickname):
-    revealed_hands = get_revealed_hands(game, current_round, game["status"], player_authenticated, player_nickname)
 
     private_players = []
     for player in game["players"]:

@@ -108,11 +108,10 @@ def update_game_watchers(game):
     logger.info(connected_players)
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
         action_ids = get_action_ids(game.get("rules", {}))
         is_end_of_round = any(str(val.get("action_id")) == str(action_ids["lose_round"]) for val in game.get("history", []))
         current_round = game["round_number"] + 1 if is_end_of_round else game["round_number"]
-        visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
+        visible_game = censor_game(game, current_round, player_nickname)
         post_to_connection(visible_game, connection_id)
 
 
