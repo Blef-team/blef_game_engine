@@ -32,7 +32,9 @@ def find_next_active_player(players, cp_nickname):
 
 def get_revealed_hands(game, current_round, current_status, player_authenticated, player_nickname):
     revealed_hands = []
-    if game["round_number"] < current_round or current_status in ["Finished", "Waiting for ready"]:
+    if current_status == "Finished":
+        revealed_hands = game["hands"]
+    elif game["round_number"] < current_round or current_status == "Waiting for ready":
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
     elif player_authenticated and game["round_number"] == current_round:
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
