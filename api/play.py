@@ -47,8 +47,8 @@ def get_set_details_from_action_id(action_id, deck_size=24):
     current_boundary = boundaries["Three of a kind"]
     boundaries["Full house"] = current_boundary + (vals * (vals - 1))
     current_boundary = boundaries["Full house"]
-    boundaries["Colour"] = current_boundary + 4
-    current_boundary = boundaries["Colour"]
+    boundaries["Flush"] = current_boundary + 4
+    current_boundary = boundaries["Flush"]
     boundaries["Four of a kind"] = current_boundary + vals
     current_boundary = boundaries["Four of a kind"]
     boundaries["Straight flush"] = current_boundary + (len(flush_straight_types) * 4)
@@ -76,10 +76,10 @@ def get_set_details_from_action_id(action_id, deck_size=24):
         d2 = offset % (vals - 1)
         if d2 >= d1: d2 += 1
         return {"set_type": "Full house", "detail_1": d1, "detail_2": d2}
-    if action_id < boundaries["Colour"]:
-        return {"set_type": "Colour", "detail_1": action_id - boundaries["Full house"]}
+    if action_id < boundaries["Flush"]:
+        return {"set_type": "Flush", "detail_1": action_id - boundaries["Full house"]}
     if action_id < boundaries["Four of a kind"]:
-        return {"set_type": "Four of a kind", "detail_1": action_id - boundaries["Colour"]}
+        return {"set_type": "Four of a kind", "detail_1": action_id - boundaries["Flush"]}
     if action_id < boundaries["Straight flush"]:
         offset = action_id - boundaries["Four of a kind"]
         suit = offset % 4
@@ -97,10 +97,9 @@ def check_pair(cards, value, num_jokers):
     return cards.count(value) + num_jokers >= 2
 
 def check_two_pairs(cards, value1, value2, num_jokers):
-    count1 = cards.count(value1)
-    jokers_for_1 = min(num_jokers, 2 - count1)
-    remaining_jokers = num_jokers - jokers_for_1
-    return count1 + jokers_for_1 >= 2 and cards.count(value2) + remaining_jokers >= 2
+    jokers_needed_for_value1 = max(0, 2 - cards.count(value1))
+    jokers_needed_for_value2 = max(0, 2 - cards.count(value2))
+    return (jokers_needed_for_value1 + jokers_needed_for_value2) <= num_jokers
 
 def check_straight(cards, required_values, num_jokers):
     unique_cards = set(cards)
@@ -114,22 +113,21 @@ def check_three_of_a_kind(cards, value, num_jokers):
     return cards.count(value) + num_jokers >= 3
 
 def check_full_house(cards, value1, value2, num_jokers):
-    count1 = cards.count(value1)
-    jokers_for_3 = min(num_jokers, 3 - count1)
-    remaining_jokers = num_jokers - jokers_for_3
-    return count1 + jokers_for_3 >= 3 and cards.count(value2) + remaining_jokers >= 2
+    jokers_needed_for_value1 = max(0, 3 - cards.count(value1))
+    jokers_needed_for_value2 = max(0, 2 - cards.count(value2))
+    return (jokers_needed_for_value1 + jokers_needed_for_value2) <= num_jokers
 
-def check_flush(cards_by_color, color, num_jokers):
-    return cards_by_color.get(color, 0) + num_jokers >= 5
+def check_flush(cards_by_colour, colour, num_jokers):
+    return cards_by_colour.get(colour, 0) + num_jokers >= 5
 
 def check_four_of_a_kind(cards, value, num_jokers):
     return cards.count(value) + num_jokers >= 4
 
-def check_straight_flush(cards_with_color, color, required_values, num_jokers):
-    card_set = set(cards_with_color)
+def check_straight_flush(cards_with_colour, colour, required_values, num_jokers):
+    card_set = set(cards_with_colour)
     missing_cards = 0
     for value in required_values:
-        if (value, color) not in card_set:
+        if (value, colour) not in card_set:
             missing_cards += 1
     return missing_cards <= num_jokers
 
@@ -151,8 +149,8 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
 
         card_values = [int(card["value"]) for card in all_cards if int(card["value"]) not in [-1, -2]]
         card_colours = [int(card["colour"]) for card in all_cards if int(card["colour"]) not in [-1, -2]]
-        cards_with_color = [(int(c["value"]), int(c["colour"])) for c in all_cards if int(c["value"]) not in [-1, -2]]
-        cards_by_color = {color: card_colours.count(color) for color in set(card_colours)}
+        cards_with_colour = [(int(c["value"]), int(c["colour"])) for c in all_cards if int(c["value"]) not in [-1, -2]]
+        cards_by_colour = {colour: card_colours.count(colour) for colour in set(card_colours)}
 
         if set_type == "High card":
             return check_high_card(card_values, detail_1, num_jokers)
@@ -166,12 +164,12 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
             return check_three_of_a_kind(card_values, detail_1, num_jokers)
         elif set_type == "Full house":
             return check_full_house(card_values, detail_1, detail_2, num_jokers)
-        elif set_type == "Colour":
-            return check_flush(cards_by_color, detail_1, num_jokers)
+        elif set_type == "Flush":
+            return check_flush(cards_by_colour, detail_1, num_jokers)
         elif set_type == "Four of a kind":
             return check_four_of_a_kind(card_values, detail_1, num_jokers)
         elif "straight flush" in set_type.lower():
-            return check_straight_flush(cards_with_color, detail_1, details, num_jokers)
+            return check_straight_flush(cards_with_colour, detail_1, details, num_jokers)
         return False
     except Exception as err:
         print(f"Error in determine_set_existence: {err}")
@@ -196,7 +194,7 @@ def handle_check(game):
     rules = game.get("rules", {})
     history = game.get("history", [])
     
-    # Identify the player who made the bet that is being checked
+    # Identify the checked bet and player
     better_nickname = history[-2]["player"]
     action_id_being_checked = history[-2]["action_id"]
 
@@ -204,15 +202,14 @@ def handle_check(game):
     all_cards = [card for hand in game.get("hands", []) for card in hand.get("hand", [])]
     all_cards.extend(game.get("common_hand", []))
     
-    # Calculate the number of usable jokers based on the new rule
+    # Calculate the number of usable jokers
     better_hand_obj = next((hand for hand in game.get("hands", []) if hand.get("nickname") == better_nickname), None)
     better_hand = better_hand_obj.get("hand", []) if better_hand_obj else []
     common_hand = game.get("common_hand", [])
-    
     num_jokers = sum(1 for card in better_hand if int(card.get("value")) == -1)
     num_jokers += sum(1 for card in common_hand if int(card.get("value")) == -1)
 
-    # Call the pure evaluation function
+    # Call the evaluation function
     set_exists = determine_set_existence(all_cards, action_id_being_checked, rules, num_jokers)
 
     losing_player_nickname = history[-1]["player"] if set_exists else better_nickname
