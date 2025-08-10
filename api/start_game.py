@@ -4,7 +4,6 @@ from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 from shared.game import start_game
 
-
 def lambda_handler(event, context):
     try:
         body = parse_event(event)
@@ -39,7 +38,9 @@ def lambda_handler(event, context):
         if n_players < 2:
             return error_payload(403, "At least 2 players needed to start a game")
 
-        start_game(game)
+        start_result = start_game(game)
+        if not start_result.get("success"):
+            return error_payload(403, start_result.get("message"))
 
         return response_payload(202, {"message": "Game started"})
 

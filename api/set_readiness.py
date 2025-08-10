@@ -60,6 +60,7 @@ def lambda_handler(event, context):
 
         game_status = game.get("status")
         
+        active_players_for_next_round = []
         if game_status == "Waiting for ready":
             temp_players = copy.deepcopy(players)
             action_ids = get_action_ids(game.get("rules", {}))
@@ -81,7 +82,9 @@ def lambda_handler(event, context):
 
         if all_active_players_ready:
             if game_status == "Not started":
-                start_game(game)
+                start_result = start_game(game)
+                if not start_result.get("success"):
+                    return error_payload(403, start_result.get("message"))
                 return response_payload(200, {"message": "All players ready. Game started."})
             elif game_status == "Waiting for ready":
                 start_next_round(game)

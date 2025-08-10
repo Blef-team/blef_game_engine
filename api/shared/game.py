@@ -154,30 +154,63 @@ def start_player_timer(game):
             return decimal.Decimal(str(time.time() + time_limit))
     return None
 
-def calculate_max_cards(n_players, rules):
-    deck_size = int(rules.get("deck_size", 24))
-    common_cards_rule = int(rules.get("common_cards", 0))
-    n_jokers = int(rules.get("jokers", 0))
 
-    # Max cards calculation: maximum cards that can be dealt accounting for the common cards rule and number of players
-    # For nicer gameplay, jokers decrease max cards acting as if the deck was smaller, by 4 cards for the first joker and 2 for each next joker
+def calculate_suggested_cards_in_round(rules):
+    """
+    Calculates the suggested total number of cards to be in play for optimal experience.
+    Computes the expanded deck size and applies a downward adjustment for jokers. 
+    Always caps the final result at base deck size to not prolong the game
+    """
+    base_deck_size = int(rules.get("deck_size", 24))
+    jokers = int(rules.get("jokers", 0))
+    blanks = int(rules.get("blanks", 0))
+    if jokers > 0:
+        suggested_total = (base_deck_size + blanks + jokers) / (1 + 0.2 * (jokers + 1))
+        return min(floor(suggested_total), base_deck_size)
+    else:
+        return base_deck_size
+        
+
+def calculate_max_cards_per_player(n_players, total_cards_in_play, common_cards_rule):
+    """Calculates the theoretical maximum number of cards a single player can hold."""
     # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
     # x*n*(1+rate) < deck_size + n*rate  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
-    pretend_deck_size = deck_size
-    if n_jokers > 0:
-        pretend_deck_size -= (2 + 2 * n_jokers)
+
     if common_cards_rule in (-1, -2):
         rate = get_common_cards_rate_by_id(common_cards_rule)
-        max_cards = int((pretend_deck_size + n_players * rate) / (n_players * (1 + rate)) - 0.001)
+        # Formula rearranged to solve for x (max_cards): x <= (total_cards - 1 + n*rate) / (n * (1 + rate))
+        max_cards = (total_cards_in_play + n_players * rate) / (n_players * (1 + rate)) - 0.001
+        return min(floor(max_cards), 11)
     else:
-        max_cards = int((pretend_deck_size - common_cards_rule) / n_players)
-    return max_cards if max_cards <= 11 else 11
+        max_cards = (total_cards_in_play - common_cards_rule) / n_players
+        return min(floor(max_cards), 11)
 
 def start_game(game):
     game_uuid = game["game_uuid"]
     players = game["players"]
     rules = game.get("rules", {})
-    max_cards = calculate_max_cards(len(players), rules)
+    n_players = len(players)
+
+    # Determine the final max_cards value
+    custom_max_cards = int(game.get("max_cards", 0))
+    deck_size = int(rules.get("deck_size", 24))
+    jokers = int(rules.get("jokers", 0))
+    blanks = int(rules.get("blanks", 0))
+    common_cards_rule = int(rules.get("common_cards", 0))
+
+    if custom_max_cards == 0: # Auto-calculate
+        suggested_total = calculate_suggested_cards_in_round(rules)
+        max_cards = calculate_max_cards_per_player(n_players, suggested_total, common_cards_rule)
+    else: # Validate and use custom value
+        theoretical_max = calculate_max_cards_per_player(n_players, deck_size + jokers + blanks, common_cards_rule)
+        if custom_max_cards > theoretical_max:
+            return {
+                "success": False,
+                "error": "MAX_CARDS_TOO_HIGH",
+                "message": f"With {n_players} players, max cards cannot exceed {theoretical_max}. Please adjust rules."
+            }
+        else:
+            max_cards = custom_max_cards
 
     for player in players:
         player["n_cards"] = 1
@@ -214,7 +247,7 @@ def start_game(game):
             '#game_status': "status"
         }
     )
-    return True
+    return {"success": True}
 
 def start_next_round(game):
     """
