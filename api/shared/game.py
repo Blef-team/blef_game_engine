@@ -370,25 +370,3 @@ def is_game_about_to_finish(game_state):
 
     active_players = sum(1 for p in temp_players if p.get("n_cards", 0) > 0)
     return active_players <= 1
-
-def are_rules_unsupported_by_ai(rules):
-    """
-    Hopefully temporary O_O.
-    """
-    return (
-        int(rules.get("deck_size", 24)) != 24 or
-        int(rules.get("common_cards", 0)) != 0 or
-        int(rules.get("jokers", 0)) != 0 or
-        int(rules.get("blanks", 0)) != 0
-    )
-
-def update_ai_readiness(players, rules):
-    """
-    Updates the readiness of AI players based on the complexity of game rules.
-    Human player readiness is unaffected.
-    """
-    rules_are_unsupported = are_rules_unsupported_by_ai(rules)
-    for player in players:
-        if player.get("ai_agent"):
-            player["ready"] = not rules_are_unsupported
-    return players

@@ -6,7 +6,6 @@ import decimal
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
-from shared.game import are_rules_unsupported_by_ai
 from shared.inputs import is_valid_uuid
 
 
@@ -93,7 +92,7 @@ def lambda_handler(event, context):
             "nickname": nickname,
             "n_cards": 0,
             "ai_agent": agent_type,
-            "ready": not are_rules_unsupported_by_ai(game.get("rules", {}))
+            "ready": True
         }
         players.append(player)
 

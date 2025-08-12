@@ -4,7 +4,6 @@ from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.game import unset_human_readiness
 from shared.api_gateway import parse_event
-from shared.game import update_ai_readiness
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
@@ -88,8 +87,6 @@ def lambda_handler(event, context):
                 if not (0 <= value <= 11):
                     return parameter_error_payload(key, value, "Max cards must be 0 (for auto) or an integer between 1 and 11")
                 max_cards_update = value
-
-        players = update_ai_readiness(players, rules)
 
         if rules.get("time_limit", 0) > 0:
             players = unset_human_readiness(players)
