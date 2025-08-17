@@ -7,19 +7,20 @@ from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 from shared.game import start_game, start_next_round, get_player_by_nickname, get_action_ids
 
-def update_in_dynamodb(game_uuid, players):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set players = :players, last_modified = :last_modified",
+def update_player_readiness(game_uuid, player_index, ready_status):
+    """
+    Atomically updates a single player's readiness and returns the full, updated game state.
+    """
+    response = table.update_item(
+        Key={'game_uuid': game_uuid},
+        UpdateExpression=f"SET players[{player_index}].ready = :ready, last_modified = :last_modified",
         ExpressionAttributeValues={
-            ':players': players,
+            ':ready': ready_status,
             ':last_modified': decimal.Decimal(str(time.time()))
         },
-        ReturnValues="NONE"
+        ReturnValues="ALL_NEW"
     )
-    return True
+    return response.get('Attributes')
 
 def lambda_handler(event, context):
     try:
@@ -40,59 +41,44 @@ def lambda_handler(event, context):
             return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
 
         ready = body.get("ready")
-        if ready == 'True':
-            ready = True
-        elif ready == 'False':
-            ready = False
-        else:
+        if ready not in ['True', 'False']:
             return parameter_error_payload("ready", ready, message="Ready must be a boolean")
+        ready = True if ready == 'True' else False
 
         players = game.get("players")
-        player_found = False
-        for player in players:
+        player_index = -1
+        for i, player in enumerate(players):
             if player["uuid"] == player_uuid:
-                player["ready"] = ready
-                player_found = True
+                player_index = i
                 break
 
-        if not player_found:
+        if player_index == -1:
             return parameter_error_payload("player_uuid", player_uuid, message="Player not found in this game")
 
-        game_status = game.get("status")
-        
-        active_players_for_next_round = []
+        updated_game_state = update_player_readiness(game_uuid, player_index, ready)
+
+        game_status = updated_game_state.get("status")
         if game_status == "Waiting for ready":
-            temp_players = copy.deepcopy(players)
-            action_ids = get_action_ids(game.get("rules", {}))
-            losing_player_nickname = None
-            for event in reversed(game.get("history", [])):
-                if event.get("action_id") == action_ids["lose_round"]:
-                    losing_player_nickname = event.get("player")
-                    break
+            temp_players = copy.deepcopy(updated_game_state.get("players", []))
+            action_ids = get_action_ids(updated_game_state.get("rules", {}))
+            losing_player_nickname = next((event.get("player") for event in reversed(updated_game_state.get("history", [])) if event.get("action_id") == action_ids["lose_round"]), None)
             losing_player = get_player_by_nickname(temp_players, losing_player_nickname)
             if losing_player:
                 losing_player["n_cards"] += 1
-                if losing_player["n_cards"] > game["max_cards"]:
+                if losing_player["n_cards"] > updated_game_state["max_cards"]:
                     losing_player["n_cards"] = 0
             active_players_for_next_round = [p for p in temp_players if p.get("n_cards", 0) > 0]
+            if len(active_players_for_next_round) >= 2 and all(p.get("ready") for p in active_players_for_next_round):
+                start_next_round(updated_game_state)
+                return response_payload(200, {"message": "All players ready. Next round started."})
         elif game_status == "Not started":
-            active_players_for_next_round = players
-
-        all_active_players_ready = len(active_players_for_next_round) >= 2 and all(p.get("ready") for p in active_players_for_next_round)
-
-        if all_active_players_ready:
-            if game_status == "Not started":
-                start_result = start_game(game)
+            players = updated_game_state.get("players", [])
+            if len(players) >= 2 and all(p.get("ready") for p in players):
+                start_result = start_game(updated_game_state)
                 if not start_result.get("success"):
                     return error_payload(403, start_result.get("message"))
                 return response_payload(200, {"message": "All players ready. Game started."})
-            elif game_status == "Waiting for ready":
-                start_next_round(game)
-                return response_payload(200, {"message": "All players ready. Next round started."})
-        else:
-            update_in_dynamodb(game_uuid, players)
-
-        return response_payload(200, {"message": "Readiness updated"})
+        return response_payload(200, {"message": "Readiness updated"}) # Shouldn't be reached
 
     except Exception as err:
         return internal_error_payload(err)
