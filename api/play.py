@@ -2,6 +2,7 @@ import time
 import decimal
 import os
 import boto3
+from botocore.exceptions import ClientError
 from itertools import combinations
 from shared.response import *
 from shared.db import table, get_from_dynamodb
@@ -175,18 +176,31 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
         print(f"Error in determine_set_existence: {err}")
         return False
 
-def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline):
-    table.update_item(
-        Key={'game_uuid': game_uuid},
-        UpdateExpression="set last_modified = :t, cp_nickname = :c, history = :h, move_deadline = :d",
-        ExpressionAttributeValues={
-            ':t': decimal.Decimal(str(time.time())),
-            ':c': cp_nickname,
-            ':h': history,
-            ':d': move_deadline
-        }
-    )
-    return True
+def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modified):
+    """
+    Conditionally updates the game state in DynamoDB.
+    Returns True on success, False on failure (due to race condition).
+    """
+    try:
+        table.update_item(
+            Key={'game_uuid': game_uuid},
+            UpdateExpression="SET last_modified = :t, cp_nickname = :c, history = :h, move_deadline = :d",
+            ConditionExpression="last_modified = :lm",
+            ExpressionAttributeValues={
+                ':t': decimal.Decimal(str(time.time())),
+                ':c': cp_nickname,
+                ':h': history,
+                ':d': move_deadline,
+                ':lm': last_modified
+            }
+        )
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            logger.warning("Failed to update game state due to a race condition (play vs timeout).")
+            return False
+        else:
+            raise
 
 def handle_check(game):
     """
@@ -264,13 +278,15 @@ def lambda_handler(event, context):
         if action_id != check_action:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             game["move_deadline"] = start_player_timer(game)
-            update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"], game["move_deadline"])
+            if not update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"]):
+                return error_payload(409, "The game state changed.")
             return response_payload(200, censor_game(game, game["round_number"], player_nickname))
 
         else:
-            end_round_game_state = handle_check(game)
-            visible_game = censor_game(end_round_game_state, end_round_game_state["round_number"] + 1, player_nickname)
-            return response_payload(200, visible_game)
+            end_round_state = handle_check(game)
+            if not end_round_state:
+                return error_payload(409, "The game state changed.")
+            return response_payload(200, censor_game(end_round_state, end_round_state["round_number"] + 1, player_nickname))
 
     except Exception as err:
         return internal_error_payload(err)

@@ -4,7 +4,7 @@ from math import floor
 import time
 import decimal
 import copy
-from .db import table, save_in_dynamodb
+from .db import table, save_in_dynamodb, transact_end_of_round
 from .time_limit import send_time_limit_message
 from .logging import logger
 
@@ -298,42 +298,56 @@ def get_action_ids(rules):
 
 def end_round(game, losing_player_nickname):
     """
-    Handles all the logic for ending a round. If a time limit is active,
-    it puts the game into a "Waiting for ready" state instead of starting the next round.
+    Atomically handles the end of a round using a DynamoDB transaction.
+    Returns the archived game state on success, or False if the transaction fails.
     """
+    original_last_modified = game.get("last_modified")
     action_ids = get_action_ids(game.get("rules", {}))
-    game["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
-    game["cp_nickname"] = None
-    game["move_deadline"] = None
-    end_of_round_state = copy.deepcopy(game)
-    save_in_dynamodb(end_of_round_state, f"{end_of_round_state['game_uuid']}_{int(end_of_round_state['round_number'])}")
-
-    # Check for game end condition *before* altering the live state
-    temp_players = copy.deepcopy(game["players"])
-    temp_losing_player = get_player_by_nickname(temp_players, losing_player_nickname)
-    temp_losing_player["n_cards"] += 1
-    if temp_losing_player["n_cards"] > game["max_cards"]:
-        temp_losing_player["n_cards"] = 0
-    
-    active_players = sum(1 for p in temp_players if p["n_cards"] > 0)
-    if active_players <= 1:
-        game["status"] = "Finished"
-        game["players"] = temp_players
-        save_in_dynamodb(game)
-        return end_of_round_state
-
-    # If game is not over, decide the next step
-    active_human_players = [p for p in temp_players if p.get("n_cards") > 0 and not p.get("ai_agent")]
     time_limit = int(game.get("rules", {}).get("time_limit", 0))
-    if time_limit > 0 and active_human_players:
-        game["status"] = "Waiting for ready"
-        game["players"] = unset_human_readiness(game["players"])
-        save_in_dynamodb(game)
-        return game # For timed games, return the waiting state
+
+    # 1. Prepare the archive state
+    archive_state = copy.deepcopy(game)
+    archive_state["game_uuid"] = f"{game['game_uuid']}_{game['round_number']}"
+    archive_state["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
+    archive_state["cp_nickname"] = None
+    archive_state["move_deadline"] = None
+
+    # 2. Prepare the next live state
+    # Use a temporary copy to determine the outcome without changing the state prematurely.
+    temp_players = copy.deepcopy(game["players"])
+    losing_player_obj = get_player_by_nickname(temp_players, losing_player_nickname)
+    if losing_player_obj:
+        losing_player_obj["n_cards"] += 1
+        if losing_player_obj["n_cards"] > game["max_cards"]:
+            losing_player_obj["n_cards"] = 0
+    active_players_count = sum(1 for p in temp_players if p.get("n_cards", 0) > 0)
+    
+    if active_players_count <= 1:
+        # Game is finished
+        next_live_state = copy.deepcopy(game)
+        next_live_state["status"] = "Finished"
+        next_live_state["players"] = temp_players # Use the updated player list
+        next_live_state["history"] = []
+        next_live_state["cp_nickname"] = None
+        next_live_state["move_deadline"] = None
+        if transact_end_of_round(next_live_state, archive_state, original_last_modified):
+            return archive_state
+    elif time_limit > 0 and any(p for p in game["players"] if p.get("n_cards") > 0 and not p.get("ai_agent")):
+        # Game is timed and will wait for players
+        next_live_state = copy.deepcopy(archive_state) # Start from the archive state
+        next_live_state["game_uuid"] = game["game_uuid"] # Reset the UUID to the live one
+        next_live_state["status"] = "Waiting for ready"
+        next_live_state["players"] = unset_human_readiness(next_live_state["players"])
+        if transact_end_of_round(next_live_state, archive_state, original_last_modified):
+            return archive_state
     else:
-        # If no time limit, start the next round immediately but return the snapshot
+        # No finish and no time limit: save archive state unconditionally and start the next round
+        save_in_dynamodb(archive_state)
+        game["history"] = archive_state["history"]
         start_next_round(game)
-        return end_of_round_state
+        return archive_state
+
+    return False # This is only reached if a transaction fails
 
 def unset_human_readiness(players):
     """
