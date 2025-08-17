@@ -305,12 +305,13 @@ def end_round(game, losing_player_nickname):
     action_ids = get_action_ids(game.get("rules", {}))
     time_limit = int(game.get("rules", {}).get("time_limit", 0))
 
+    game["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
+    game["cp_nickname"] = None
+    game["move_deadline"] = None
+
     # 1. Prepare the archive state
     archive_state = copy.deepcopy(game)
     archive_state["game_uuid"] = f"{game['game_uuid']}_{game['round_number']}"
-    archive_state["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
-    archive_state["cp_nickname"] = None
-    archive_state["move_deadline"] = None
 
     # 2. Prepare the next live state
     # Use a temporary copy to determine the outcome without changing the state prematurely.
@@ -324,26 +325,19 @@ def end_round(game, losing_player_nickname):
     
     if active_players_count <= 1:
         # Game is finished
-        next_live_state = copy.deepcopy(game)
-        next_live_state["status"] = "Finished"
-        next_live_state["players"] = temp_players # Use the updated player list
-        next_live_state["history"] = []
-        next_live_state["cp_nickname"] = None
-        next_live_state["move_deadline"] = None
-        if transact_end_of_round(next_live_state, archive_state, original_last_modified):
+        game["status"] = "Finished"
+        game["players"] = temp_players # Use the updated player list
+        if transact_end_of_round(game, archive_state, original_last_modified):
             return archive_state
     elif time_limit > 0 and any(p for p in game["players"] if p.get("n_cards") > 0 and not p.get("ai_agent")):
-        # Game is timed and will wait for players
-        next_live_state = copy.deepcopy(archive_state) # Start from the archive state
-        next_live_state["game_uuid"] = game["game_uuid"] # Reset the UUID to the live one
-        next_live_state["status"] = "Waiting for ready"
-        next_live_state["players"] = unset_human_readiness(next_live_state["players"])
-        if transact_end_of_round(next_live_state, archive_state, original_last_modified):
-            return archive_state
+        # Game is timed and waiting for human players' readiness
+        game["status"] = "Waiting for ready"
+        game["players"] = unset_human_readiness(game["players"])
+        if transact_end_of_round(game, archive_state, original_last_modified):
+            return game
     else:
         # No finish and no time limit: save archive state unconditionally and start the next round
         save_in_dynamodb(archive_state)
-        game["history"] = archive_state["history"]
         start_next_round(game)
         return archive_state
 
