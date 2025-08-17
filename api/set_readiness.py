@@ -55,6 +55,9 @@ def lambda_handler(event, context):
         if player_index == -1:
             return parameter_error_payload("player_uuid", player_uuid, message="Player not found in this game")
 
+        if len(game.get("players", [])) < 2:
+            return error_payload(403, "Cannot set readiness with only one player in the room.")
+
         updated_game_state = update_player_readiness(game_uuid, player_index, ready)
 
         game_status = updated_game_state.get("status")
