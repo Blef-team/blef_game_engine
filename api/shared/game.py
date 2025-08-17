@@ -30,7 +30,7 @@ def find_next_active_player(players, cp_nickname):
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
 
-def censor_game(game, current_round, player_nickname):
+def censor_game(game, current_round, player_nickname=None):
     revealed_hands = []
     if game["status"] == "Finished":
         revealed_hands = game["hands"]
