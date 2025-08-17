@@ -155,7 +155,7 @@ def start_player_timer(game):
     return None
 
 
-def calculate_suggested_cards_in_round(rules):
+def calculate_suggested_max_cards_dealt_in_any_round(rules):
     """
     Calculates the suggested total number of cards to be in play for optimal experience.
     Computes the expanded deck size and applies a downward adjustment for jokers. 
@@ -171,7 +171,7 @@ def calculate_suggested_cards_in_round(rules):
         return base_deck_size
         
 
-def calculate_max_cards_per_player(n_players, total_cards_in_play, common_cards_rule):
+def calculate_largest_allowed_max_cards_per_player(n_players, total_cards_in_play, common_cards_rule):
     """Calculates the theoretical maximum number of cards a single player can hold."""
     # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
     # x*n*(1+rate) < deck_size + n*rate  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
@@ -199,10 +199,10 @@ def start_game(game):
     common_cards_rule = int(rules.get("common_cards", 0))
 
     if custom_max_cards == 0: # Auto-calculate
-        suggested_total = calculate_suggested_cards_in_round(rules)
-        max_cards = calculate_max_cards_per_player(n_players, suggested_total, common_cards_rule)
+        suggested_total = calculate_suggested_max_cards_dealt_in_any_round(rules)
+        max_cards = calculate_largest_allowed_max_cards_per_player(n_players, suggested_total, common_cards_rule)
     else: # Validate and use custom value
-        theoretical_max = calculate_max_cards_per_player(n_players, deck_size + jokers + blanks, common_cards_rule)
+        theoretical_max = calculate_largest_allowed_max_cards_per_player(n_players, deck_size + jokers + blanks, common_cards_rule)
         if custom_max_cards > theoretical_max:
             return {
                 "success": False,
