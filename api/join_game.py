@@ -2,30 +2,37 @@ import uuid
 import time
 import re
 import decimal
+from botocore.exceptions import ClientError
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
+from shared.logging import logger
 
-
-def update_in_dynamodb(game_uuid, players, admin_nickname):
-    # # Unset readiness for all human players after any join - too annoying for now when people mostly play with friends or try to learn the game
-    # players = unset_human_readiness(players)
-
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set players = :players, last_modified = :last_modified, admin_nickname = :admin_nickname",
-        ExpressionAttributeValues={
-            ':players': players,
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':admin_nickname': admin_nickname
-        },
-        ReturnValues="NONE"
-    )
-    return True
-
+def update_in_dynamodb(game_uuid, players, admin_nickname, last_modified):
+    """
+    Conditionally updates the game state in DynamoDB to add a new player.
+    Returns True on success, False on failure (due to a race condition).
+    """
+    try:
+        table.update_item(
+            Key={'game_uuid': game_uuid},
+            UpdateExpression="SET players = :p, last_modified = :t, admin_nickname = :a",
+            ConditionExpression="last_modified = :lm",
+            ExpressionAttributeValues={
+                ':p': players,
+                ':t': decimal.Decimal(str(time.time())),
+                ':a': admin_nickname,
+                ':lm': last_modified
+            }
+        )
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            logger.warning(f"Failed to join game {game_uuid} due to a race condition.")
+            return False
+        else:
+            raise
 
 def lambda_handler(event, context):
     try:
@@ -60,17 +67,14 @@ def lambda_handler(event, context):
             return parameter_error_payload("nickname", nickname, message="Nickname already taken")
 
         player_uuid = str(uuid.uuid4())
-        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False}
-        players.append(player)
+        players.append({"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False})
+        admin_nickname = game.get("admin_nickname") or nickname
 
-        admin_nickname = game.get("admin_nickname")
-        if len(players) == 1:
-            admin_nickname = nickname
-
-        update_in_dynamodb(game_uuid, players, admin_nickname)
-
-        response = {"player_uuid": player_uuid}
-        return response_payload(200, response)
+        if update_in_dynamodb(game_uuid, players, admin_nickname, game["last_modified"]):
+            return response_payload(200, {"player_uuid": player_uuid})
+        
+        logger.info(f"Join failed for '{nickname}' due to race condition.")
+        return error_payload(409, "The game state changed. Please try again.")
 
     except Exception as err:
         return internal_error_payload(err)
