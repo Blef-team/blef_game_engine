@@ -53,7 +53,7 @@ def lambda_handler(event, context):
             if not player_nickname:
                 return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
 
-        visible_game = censor_game(game, round_param, player_nickname)
+        visible_game = censor_game(game, player_nickname)
 
         return response_payload(200, visible_game)
 

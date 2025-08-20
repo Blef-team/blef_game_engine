@@ -280,13 +280,13 @@ def lambda_handler(event, context):
             game["move_deadline"] = start_player_timer(game)
             if not update_in_dynamodb(game_uuid, game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"]):
                 return error_payload(409, "The game state changed.")
-            return response_payload(200, censor_game(game, game["round_number"], player_nickname))
+            return response_payload(200, censor_game(game, player_nickname))
 
         else:
             end_round_state = handle_check(game)
             if not end_round_state:
                 return error_payload(409, "The game state changed.")
-            return response_payload(200, censor_game(end_round_state, end_round_state["round_number"] + 1, player_nickname))
+            return response_payload(200, censor_game(end_round_state, player_nickname))
 
     except Exception as err:
         return internal_error_payload(err)
