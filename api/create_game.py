@@ -31,7 +31,7 @@ def lambda_handler(event, context):
                 "common_cards": 0,
                 "jokers": 0,
                 "blanks": 0,
-                "max_cards_preference": None
+                "max_cards_preference": 0
             }
         }
 
