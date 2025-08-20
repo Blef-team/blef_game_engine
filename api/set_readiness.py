@@ -4,6 +4,7 @@ import copy
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.game import update_n_cards
 from shared.inputs import is_valid_uuid
 from shared.game import start_game, start_next_round, get_player_by_nickname, get_action_ids
 
@@ -62,14 +63,9 @@ def lambda_handler(event, context):
 
         game_status = updated_game_state.get("status")
         if game_status == "Waiting for ready":
-            temp_players = copy.deepcopy(updated_game_state.get("players", []))
             action_ids = get_action_ids(updated_game_state.get("rules", {}))
             losing_player_nickname = next((event.get("player") for event in reversed(updated_game_state.get("history", [])) if event.get("action_id") == action_ids["lose_round"]), None)
-            losing_player = get_player_by_nickname(temp_players, losing_player_nickname)
-            if losing_player:
-                losing_player["n_cards"] += 1
-                if losing_player["n_cards"] > updated_game_state["max_cards"]:
-                    losing_player["n_cards"] = 0
+            temp_players = update_n_cards(updated_game_state, losing_player_nickname)
             active_players_for_next_round = [p for p in temp_players if p.get("n_cards", 0) > 0]
             if len(active_players_for_next_round) >= 2 and all(p.get("ready") for p in active_players_for_next_round):
                 start_next_round(updated_game_state)

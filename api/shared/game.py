@@ -313,15 +313,9 @@ def end_round(game, losing_player_nickname):
 
     # 2. Prepare the next live state
     # Use a temporary copy to determine the outcome without changing the state prematurely.
-    temp_players = copy.deepcopy(game["players"])
-    losing_player_obj = get_player_by_nickname(temp_players, losing_player_nickname)
-    if losing_player_obj:
-        losing_player_obj["n_cards"] += 1
-        if losing_player_obj["n_cards"] > game["max_cards"]:
-            losing_player_obj["n_cards"] = 0
-    active_players_count = sum(1 for p in temp_players if p.get("n_cards", 0) > 0)
+    temp_players = update_n_cards(game, losing_player_nickname)
     
-    if active_players_count <= 1:
+    if sum(1 for p in temp_players if p.get("n_cards", 0) > 0) <= 1:
         # Game is finished
         game["status"] = "Finished"
         game["players"] = temp_players # Use the updated player list
@@ -350,9 +344,19 @@ def unset_human_readiness(players):
             player["ready"] = False
     return players
 
-def is_game_about_to_finish(game_state):
+
+def update_n_cards(game, losing_player_nickname):
+    temp_players = copy.deepcopy(game["players"])
+    losing_player_obj = get_player_by_nickname(temp_players, losing_player_nickname)
+    losing_player_obj["n_cards"] += 1
+    if losing_player_obj["n_cards"] > game["max_cards"]:
+        losing_player_obj["n_cards"] = 0
+    return temp_players
+
+
+def was_this_the_last_round(game_state):
     """
-    Predicts if the game will end after this round.
+    Detects if this is a finished round after which there will be no more rounds.
     """
     action_ids = get_action_ids(game_state.get("rules", {}))
     losing_player_nickname = None
@@ -364,15 +368,5 @@ def is_game_about_to_finish(game_state):
     if not losing_player_nickname:
         return False
 
-    temp_players = copy.deepcopy(game_state["players"])
-    losing_player = get_player_by_nickname(temp_players, losing_player_nickname)
-
-    if not losing_player:
-        return False
-
-    losing_player["n_cards"] += 1
-    if losing_player["n_cards"] > game_state["max_cards"]:
-        losing_player["n_cards"] = 0
-
-    active_players = sum(1 for p in temp_players if p.get("n_cards", 0) > 0)
-    return active_players <= 1
+    updated_players = update_n_cards(game_state, losing_player_nickname)
+    return sum(1 for p in updated_players if p.get("n_cards", 0) > 0) <= 1
