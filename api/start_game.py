@@ -38,6 +38,9 @@ def lambda_handler(event, context):
         if n_players < 2:
             return error_payload(403, "At least 2 players needed to start a game")
 
+        if  int(game.get("rules", {}).get("time_limit", 0)) > 0:
+            return error_payload(403, "Games with a time limit can only start when everyone is ready")
+
         start_result = start_game(game)
         if not start_result.get("success"):
             return error_payload(403, start_result.get("message"))
