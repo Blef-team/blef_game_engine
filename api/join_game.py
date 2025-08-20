@@ -6,10 +6,11 @@ from botocore.exceptions import ClientError
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.game import calculate_actual_max_cards
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
-def update_in_dynamodb(game_uuid, players, admin_nickname, last_modified):
+def update_in_dynamodb(game_uuid, players, admin_nickname, max_cards, last_modified):
     """
     Conditionally updates the game state in DynamoDB to add a new player.
     Returns True on success, False on failure (due to a race condition).
@@ -17,12 +18,13 @@ def update_in_dynamodb(game_uuid, players, admin_nickname, last_modified):
     try:
         table.update_item(
             Key={'game_uuid': game_uuid},
-            UpdateExpression="SET players = :p, last_modified = :t, admin_nickname = :a",
+            UpdateExpression="SET players = :p, last_modified = :t, admin_nickname = :a, max_cards = :mc",
             ConditionExpression="last_modified = :lm",
             ExpressionAttributeValues={
                 ':p': players,
                 ':t': decimal.Decimal(str(time.time())),
                 ':a': admin_nickname,
+                ':mc': max_cards,
                 ':lm': last_modified
             }
         )
@@ -69,8 +71,9 @@ def lambda_handler(event, context):
         player_uuid = str(uuid.uuid4())
         players.append({"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False})
         admin_nickname = game.get("admin_nickname") or nickname
+        max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
 
-        if update_in_dynamodb(game_uuid, players, admin_nickname, game["last_modified"]):
+        if update_in_dynamodb(game_uuid, players, admin_nickname, max_cards, game["last_modified"]):
             return response_payload(200, {"player_uuid": player_uuid})
         
         logger.info(f"Join failed for '{nickname}' due to race condition.")

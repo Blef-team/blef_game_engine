@@ -2,12 +2,12 @@ import time
 import decimal
 from shared.response import *
 from shared.db import table, get_from_dynamodb
-from shared.game import unset_human_readiness
+from shared.game import unset_human_readiness, calculate_actual_max_cards
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
-def update_in_dynamodb(game_uuid, rules, players, max_cards_update=None):
+def update_in_dynamodb(game_uuid, rules, players, max_cards=None):
     update_expressions = ["#rules = :rules", "players = :players", "last_modified = :last_modified"]
     expression_attribute_names = {'#rules': 'rules'}
     expression_attribute_values = {
@@ -16,9 +16,9 @@ def update_in_dynamodb(game_uuid, rules, players, max_cards_update=None):
         ':last_modified': decimal.Decimal(str(time.time()))
     }
 
-    if max_cards_update is not None:
+    if max_cards is not None:
         update_expressions.append("max_cards = :max_cards")
-        expression_attribute_values[':max_cards'] = max_cards_update
+        expression_attribute_values[':max_cards'] = max_cards
 
     table.update_item(
         Key={'game_uuid': game_uuid},
@@ -56,7 +56,6 @@ def lambda_handler(event, context):
             return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
 
         rules = game.get("rules", {})
-        max_cards_update = None
 
         # Iterate through all query parameters to find and apply changes
         for key, value in body.items():
@@ -85,15 +84,19 @@ def lambda_handler(event, context):
                 rules[key] = value
             elif key == "max_cards":
                 if not (0 <= value <= 11):
-                    return parameter_error_payload(key, value, "Max cards must be 0 (for auto) or an integer between 1 and 11")
-                max_cards_update = value
+                    return parameter_error_payload(key, value, "Max cards must be 0 (for no preference) or an integer between 1 and 11")
+                if value == 0:
+                    rules["max_cards_preference"] = None
+                rules["max_cards_preference"] = value
 
         if rules.get("time_limit", 0) > 0:
             players = unset_human_readiness(players)
 
+        max_cards = calculate_actual_max_cards(rules, len(players))
+
         logger.info(f'## NEW RULES: {rules}')
-        logger.info(f'## MAX CARDS UPDATE: {max_cards_update}')
-        update_in_dynamodb(game_uuid, rules, players, max_cards_update)
+        logger.info(f'## MAX CARDS: {max_cards}')
+        update_in_dynamodb(game_uuid, rules, players, max_cards)
 
         return response_payload(200, {"message": "Rules updated"})
 

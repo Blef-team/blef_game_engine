@@ -3,16 +3,18 @@ import decimal
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.game import calculate_actual_max_cards
 from shared.inputs import is_valid_uuid
 
-def update_in_dynamodb(game_uuid, players):
+def update_in_dynamodb(game_uuid, players, max_cards):
     table.update_item(
         Key={
             'game_uuid': game_uuid
         },
-        UpdateExpression="set players = :players, last_modified = :last_modified",
+        UpdateExpression="set players = :players, max_cards = :mc, last_modified = :last_modified",
         ExpressionAttributeValues={
             ':players': players,
+            ':mc': max_cards,
             ':last_modified': decimal.Decimal(str(time.time()))
         },
         ReturnValues="NONE"
@@ -49,8 +51,10 @@ def lambda_handler(event, context):
 
         if len(human_players) == len(players):
             return response_payload(200, {"message": "No AI players to remove."})
+        
+        max_cards = calculate_actual_max_cards(game.get("rules", {}), len(human_players))
 
-        update_in_dynamodb(game_uuid, human_players)
+        update_in_dynamodb(game_uuid, human_players, max_cards)
 
         return response_payload(200, {"message": "All AI players have been removed."})
 

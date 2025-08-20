@@ -30,7 +30,8 @@ def lambda_handler(event, context):
                 "deck_size": 24,
                 "common_cards": 0,
                 "jokers": 0,
-                "blanks": 0
+                "blanks": 0,
+                "max_cards_preference": None
             }
         }
 
@@ -38,6 +39,7 @@ def lambda_handler(event, context):
         if not nickname and save_in_dynamodb(game):
                 return response_payload(200, {"game_uuid": game_uuid})
 
+        # If the user wants to join at the same time
         if not isinstance(nickname, str):
             return parameter_error_payload("nickname", nickname, message="Nickname invalid")
         if not re.match("^[a-zA-Z]\w*$", nickname):

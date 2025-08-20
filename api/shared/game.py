@@ -169,7 +169,7 @@ def calculate_suggested_max_cards_dealt_in_any_round(rules):
         return base_deck_size
         
 
-def calculate_largest_allowed_max_cards_per_player(n_players, total_cards_in_play, common_cards_rule):
+def calculate_largest_feasible_max_cards_per_player(n_players, total_cards_in_play, common_cards_rule):
     """Calculates the theoretical maximum number of cards a single player can hold."""
     # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
     # x*n*(1+rate) < deck_size + n*rate  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
@@ -183,32 +183,22 @@ def calculate_largest_allowed_max_cards_per_player(n_players, total_cards_in_pla
         max_cards = (total_cards_in_play - common_cards_rule) / n_players
         return min(floor(max_cards), 11)
 
+def calculate_actual_max_cards(rules, n_players):
+    if n_players < 2:
+        return 0
+    common_cards_rule = int(rules.get("common_cards", 0))
+    max_cards_preference = int(rules.get("max_cards_preference", None))
+    total_deck_size = int(rules.get("deck_size", 24)) + int(rules.get("jokers", 0)) + int(rules.get("blanks", 0))
+    if max_cards_preference:
+        return min(max_cards_preference, calculate_largest_feasible_max_cards_per_player(n_players, total_deck_size, common_cards_rule))
+    else:
+        suggested_total_cards_in_round = calculate_suggested_max_cards_dealt_in_any_round(rules)
+        return calculate_largest_feasible_max_cards_per_player(n_players, suggested_total_cards_in_round, common_cards_rule)
+
 def start_game(game):
     game_uuid = game["game_uuid"]
     players = game["players"]
     rules = game.get("rules", {})
-    n_players = len(players)
-
-    # Determine the final max_cards value
-    custom_max_cards = int(game.get("max_cards", 0))
-    deck_size = int(rules.get("deck_size", 24))
-    jokers = int(rules.get("jokers", 0))
-    blanks = int(rules.get("blanks", 0))
-    common_cards_rule = int(rules.get("common_cards", 0))
-
-    if custom_max_cards == 0: # Auto-calculate
-        suggested_total = calculate_suggested_max_cards_dealt_in_any_round(rules)
-        max_cards = calculate_largest_allowed_max_cards_per_player(n_players, suggested_total, common_cards_rule)
-    else: # Validate and use custom value
-        theoretical_max = calculate_largest_allowed_max_cards_per_player(n_players, deck_size + jokers + blanks, common_cards_rule)
-        if custom_max_cards > theoretical_max:
-            return {
-                "success": False,
-                "error": "MAX_CARDS_TOO_HIGH",
-                "message": f"With {n_players} players, max cards cannot exceed {theoretical_max}. Please adjust rules."
-            }
-        else:
-            max_cards = custom_max_cards
 
     for player in players:
         player["n_cards"] = 1
@@ -227,14 +217,13 @@ def start_game(game):
 
     table.update_item(
         Key={'game_uuid': game_uuid},
-        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, max_cards = :max_cards, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
+        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
         ExpressionAttributeValues={
             ':last_modified': decimal.Decimal(str(time.time())),
             ':players': players,
             ':public': public,
             ':status': status,
             ':round_number': round_number,
-            ':max_cards': max_cards,
             ':hands': hands,
             ':common_hand': common_hand,
             ':cp_nickname': cp_nickname,
@@ -245,7 +234,7 @@ def start_game(game):
             '#game_status': "status"
         }
     )
-    return {"success": True}
+    return True
 
 def start_next_round(game):
     """

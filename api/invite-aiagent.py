@@ -6,24 +6,23 @@ import decimal
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.game import calculate_actual_max_cards
 from shared.inputs import is_valid_uuid
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
 
 
-def update_in_dynamodb(game_uuid, players):
-    # # Unset readiness for all human players after AI joins - too annoying for now when people mostly play with friends or try to learn the game
-    # players = unset_human_readiness(players)
-
+def update_in_dynamodb(game_uuid, players, max_cards):
     table.update_item(
         Key={
             'game_uuid': game_uuid
         },
-        UpdateExpression="set players = :players, last_modified = :last_modified",
+        UpdateExpression="set players = :players, last_modified = :last_modified, max_cards = :mc",
         ExpressionAttributeValues={
             ':players': players,
-            ':last_modified': decimal.Decimal(str(time.time()))
+            ':last_modified': decimal.Decimal(str(time.time())),
+            ':mc': max_cards
         },
         ReturnValues="NONE"
     )
@@ -96,7 +95,9 @@ def lambda_handler(event, context):
         }
         players.append(player)
 
-        update_in_dynamodb(game_uuid, players)
+        max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
+
+        update_in_dynamodb(game_uuid, players, max_cards)
 
         payload = {"message": f"{nickname} joined the game"}
         return response_payload(200, payload)

@@ -73,9 +73,7 @@ def lambda_handler(event, context):
         elif game_status == "Not started":
             players = updated_game_state.get("players", [])
             if len(players) >= 2 and all(p.get("ready") for p in players):
-                start_result = start_game(updated_game_state)
-                if not start_result.get("success"):
-                    return error_payload(403, start_result.get("message"))
+                start_game(updated_game_state)
                 return response_payload(200, {"message": "All players ready. Game started."})
         return response_payload(200, {"message": "Readiness updated"}) # Shouldn't be reached
 
