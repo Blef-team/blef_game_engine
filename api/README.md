@@ -1,8 +1,8 @@
-## Documentation of endpoints
+# HTTP API endpoints
 
-**Create game**
-  ----
-  Creates an empty game object with default rules. Optionally, joins the newly created game.
+## Create game
+
+  Creates a game object with default rules. Optionally, allows joining the newly created game.
 
 * **URL**
 
@@ -29,9 +29,9 @@
 curl <HOST>/games/create
 ```
 
-**Join game**
-  ----
-  Allows a player to join a specific game under a specific nickname. Joining a game will reset the 'ready' status of all human players.
+## Join game
+
+  Allows a player to join a specific game under a specific nickname. They get a UUID provisioned by the engine, relayed in the response and used for authentication when checking own cards or making moves (and therefore intended to be private). The player UUID should be stored, as it will not be revealed again. The first user to join the game is made the 'admin'. Users know the nickname of the admin.
 
 * **URL**
 
@@ -65,9 +65,91 @@ curl <HOST>/games/create
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
 ```
 
-**Set Readiness**
-  ----
-  Allows a player to set their readiness state. If all players are ready and there are at least 2, the game will start automatically.
+## Invite AI agent
+
+Allows the game admin to add an AI player to the game before it starts.
+
+* **URL**
+
+  /games/{game_uuid}/invite-aiagent
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"admin_uuid"=string`
+  `"agent_name"=string`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"alpha_1_(AI) joined the game"}`
+
+* **Sample Error Response:**
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Game room full"}`
+
+* **Sample Call:**
+
+```
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/invite-aiagent?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&agent_name=alpha
+```
+
+## Remove AI agents
+
+Allows the game admin to remove all AI players from the game before it starts.
+
+* **URL**
+
+  /games/{game_uuid}/remove-ais
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"admin_uuid"=string`
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"All AI players have been removed."}`
+
+  OR
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"No AI players to remove."}`
+
+* **Sample Error Response:**
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Cannot remove AIs after the game has started"}`
+
+* **Sample Call:**
+
+```
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/remove-ais?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d
+```
+
+## Set readiness
+
+  Allows a player to set their readiness state. If all players are ready and there are at least 2, the game will start automatically. At this point, no more players can join it. Readiness is also used to start new rounds of a timed game.
+
+  When a game starts, the players are shuffled - i.e. the order of the players in the game (the order in which players make bets) may not be the one in which players join the game. In particular, the game admin might not be the starting player in the first round.
+
+  Each time a game or a round starts, cards are shuffled and dealt randomly.
 
 * **URL**
 
@@ -97,9 +179,9 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&ready=True
 ```
 
-**Change Rules**
-  ----
-  Allows the game admin to change the rules of the game before it starts. Changing rules will reset the readiness of all human players.
+## Change rules
+
+  Allows the game admin to change the rules of the game before it starts. This includes changing the maximum number of cards. However, if the preference regarding eh maximum number of cards cannot be satisfied, the highest feasible number will be chosen. If there is no preference, the engine will suggest a number, which will be displayed in the `max_cards` field of teh game state.
 
 * **URL**
 
@@ -129,6 +211,7 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
     * `common_cards`: integer (0-12)
     * `jokers`: integer (0-12)
     * `blanks`: integer (0-12)
+    * `max_cards`: integer (0-11, where 0 indicates no preference)
 
 * **Sample Call:**
 
@@ -136,9 +219,11 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&rules={"common_cards":4}
 ```
 
-**Start game (Legacy)**
-  ----
-  Allows the first player who joined the game to start it. **This is a legacy endpoint.** The recommended way to start a game is for all players to set their readiness to `true`.
+## Start game
+
+  Allows the admin to start the game. See the documentation for set_readiness to know more about game starts. 
+  
+  Cannot be used to start a game with a time limit.
 
 * **URL**
 
@@ -170,9 +255,25 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
-**Get game state**
-  ----
-  Allows a user to query the current (or past) state of the game, restricting information about players hands as appropriate.
+## Get game state
+
+  Players and observers can query the state of the game, choosing either to get the latest state of the game or the state at the end of a specific round. If a user requests to see the state of the game at the end of a past round, they will be shown all cards possessed by each player in that round. However, when users query the current state of the game, they will not be shown any cards unless they provide a valid player UUID to authenticate themselves as a specific player. In that case, they will be shown the cards of that player.
+
+  Users can query the (current or past, as mentioned above) state of the game at any point. When they do so, they get the following information about the game:
+
+  * the nickname of the admin
+  * whether the game is public
+  * the room number, which will be displayed in the list of public games every time the game is made public
+  * the status of the game
+  * the round number (starting at 1 and incremented by 1 every time a round ends)
+  * the maximum number of cards permitted for a player
+  * the nicknames of the players who are still participating in the game at the given point, together with the number of cards that each of these players have
+  * the cards of the players. This field is either empty (for an ongoing round reported to an observer), filled with the cards of one player (for an ongoing round reported to an authenticated player) or filled with the cards of each player (for a finished round)
+  * the nickname of the player who is now supposed to make a move
+  * the rules
+  * the history of the events in the (current or past) round. An event is a player making a bet (of which there will be at least one but potentially many in a given round), a player checking another player (which will happen once by the end of the round) or a player losing a round (which will be recorded as the last event of that round).
+  * the deadline for the current player's move, if the game has a time limit
+  * the time the update is being sent over the API
 
 * **URL**
 
@@ -194,7 +295,7 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname": "a", "public": "false", "status": "Running", "round_number": 1, "max_cards": 11, "players": [{"nickname": "b", "n_cards": 1}, {"nickname": "a", "n_cards": 1}], "hands": [{"nickname": "a", "hand": [{"value": 5, "colour": 2}]}], "cp_nickname": "b", "history": []}`
+  **Content:** `{"admin_nickname": "MyAdmin", "public": "false", "room": 80, "status": "Running", "round_number": 2, "max_cards": 8, "players": [{"ready": true, "n_cards": 1, "nickname": "MyAdmin"}, {"ready": true, "nickname": "Porevit_(AI)", "n_cards": 2, "ai_agent": "conservative-crawling"}, {"ready": true, "nickname": "Porevit_2_(AI)", "n_cards": 1, "ai_agent": "conservative-crawling"}], "hands": [{"nickname": "MyAdmin", "hand": [{"colour": 2, "value": 3}]}], "common_hand": [], "cp_nickname": "MyAdmin", "history": [{"action_id": 1, "player": "Porevit_(AI)"}, {"action_id": 4, "player": "Porevit_2_(AI)"}], "last_modified": 1755801637.4618988, "rules": {"jokers": 0, "time_limit": 0, "deck_size": 24, "blanks": 0, "max_cards_preference": 9, "common_cards": 0}, "move_deadline": null, "update_time": 1755801637.9895098}`
 
 * **Sample Error Response:**
 
@@ -207,9 +308,9 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 ```
 
-**Play**
-  ----
-  Allows a user to make a move in a game. The `action_id` required is determined by the game's rules, specifically the `deck_size`.
+## Play
+
+  Allows a user to make a move in a game. The `action_id` required is determined by the game's rules, specifically the `deck_size`. The player provides their UUID for authentication.
 
 * **URL**
 
@@ -243,9 +344,9 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53&action_id=88
 ```
 
-**Make game public**
-  ----
-  Allows the first player who joined the game to make it public (visible to anyone).
+## Make game public
+
+  Allows the admin to make the game public. A public game is visible to any observer. A game starts private.
 
 * **URL**
 
@@ -282,9 +383,9 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/play?player_uuid=a6a53849
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
-**Make game private**
-  ----
-  Allows the first player who joined the game to make it private (visible to only those who know its UUID).
+## Make game private
+
+  Allows the admin to make the game private. A private game can only be seen by the users who have its UUID. A game starts private.
 
 * **URL**
 
@@ -321,8 +422,8 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-public?admin_uuid=a6
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a6a53849-44e9-4211-8a21-63c4a9a91d53
 ```
 
-**List public games**
-  ----
+## List public games
+
   Allows users to see all public games.
 
 * **URL**
@@ -352,8 +453,8 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/make-private?admin_uuid=a
 curl <HOST>/games
 ```
 
-**Send reaction**
-  ----
+## Send reaction
+
   Allows users to send reactions to specific games or to the public game lobby.
 
 * **URL**
@@ -394,11 +495,11 @@ curl <HOST>/games
 curl <HOST>/send-reaction?game_uuid=6f3e8308-1170-4b3d-87b9-b62916df330f&nickname=Rando&reaction=🤨
 ```
 
-## Action IDs
+# Action IDs
 
-Action IDs are determined dynamically based on the `deck_size` rule.
-* **24-Card Deck:** `action_id` ranges from 0 to 87 for bets. **88 is a check.**
-* **32-Card Deck:** `action_id` ranges from 0 to 139 for bets. **140 is a check.**
+Action IDs depend on the `deck_size` rule.
+* **24-Card Deck:** `action_id` ranges from 0 to 87 for bets. 88 is a check.
+* **32-Card Deck:** `action_id` ranges from 0 to 139 for bets. 140 is a check.
 
 A higher `action_id` represents betting on a more senior set.
 
@@ -639,3 +740,42 @@ For the 32-card deck:
 | 138       | Straight flush (10-A), hearts        |
 | 139       | Straight flush (10-A), spades        |
 | 140       | **Check**                            |
+
+# WebSocket API
+
+To receive real-time game state updates and reactions, clients can connect to the WebSocket API. This is the preferred way to keep the UI synchronized for all players and observers without constant polling.
+
+## Connection
+
+Establishes a persistent connection to the WebSocket server. To subscribe to a specific game's events, the `game_uuid` must be provided in the headers during the connection handshake.
+
+* **URL**
+
+    `wss://<WEBSOCKET_HOST>`
+
+* **Connection Headers**
+
+    **Required for game subscription:**
+
+    `"game_uuid"=string`
+
+    **Optional:**
+
+    `"player_uuid"=string` (To receive private data like your own hand)
+
+    `"reactions_enabled"=string` ("true" or "false", defaults to false)
+
+* **On a successful connection**, the server will accept the connection. Any subsequent updates for the subscribed game will be automatically pushed to the client. There is no specific message body on connection success.
+
+## Server-sent messages
+
+Once connected, the client will receive JSON payloads for game state changes or player reactions.
+
+* **Game state update:** The payload will be identical in structure to the response from the `Get game state` HTTP endpoint. This includes changes to the current player, history, hands (censored appropriately), and game status.
+
+* **Reaction update:** The payload will be a JSON object containing details about the reaction sent.
+    **Content:** `{"game_uuid": "...", "nickname": "Rando", "reaction": "👍", "nickname_authenticated": "true"}`
+
+## Disconnection
+
+When the client disconnects, the server automatically cleans up the connection and stops sending updates.

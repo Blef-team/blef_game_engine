@@ -63,63 +63,52 @@ There are 88 sets in the game. They are the following:
 
 where X and Y are one of: 9, 10, J, Q, K, or A (in this order of seniority), and C is one of club, diamond, heart, or spade (in this order of seniority). When betting two pair, X must be more senior than than Y. If two pair sets or full house sets are compared, the one with the more senior X is more senior overall. If X is equal in both, the one with the more senior Y is more senior overall.
 
+## Custom rules and game variants
+
+While Blef has a standard set of rules, this game engine allows for several variations that can be configured by the game admin before the game begins.
+
+### Deck size
+
+By default, the game is played with a 24-card deck (9 through Ace). However, you can opt to use a 32-card deck, which adds the 7s and 8s to the card pool.
+
+### Common cards (shared hand)
+
+Instead of all cards being held in private hands, players can play with "common cards". These are cards dealt face up (always visible to every player).
+
+### Jokers and blanks
+
+Special cards can be introduced to the deck:
+* Jokers: These cards can act as a wildcard, substituting for any card a player needs to complete a set. A player can use their own jokers or the jokers on the common hand to complete a set they bet on, upon being checked.
+* Blanks: These are inert cards with no value or suit. They do not contribute to any set, effectively reducing the number of active cards in play and making all sets harder to achieve.
+
+### Time limit
+
+For a faster-paced game, you can introduce a time limit for each player's turn. If a player fails to make a move within the allotted time, they automatically lose the round.
+
 ## How we implement the game
 
-The game is implemented in the form of an API service deployed using a serverless infrastructure on Amazon Web Services. The API has endpoints fulfilling the following roles respectively:
+The game is implemented as a serverless API that handles all aspects of game management, from creation to completion. The service exposes a set of endpoints that allow clients to perform actions such as creating and joining games, managing players and rules, and making moves during gameplay.
 
-* letting a user create a game room
-* letting a player join a game room
-* letting the first player in a game room start the game
-* informing a user about the state of a given game
-* letting a player make a move in a game
+The API provides the following functionalities:
 
-### Creating a game
+* Game lobby management: create a game, list public games, and manage a game's visibility (public/private).
+* Player management: join a game, invite or remove AI players, and signal readiness to start.
+* Rule customization: the game admin can change rules like deck size and time limits before the game begins.
+* Game progression: make a move (bet or check), and query the current or past state of the game.
+* Real-time interaction: send emoji reactions within the game or the public game lobby.
 
-At first, a user has to create a game. This action creates and saves a game object on the API server. As part of this, the relevant API endpoint provisions a unique UUID for the game and informs the user who created the game of this UUID.
-
-### Joining a game
-
-Then, the user who created the game informs other users with whom they want to play of the unique UUID of the game. Using that UUID, users can join the game. Each player has a unique nickname (picked by them) by which they will be known to other players and observers and a unique UUID, which is provisioned by the server, relayed to the player and used for authentication when checking own cards or making moves (and therefore intended to be private). The user who creates the game has to join the game in the same way - they are not automatically enrolled at the point the game is created.
-
-### Starting a game
-
-The first user to join the game is made the 'admin'. Users know the nickname of the admin. The admin, using their player UUID for authentication, will start the game, at which point no more players can join it.
-
-The players are shuffled - i.e. the order of the players in the game (the order in which players make bets) may not be the one in which players join the game. In particular, the game admin might not be the starting player in the first round.
-
-The maximum number of cards is a deterministic function of the number of players who are starting the game. It is equal to 24 (the number of cards available) divided by the number of players and rounded downwards. This ensures that at no point more cards will be needed than are available in the deck. The rule has one exception. With 2 players, the maximum number of cards is 11, not 12. This is because there is a simple strategy to ensure that the first player who reaches 12 cards loses the game. Specifically, in order for them to win the game, it would require the other player to also reach 12 cards and lose a round. However, when the second player reaches 12 cards this player will begin the final round and, knowing that each of the 24 cards is owned by either of the two players, can bet the highest set (Great flush spades) and be guaranteed a win.
-
-### Querying the game state
-
-Players and observers can query the state of the game, choosing either to get the latest state of the game or the state at the end of a specific round. If a user requests to see the state of the game at the end of a past round, they will be shown all cards possessed by each player in that round. However, when users query the current state of the game, they will not be shown any cards unless they provide a valid player UUID to authenticate themselves as a specific player. In that case, they will be shown the cards of that player.
-
-Users can query the (current or past, as mentioned above) state of the game at any point. When they do so, they get the following information about the game:
-
-* the nickname of the admin
-* whether the game is public
-* the status of the game
-* the round number (starting at 1 and incremented by 1 every time a round ends)
-* the maximum number of cards permitted for a player
-* the nicknames of the players who are still participating in the game at the given point, together with the number of cards that each of these players have
-* the cards of the players. This field is either empty (for an ongoing round reported to an observer), filled with the cards of one player (for an ongoing round reported to an authenticated player) or filled with the cards of each player (for a finished round)
-* the nickname of the player who is now supposed to make a move
-* the history of the events in the (current or past) round. An event is a player making a bet (of which there will be at least one but potentially many in a given round), a player checking another player (which will happen once by the end of the round) or a player losing a round (which will be recorded as the last event of that round).
-
-By recording the current state of the game and snapshots of the game at the end of each round, the API will preserve virtually all strategic information about the game (except for details such as the time taken for a user to make a move) and eliminate the need for players or observers to make notes if they would like to learn from the game.
-
-### Making a move
-
-There is an endpoint dedicated to letting the current player make a move. The player provides their UUID (for authentication) and the action they are trying to make (a bet or a check), represented with an action ID.
-
-### Public / private games
-
-A public game is visible to any observer. A private game can only be seen by the users who have its UUID. A game starts private and it can be made public by the admin of the game requesting such change from a dedicated API endpoint. The admin can also switch the game back to private using a different endpoint. This feature is intended to facilitate players joining a game and therefore, when a game starts, it is made private.
-
-Finally, there is an endpoint which allows a user to see all public games (their UUID and list of players).
-
-### Full API documentation
+To take any actions or set their status, the admin or other players need to authenticate themselves by providing their UUID, which is given to them upon joining.
 
 In order to interact with the engine using a custom app or a basic HTTP interface, one should use the full API documentation available in the [API readme](api/README.md).
+
+## Technology stack
+
+This service is built with a serverless architecture on AWS and includes:
+
+* **API:** AWS API Gateway (HTTP & WebSocket)
+* **Compute:** AWS Lambda functions in Python
+* **Database:** AWS DynamoDB
+* **Messaging:** AWS SQS
 
 ## Deployment
 
