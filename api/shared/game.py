@@ -187,10 +187,10 @@ def calculate_actual_max_cards(rules, n_players):
     if n_players < 2:
         return 0
     common_cards_rule = int(rules.get("common_cards", 0))
-    max_cards_preference = int(rules.get("max_cards_preference", 0))
+    max_cards_preference = rules.get("max_cards_preference", 0)
     total_deck_size = int(rules.get("deck_size", 24)) + int(rules.get("jokers", 0)) + int(rules.get("blanks", 0))
-    if max_cards_preference != 0:
-        return min(max_cards_preference, calculate_largest_feasible_max_cards_per_player(n_players, total_deck_size, common_cards_rule))
+    if max_cards_preference:
+        return min(int(max_cards_preference), calculate_largest_feasible_max_cards_per_player(n_players, total_deck_size, common_cards_rule))
     else:
         suggested_total_cards_in_round = calculate_suggested_max_cards_dealt_in_any_round(rules)
         return calculate_largest_feasible_max_cards_per_player(n_players, suggested_total_cards_in_round, common_cards_rule)

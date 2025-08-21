@@ -85,7 +85,10 @@ def lambda_handler(event, context):
             elif key == "max_cards":
                 if not (0 <= value <= 11):
                     return parameter_error_payload(key, value, "Max cards must be 0 (for no preference) or an integer between 1 and 11")
-                rules["max_cards_preference"] = value
+                if value == 0:
+                    rules["max_cards_preference"] = None
+                else:
+                    rules["max_cards_preference"] = value
 
         if rules.get("time_limit", 0) > 0:
             players = unset_human_readiness(players)
