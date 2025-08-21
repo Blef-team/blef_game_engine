@@ -241,17 +241,9 @@ def start_next_round(game):
     Recalls the loser of the previous round, updates cards,
     and starts the next round with the correct current player.
     """
-    action_ids = get_action_ids(game.get("rules", {}))
-    losing_player_nickname = None
-    # Find the loser from the history
-    for event in reversed(game.get("history", [])):
-        if event.get("action_id") == action_ids["lose_round"]:
-            losing_player_nickname = event.get("player")
-            break
-    
-    losing_player = get_player_by_nickname(game["players"], losing_player_nickname)
-
     # Update the card counts for the new round
+    losing_player_nickname = find_losing_player_nickname(game)    
+    losing_player = get_player_by_nickname(game["players"], losing_player_nickname)
     if losing_player:
         losing_player["n_cards"] += 1
         if losing_player["n_cards"] > game["max_cards"]:
@@ -343,19 +335,34 @@ def update_n_cards(game, losing_player_nickname):
     return temp_players
 
 
-def was_this_the_last_round(game_state):
-    """
-    Detects if this is a finished round after which there will be no more rounds.
-    """
-    action_ids = get_action_ids(game_state.get("rules", {}))
+def find_losing_player_nickname(game):
+    action_ids = get_action_ids(game.get("rules", {}))
     losing_player_nickname = None
-    for event in reversed(game_state.get("history", [])):
+    for event in reversed(game.get("history", [])):
         if event.get("action_id") == action_ids["lose_round"]:
             losing_player_nickname = event.get("player")
             break
+    return losing_player_nickname
 
-    if not losing_player_nickname:
-        return False
+def is_update_redundant(game):
+    """
+    Detects game state updates that are duplicates or will be obsolete within milliseconds
+    """
+    is_snapshot = "_" in game.get("game_uuid", "")
+    is_timed_game = game.get("rules", {}).get("time_limit", 0) > 0
+    losing_player_nickname = find_losing_player_nickname(game)
 
-    updated_players = update_n_cards(game_state, losing_player_nickname)
-    return sum(1 for p in updated_players if p.get("n_cards", 0) > 0) <= 1
+    # At the end of timed rounds, the archival snapshot and the live state are the same, so skip the snapshot.
+    # Except in the last round, where the live state shows the finished game information
+    if is_snapshot and is_timed_game and losing_player_nickname:
+        updated_players = update_n_cards(game, losing_player_nickname)
+        if sum(1 for p in updated_players if p.get("n_cards", 0) > 0) <= 1:
+            return True
+    
+    # When the last player gets ready, the game state will be updated but the next round will start immediately.
+    # This makes the state with every player ready obsolete within milliseconds
+    if is_timed_game and losing_player_nickname and not game.get("status") == "Finished":
+        if all(p.get("ready", False) for p in game.get("players", [])):
+            return True
+
+    return False

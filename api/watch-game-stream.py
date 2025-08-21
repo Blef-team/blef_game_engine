@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 import json
 from shared.response import * 
 from shared.api_gateway import parse_event
-from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, was_this_the_last_round
+from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, is_update_redundant
 from shared.logging import logger
 from shared.db import websocket_table
 
@@ -167,10 +167,8 @@ def lambda_handler(event, context):
             new_game_state = game.get("new", {})
             if not new_game_state:
                 continue
-            is_snapshot = "_" in new_game_state.get("game_uuid", "")
-            is_timed_game = new_game_state.get("rules", {}).get("time_limit", 0) > 0
-            if is_snapshot and is_timed_game and not was_this_the_last_round(new_game_state):
-                logger.info('## SKIPPING END OF ROUND SNAPSHOT BROADCAST FOR TIMED GAME THAT HAS NOT FINISHED')
+            if is_update_redundant(new_game_state):
+                logger.info('## SKIPPING REDUNDANT UPDATE')
                 continue
 
             logger.info('## UPDATING WATCHERS')
