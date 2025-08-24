@@ -2,6 +2,7 @@ import uuid
 import random
 import re
 from shared.response import *
+from shared.constants import GameStatus, RuleValues
 from shared.db import save_in_dynamodb
 from shared.api_gateway import parse_event
 
@@ -18,7 +19,7 @@ def lambda_handler(event, context):
             "admin_nickname": None,
             "public": "false",
             "room": random.randrange(10, 100),
-            "status": "Not started",
+            "status": GameStatus.NOT_STARTED,
             "round_number": 0,
             "max_cards": 0,
             "players": [],
@@ -26,12 +27,12 @@ def lambda_handler(event, context):
             "cp_nickname": None,
             "history": [],
             "rules": {
-                "time_limit": 0,
-                "deck_size": 24,
-                "common_cards": 0,
-                "jokers": 0,
-                "blanks": 0,
-                "max_cards_preference": None
+                "time_limit": RuleValues.TIME_LIMIT_DEFAULT,
+                "deck_size": RuleValues.DECK_SIZE_DEFAULT,
+                "common_cards": RuleValues.COMMON_CARDS_DEFAULT,
+                "jokers": RuleValues.JOKERS_DEFAULT,
+                "blanks": RuleValues.BLANKS_DEFAULT,
+                "max_cards_preference": RuleValues.MAX_CARDS_PREFERENCE_DEFAULT
             }
         }
 

@@ -1,6 +1,7 @@
 from shared.response import *
 from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus, RuleValues
 from shared.inputs import is_valid_uuid
 from shared.game import start_game
 
@@ -18,7 +19,7 @@ def lambda_handler(event, context):
         if not game:
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
-        if game.get("status") != "Not started":
+        if game.get("status") != GameStatus.NOT_STARTED:
             return error_payload(403, "Game already started")
 
         admin_uuid = str(body.get("admin_uuid"))
@@ -38,7 +39,7 @@ def lambda_handler(event, context):
         if n_players < 2:
             return error_payload(403, "At least 2 players needed to start a game")
 
-        if  int(game.get("rules", {}).get("time_limit", 0)) > 0:
+        if  int(game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT)) > RuleValues.TIME_LIMIT_NO_LIMIT:
             return error_payload(403, "Games with a time limit can only start when everyone is ready")
 
         start_game(game)

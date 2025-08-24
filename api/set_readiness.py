@@ -4,6 +4,7 @@ import copy
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus
 from shared.game import update_n_cards
 from shared.inputs import is_valid_uuid
 from shared.game import start_game, start_next_round, get_player_by_nickname, get_action_ids
@@ -62,7 +63,7 @@ def lambda_handler(event, context):
         updated_game_state = update_player_readiness(game_uuid, player_index, ready)
 
         game_status = updated_game_state.get("status")
-        if game_status == "Waiting for ready":
+        if game_status == GameStatus.WAITING_FOR_READY:
             action_ids = get_action_ids(updated_game_state.get("rules", {}))
             losing_player_nickname = next((event.get("player") for event in reversed(updated_game_state.get("history", [])) if event.get("action_id") == action_ids["lose_round"]), None)
             temp_players = update_n_cards(updated_game_state, losing_player_nickname)
@@ -70,7 +71,7 @@ def lambda_handler(event, context):
             if len(active_players_for_next_round) >= 2 and all(p.get("ready") for p in active_players_for_next_round):
                 start_next_round(updated_game_state)
                 return response_payload(200, {"message": "All players ready. Next round started."})
-        elif game_status == "Not started":
+        elif game_status == GameStatus.NOT_STARTED:
             players = updated_game_state.get("players", [])
             if len(players) >= 2 and all(p.get("ready") for p in players):
                 start_game(updated_game_state)

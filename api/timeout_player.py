@@ -1,5 +1,6 @@
 import json
 from shared.response import *
+from shared.constants import GameStatus
 from shared.db import get_from_dynamodb
 from shared.game import get_nickname_by_uuid, end_round
 
@@ -15,7 +16,7 @@ def lambda_handler(event, context):
             game = get_from_dynamodb(game_uuid)
             
             # Ignore if game is not in the correct state
-            if not game or game.get("status") != "Running" or game.get("round_number") != round_number:
+            if not game or game.get("status") != GameStatus.RUNNING or game.get("round_number") != round_number:
                 continue
             
             player_nickname = get_nickname_by_uuid(game["players"], player_uuid)

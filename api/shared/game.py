@@ -7,6 +7,7 @@ import copy
 from .db import table, save_in_dynamodb, transact_end_of_round
 from .time_limit import send_time_limit_message
 from .logging import logger
+from .constants import GameStatus, CommonCardsRules, RuleValues
 
 def get_player_by_nickname(players, nickname):
     filtered_players = [p for p in players if p["nickname"] == nickname]
@@ -59,19 +60,12 @@ def censor_game(game, player_nickname=None):
         "update_time": time.time()
     }
 
-def get_common_cards_rate_by_id(rule):
-    if rule == -2:
-        return 1/5
-    if rule == -1:
-        return 1/3
-    return False
-
 def calculate_common_cards(players, rules):
-    common_cards_rule = int(rules.get("common_cards", 0))
-    if common_cards_rule in (-1, -2):
+    common_cards_rule = int(rules.get("common_cards", RuleValues.COMMON_CARDS_DEFAULT))
+    if common_cards_rule in (CommonCardsRules.INCREASING.value, CommonCardsRules.SLOWLY_INCREASING.value):
+        rule_enum = CommonCardsRules(common_cards_rule)
         extra_cards_per_hand = [hs-1 for hs in [int(p.get("n_cards")) for p in players] if hs>0]
-        rate = get_common_cards_rate_by_id(common_cards_rule)
-        return int(1 + sum(extra_cards_per_hand) * rate)
+        return int(1 + sum(extra_cards_per_hand) * rule_enum.rate)
     else:
         return common_cards_rule
 
@@ -79,9 +73,9 @@ def draw_cards(players, rules):
     """
     Draws cards for players and common cards based on the provided rules.
     """
-    deck_size = rules.get("deck_size", 24)
-    num_jokers = int(rules.get("jokers", 0))
-    num_blanks = int(rules.get("blanks", 0))
+    deck_size = rules.get("deck_size", RuleValues.DECK_SIZE_DEFAULT)
+    num_jokers = int(rules.get("jokers", RuleValues.JOKERS_DEFAULT))
+    num_blanks = int(rules.get("blanks", RuleValues.BLANKS_DEFAULT))
     num_common_cards = calculate_common_cards(players, rules)
 
     if deck_size == 32:
@@ -134,7 +128,7 @@ def start_player_timer(game):
     and returns the calculated move deadline.
     """
     rules = game.get("rules", {})
-    time_limit = int(rules.get("time_limit", 0))
+    time_limit = int(rules.get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT))
     logger.info(f"## Checking for game {game.get('game_uuid')}")
     logger.info(f"## Time limit rule is {time_limit} and current player is {game.get('cp_nickname')}")
     
@@ -159,9 +153,9 @@ def calculate_suggested_max_cards_dealt_in_any_round(rules):
     Computes the expanded deck size and applies a downward adjustment for jokers. 
     Always caps the final result at base deck size to not prolong the game
     """
-    base_deck_size = int(rules.get("deck_size", 24))
-    jokers = int(rules.get("jokers", 0))
-    blanks = int(rules.get("blanks", 0))
+    base_deck_size = int(rules.get("deck_size", RuleValues.DECK_SIZE_DEFAULT))
+    jokers = int(rules.get("jokers", RuleValues.JOKERS_DEFAULT))
+    blanks = int(rules.get("blanks", RuleValues.BLANKS_DEFAULT))
     if jokers > 0:
         suggested_total = (base_deck_size + blanks + jokers) / (1 + 0.2 * (jokers + 1))
         return min(floor(suggested_total), base_deck_size)
@@ -174,8 +168,8 @@ def calculate_largest_feasible_max_cards_per_player(n_players, total_cards_in_pl
     # x*n + 1 + floor((x-1)*n*rate) <= deck_size  ->  x*n + 1 + (x-1)*n*rate < deck_size + 1  ->   x*n + x*n*rate - n*rate < deck_size  ->
     # x*n*(1+rate) < deck_size + n*rate  ->  x < (deck_size + n*rate) / (n * (1+rate))  ->  x = int((deck_size + n*rate) / (n * (1+rate)) - epsilon)
 
-    if common_cards_rule in (-1, -2):
-        rate = get_common_cards_rate_by_id(common_cards_rule)
+    if common_cards_rule in CommonCardsRules.special_values():
+        rate = CommonCardsRules(common_cards_rule).rate
         # Formula rearranged to solve for x (max_cards): x <= (total_cards - 1 + n*rate) / (n * (1 + rate))
         max_cards = (total_cards_in_play + n_players * rate) / (n_players * (1 + rate)) - 0.001
         return min(floor(max_cards), 11)
@@ -186,9 +180,9 @@ def calculate_largest_feasible_max_cards_per_player(n_players, total_cards_in_pl
 def calculate_actual_max_cards(rules, n_players):
     if n_players < 2:
         return 0
-    common_cards_rule = int(rules.get("common_cards", 0))
-    max_cards_preference = rules.get("max_cards_preference", 0)
-    total_deck_size = int(rules.get("deck_size", 24)) + int(rules.get("jokers", 0)) + int(rules.get("blanks", 0))
+    common_cards_rule = int(rules.get("common_cards", RuleValues.COMMON_CARDS_DEFAULT))
+    max_cards_preference = rules.get("max_cards_preference", RuleValues.MAX_CARDS_NO_PREFERENCE_INTERNAL)
+    total_deck_size = int(rules.get("deck_size", RuleValues.DECK_SIZE_DEFAULT)) + int(rules.get("jokers", RuleValues.JOKERS_DEFAULT)) + int(rules.get("blanks", RuleValues.BLANKS_DEFAULT))
     if max_cards_preference:
         return min(int(max_cards_preference), calculate_largest_feasible_max_cards_per_player(n_players, total_deck_size, common_cards_rule))
     else:
@@ -204,7 +198,7 @@ def start_game(game):
         player["n_cards"] = 1
 
     public = "false"
-    status = "Running"
+    status = GameStatus.RUNNING
     round_number = 1
     
     players = arrange_players(players)
@@ -256,7 +250,7 @@ def start_next_round(game):
         game["cp_nickname"] = losing_player["nickname"]
 
     # Set up and save the next round
-    game["status"] = "Running"
+    game["status"] = GameStatus.RUNNING
     game["round_number"] += 1
     game["history"] = []
     game["hands"], game["common_hand"] = draw_cards(game["players"], game.get("rules", {}))
@@ -270,7 +264,7 @@ def get_action_ids(rules):
     """
     Returns a dictionary of key action IDs based on the deck size.
     """
-    deck_size = rules.get("deck_size", 24)
+    deck_size = rules.get("deck_size", RuleValues.DECK_SIZE_DEFAULT)
     if deck_size == 32:
         return {"check": 140, "lose_round": 141}
     return {"check": 88, "lose_round": 89}
@@ -282,7 +276,7 @@ def end_round(game, losing_player_nickname):
     """
     original_last_modified = game.get("last_modified")
     action_ids = get_action_ids(game.get("rules", {}))
-    time_limit = int(game.get("rules", {}).get("time_limit", 0))
+    time_limit = int(game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT))
 
     game["history"].append({"player": losing_player_nickname, "action_id": action_ids["lose_round"]})
     game["cp_nickname"] = None
@@ -298,13 +292,13 @@ def end_round(game, losing_player_nickname):
     
     if sum(1 for p in temp_players if p.get("n_cards", 0) > 0) <= 1:
         # Game is finished
-        game["status"] = "Finished"
+        game["status"] = GameStatus.FINISHED
         game["players"] = temp_players # Use the updated player list
         if transact_end_of_round(game, archive_state, original_last_modified):
             return archive_state
     elif time_limit > 0 and any(p for p in game["players"] if p.get("n_cards") > 0 and not p.get("ai_agent")):
         # Game is timed and waiting for human players' readiness
-        game["status"] = "Waiting for ready"
+        game["status"] = GameStatus.WAITING_FOR_READY
         game["players"] = unset_human_readiness(game["players"])
         if transact_end_of_round(game, archive_state, original_last_modified):
             return game
@@ -349,7 +343,7 @@ def is_update_redundant(game):
     Detects game state updates that are duplicates or will be obsolete within milliseconds
     """
     is_snapshot = "_" in game.get("game_uuid", "")
-    is_timed_game = game.get("rules", {}).get("time_limit", 0) > 0
+    is_timed_game = game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT) != RuleValues.TIME_LIMIT_NO_LIMIT
     losing_player_nickname = find_losing_player_nickname(game)
 
     # At the end of timed rounds, the archival snapshot and the live state are the same, so skip the snapshot.
@@ -361,7 +355,7 @@ def is_update_redundant(game):
     
     # When the last player gets ready, the game state will be updated but the next round will start immediately.
     # This makes the state with every player ready obsolete within milliseconds
-    if is_timed_game and losing_player_nickname and not game.get("status") == "Finished":
+    if is_timed_game and losing_player_nickname and not game.get("status") == GameStatus.FINISHED:
         if all(p.get("ready", False) for p in game.get("players", [])):
             return True
 

@@ -1,6 +1,7 @@
 from shared.response import *
 from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus
 from shared.game import get_nickname_by_uuid, censor_game
 from shared.inputs import is_valid_uuid
 
@@ -42,7 +43,7 @@ def lambda_handler(event, context):
         if round_param and current_round < round_param:
             return parameter_error_payload("round", round_param, message="The game has not reached this round")
 
-        if round_param and (round_param != current_round or current_status != "Running"):
+        if round_param and (round_param != current_round or current_status != GameStatus.RUNNING):
             game = get_from_dynamodb(f"{game_uuid}_{round_param}")
         else:
             round_param = current_round

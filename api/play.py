@@ -7,6 +7,7 @@ from itertools import combinations
 from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus, RuleValues
 from shared.logging import logger
 from shared.game import get_nickname_by_uuid, censor_game, find_next_active_player, end_round, start_player_timer, get_action_ids
 from shared.inputs import is_valid_uuid
@@ -14,7 +15,7 @@ from shared.inputs import is_valid_uuid
 sqs_client = boto3.client("sqs")
 TIME_LIMIT_QUEUE_NAME = os.environ.get("time_limit_queue_name")
 
-def get_set_details_from_action_id(action_id, deck_size=24):
+def get_set_details_from_action_id(action_id, deck_size=RuleValues.DECK_SIZE_DEFAULT):
     """
     Determines the set type and details from the action_id and deck size.
     """
@@ -137,7 +138,7 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
     Checks if a given set exists within a list of cards, using a specified number of jokers.
     """
     try:
-        set_details = get_set_details_from_action_id(action_id, rules.get("deck_size", 24))
+        set_details = get_set_details_from_action_id(action_id, rules.get("deck_size", RuleValues.DECK_SIZE_DEFAULT))
         if not set_details:
             logger.error("Could not get set details from action_id.")
             return False
@@ -244,7 +245,7 @@ def lambda_handler(event, context):
         game = get_from_dynamodb(game_uuid)
         if not game:
             return parameter_error_payload("game_uuid", game_uuid, "Game does not exist")
-        if game.get("status") != "Running":
+        if game.get("status") != GameStatus.RUNNING:
             return error_payload(400, "This game is not currently running")
 
         player_uuid = str(body.get("player_uuid"))

@@ -2,12 +2,16 @@ import time
 import decimal
 from shared.response import *
 from shared.db import table, get_from_dynamodb
+from shared.constants import GameStatus, RuleValues, CommonCardsRules
 from shared.game import unset_human_readiness, calculate_actual_max_cards
 from shared.api_gateway import parse_event
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
 def update_in_dynamodb(game_uuid, rules, players, max_cards=None):
+    """
+    Updates the game rules, player readiness, and max cards in DynamoDB.
+    """
     update_expressions = ["#rules = :rules", "players = :players", "last_modified = :last_modified"]
     expression_attribute_names = {'#rules': 'rules'}
     expression_attribute_values = {
@@ -43,7 +47,7 @@ def lambda_handler(event, context):
         if not game:
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
-        if game.get("status") != "Not started":
+        if game.get("status") != GameStatus.NOT_STARTED:
             return error_payload(403, "Cannot change rules after the game has started")
 
         admin_uuid = str(body.get("admin_uuid"))
@@ -57,40 +61,46 @@ def lambda_handler(event, context):
 
         rules = game.get("rules", {})
 
-        # Iterate through all query parameters to find and apply changes
         for key, value in body.items():
-            # Type conversion - right now all rules are integers
             if key in ["time_limit", "deck_size", "common_cards", "jokers", "blanks", "max_cards"]:
                 try:
                     value = int(value)
                 except (ValueError, TypeError):
-                     return parameter_error_payload(key, value, "Rule must be an integer.")
+                     return parameter_error_payload(key, value, "Every rule must be an integer.")
 
             if key == "time_limit":
-                if not (0 <= value <= 300):
-                    return parameter_error_payload(key, value, "Time limit must be an integer between 0 and 300")
+                if not RuleValues.is_valid_time_limit_rule(value):
+                    return parameter_error_payload(key, value, 
+                        f"Time limit must be {RuleValues.TIME_LIMIT_NO_LIMIT} (for no limit) or an integer between "
+                        f"{RuleValues.TIME_LIMIT_RANGE.BOTTOM} and {RuleValues.TIME_LIMIT_RANGE.TOP}")
                 rules[key] = value
             elif key == "deck_size":
-                if value not in [24, 32]:
-                    return parameter_error_payload(key, value, "Deck size must be 24 or 32")
+                if value not in RuleValues.DECK_SIZES:
+                    return parameter_error_payload(key, value, f"Deck size must be one of {RuleValues.DECK_SIZES}")
                 rules[key] = value
             elif key == "common_cards":
-                if not (-2 <= value <= 12):
-                    return parameter_error_payload(key, value, "Common cards must be an integer between 0 and 12")
+                if not RuleValues.is_valid_common_cards_rule(value):
+                    return parameter_error_payload(key, value,
+                        f"Common cards must be between {RuleValues.COMMON_CARDS_FIXED_RANGE.BOTTOM} and "
+                        f"{RuleValues.COMMON_CARDS_FIXED_RANGE.TOP}, or one of the special values: "
+                        f"{CommonCardsRules.special_values()}")
                 rules[key] = value
-            elif key in ["jokers", "blanks"]:
-                if not (0 <= value <= 12):
-                    return parameter_error_payload(key, value, "Jokers and blanks must be an integer between 0 and 12")
+            elif key == "jokers":
+                if not (RuleValues.JOKERS_RANGE.BOTTOM <= value <= RuleValues.JOKERS_RANGE.TOP):
+                    return parameter_error_payload(key, value, f"Jokers must be an integer between {RuleValues.JOKERS_RANGE.BOTTOM} and {RuleValues.JOKERS_RANGE.TOP}")
+                rules[key] = value
+            elif key == "blanks":
+                if not (RuleValues.BLANKS_RANGE.BOTTOM <= value <= RuleValues.BLANKS_RANGE.TOP):
+                    return parameter_error_payload(key, value, f"Blanks must be an integer between {RuleValues.BLANKS_RANGE.BOTTOM} and {RuleValues.BLANKS_RANGE.TOP}")
                 rules[key] = value
             elif key == "max_cards":
-                if not (0 <= value <= 11):
-                    return parameter_error_payload(key, value, "Max cards must be 0 (for no preference) or an integer between 1 and 11")
-                if value == 0:
-                    rules["max_cards_preference"] = None
-                else:
-                    rules["max_cards_preference"] = value
+                if not RuleValues.is_valid_max_cards_rule(value):
+                    return parameter_error_payload(key, value,
+                        f"Max cards must be {RuleValues.MAX_CARDS_NO_PREFERENCE_API} (for no preference) or an integer between "
+                        f"{RuleValues.MAX_CARDS_FIXED_RANGE.BOTTOM} and {RuleValues.MAX_CARDS_FIXED_RANGE.TOP}")
+                rules["max_cards_preference"] = value if value != RuleValues.MAX_CARDS_NO_PREFERENCE_API else RuleValues.MAX_CARDS_NO_PREFERENCE_INTERNAL
 
-        if rules.get("time_limit", 0) > 0:
+        if rules.get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT) != RuleValues.TIME_LIMIT_NO_LIMIT:
             players = unset_human_readiness(players)
 
         max_cards = calculate_actual_max_cards(rules, len(players))
