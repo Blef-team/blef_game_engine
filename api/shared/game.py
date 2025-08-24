@@ -350,12 +350,12 @@ def is_update_redundant(game):
     # Except in the last round, where the live state shows the finished game information
     if is_snapshot and is_timed_game and losing_player_nickname:
         updated_players = update_n_cards(game, losing_player_nickname)
-        if sum(1 for p in updated_players if p.get("n_cards", 0) > 0) <= 1:
+        if sum(1 for p in updated_players if p.get("n_cards", 0) > 0) > 1:
             return True
     
     # When the last player gets ready, the game state will be updated but the next round will start immediately.
     # This makes the state with every player ready obsolete within milliseconds
-    if is_timed_game and losing_player_nickname and not game.get("status") == GameStatus.FINISHED:
+    if not is_snapshot and is_timed_game and losing_player_nickname and not game.get("status") == GameStatus.FINISHED:
         if all(p.get("ready", False) for p in game.get("players", [])):
             return True
 
