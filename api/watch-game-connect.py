@@ -52,6 +52,7 @@ def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_
 def register_public_games_watcher(reactions_enabled, connection_id):
     connection_object = {
         "connection_id": connection_id,
+        "game_uuid": "LOBBY",
         "reactions_enabled": reactions_enabled
     }
 

@@ -78,8 +78,9 @@ def can_get_public_info(game, game_old):
 
 
 def find_connected_public_games_watchers():
-    response = websocket_table.scan(
-        FilterExpression=Attr('game_uuid').not_exists()
+    response = websocket_table.query(
+        KeyConditionExpression=Key('game_uuid').eq("LOBBY"),
+        IndexName="game_uuid-index"
     )
     return [(connection["connection_id"]) for connection in response.get("Items")]
 
