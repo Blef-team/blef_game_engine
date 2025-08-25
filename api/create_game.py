@@ -4,6 +4,7 @@ import re
 from shared.response import *
 from shared.constants import GameStatus, RuleValues
 from shared.db import save_in_dynamodb
+from shared.game import create_player
 from shared.api_gateway import parse_event
 
 
@@ -45,11 +46,10 @@ def lambda_handler(event, context):
             return parameter_error_payload("nickname", nickname, message="Nickname invalid")
         if not re.match("^[a-zA-Z]\w*$", nickname):
             return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
-        player_uuid = str(uuid.uuid4())
-        player = {"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False}
-        game.update({"players": [player], "admin_nickname": nickname})
+        player = create_player(game, nickname)
+        game.update({"players": [player], "admin_nickname": player.get("nickname")})
         if save_in_dynamodb(game):
-            return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player_uuid})
+            return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player.get("uuid")})
 
         raise(Exception("Something went wrong - ended up with no response"))
 

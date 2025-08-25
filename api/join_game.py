@@ -1,4 +1,3 @@
-import uuid
 import time
 import re
 import decimal
@@ -7,7 +6,7 @@ from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.constants import GameStatus
-from shared.game import calculate_actual_max_cards
+from shared.game import create_player, calculate_actual_max_cards
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
@@ -69,13 +68,13 @@ def lambda_handler(event, context):
         if nickname in [p["nickname"] for p in players]:
             return parameter_error_payload("nickname", nickname, message="Nickname already taken")
 
-        player_uuid = str(uuid.uuid4())
-        players.append({"uuid": player_uuid, "nickname": nickname, "n_cards": 0, "ready": False})
-        admin_nickname = game.get("admin_nickname") or nickname
+        new_player = create_player(game, nickname)
+        players.append(new_player)
+        admin_nickname = game.get("admin_nickname") or new_player.get("nickname")
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
 
         if update_in_dynamodb(game_uuid, players, admin_nickname, max_cards, game["last_modified"]):
-            return response_payload(200, {"player_uuid": player_uuid})
+            return response_payload(200, {"player_uuid": new_player.get("uuid")})
         
         logger.info(f"Join failed for '{nickname}' due to race condition.")
         return error_payload(409, "The game state changed. Please try again.")
