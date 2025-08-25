@@ -5,16 +5,11 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 lambda_client = boto3.client('lambda')
 
-
 def parse_event(event):
-    # Basic input validation
     if not isinstance(event, dict):
         return False
-
-    # Handle both direct triggers and API Gateway
     body = event.get("body", event)
     if isinstance(body, str):
         try:
@@ -27,26 +22,38 @@ def parse_event(event):
     body.update(query_params)
     return body
 
-
 def get_player_by_nickname(players, nickname):
-    filtered_players = [p for p in players if p["nickname"] == nickname]
-    if filtered_players:
-        return filtered_players[0]
-
+    return next((p for p in players if p["nickname"] == nickname), None)
 
 def get_aiagent_player_uuid(game):
-    current_player = game["cp_nickname"]
-    player_obj = get_player_by_nickname(game["players"], current_player)
-    return player_obj.get("uuid")
+    current_player = game.get("cp_nickname")
+    if not current_player:
+        return None
+    player_obj = get_player_by_nickname(game.get("players", []), current_player)
+    return player_obj.get("uuid") if player_obj else None
 
+def is_legal(action, game):
+    """
+    Checks if an action is legal based on the current game state and rules.
+    """
+    rules = game.get("rules", {})
+    deck_size = rules.get("deck_size", 24)
+    check_action_id = 140 if deck_size == 32 else 88
+    
+    if not (0 <= action <= check_action_id):
+        return False
+        
+    history = game.get("history", [])
+    
+    if not history and action == check_action_id:
+        return False
+        
+    if history and action < check_action_id:
+        last_action_id = history[-1].get("action_id", -1)
+        if action <= last_action_id:
+            return False
 
-def is_legal(action, history):
-    if action not in range(89):
-        return False
-    if not history and action == 88 or history and action <= history[-1]["action_id"]:
-        return False
     return True
-
 
 def call_play(action, aiagent_player_uuid, game_uuid):
     """
@@ -63,8 +70,7 @@ def call_play(action, aiagent_player_uuid, game_uuid):
         FunctionName='blef-play',
         InvocationType='Event',
         Payload=json.dumps(payload)
-        )
-
+    )
 
 def lambda_handler(event, context):
     logger.info('## EVENT')
@@ -80,7 +86,7 @@ def lambda_handler(event, context):
     action = agent.determine_action(game)
     logger.info('## ACTION')
     logger.info(action)
-    assert is_legal(action, game["history"])
+    assert is_legal(action, game)
 
     call_play(action, aiagent_player_uuid, game["game_uuid"])
     message = "Action made"

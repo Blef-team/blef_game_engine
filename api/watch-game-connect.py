@@ -35,8 +35,7 @@ def register_game_watcher(game_uuid, player_uuid, reactions_enabled, connection_
         if not is_valid_uuid(player_uuid):
             return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
-        if not player_authenticated:
+        if not player_nickname:
             return parameter_error_payload("player_uuid", player_uuid, message="The UUID does not match any active player")
 
     connection_object = {

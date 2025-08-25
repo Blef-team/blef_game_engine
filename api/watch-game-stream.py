@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 import json
 from shared.response import * 
 from shared.api_gateway import parse_event
-from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game
+from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, is_update_redundant
 from shared.logging import logger
 from shared.db import websocket_table
 
@@ -108,10 +108,7 @@ def update_game_watchers(game):
     logger.info(connected_players)
     for connection_id, player_uuid in connected_players:
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        player_authenticated = bool(player_nickname)
-        current_round = game["round_number"] + 1 if any(str(val["action_id"])=="89" for val in game.get("history")) else game["round_number"]
-        visible_game = censor_game(game, current_round, player_authenticated, player_nickname)
-        post_to_connection(visible_game, connection_id)
+        post_to_connection(censor_game(game, player_nickname), connection_id)
 
 
 def update_public_games_watchers(game, game_old):
@@ -164,6 +161,16 @@ def lambda_handler(event, context):
         for game in games:
             logger.info('## GAME')
             logger.info(game)
+
+            # If it's a timed game, it's the EOR state and the game isn't about to finish, skip update
+            # That's because this state will cause a flicker at best (fraction of a second before the 'waiting state') or glitching UI at worst
+            new_game_state = game.get("new", {})
+            if not new_game_state:
+                continue
+            if is_update_redundant(new_game_state):
+                logger.info('## SKIPPING REDUNDANT UPDATE')
+                continue
+
             logger.info('## UPDATING WATCHERS')
             update_watchers(game)
             logger.info('## QUEUEING AI IF NEEDED')

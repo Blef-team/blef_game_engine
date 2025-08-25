@@ -3,24 +3,27 @@ import time
 import json
 import uuid
 import decimal
-from shared.response import * 
+from shared.response import *
 from shared.db import table, get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus
+from shared.game import calculate_actual_max_cards
 from shared.inputs import is_valid_uuid
 
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
 
 
-def update_in_dynamodb(game_uuid, players):
+def update_in_dynamodb(game_uuid, players, max_cards):
     table.update_item(
         Key={
             'game_uuid': game_uuid
         },
-        UpdateExpression="set players = :players, last_modified = :last_modified",
+        UpdateExpression="set players = :players, last_modified = :last_modified, max_cards = :mc",
         ExpressionAttributeValues={
             ':players': players,
-            ':last_modified': decimal.Decimal(str(time.time()))
+            ':last_modified': decimal.Decimal(str(time.time())),
+            ':mc': max_cards
         },
         ReturnValues="NONE"
     )
@@ -54,7 +57,7 @@ def lambda_handler(event, context):
         if not game:
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
-        if game.get("status") != "Not started":
+        if game.get("status") != GameStatus.NOT_STARTED:
             return error_payload(403, "Game already started")
 
         admin_uuid = body.get("admin_uuid")
@@ -88,11 +91,14 @@ def lambda_handler(event, context):
             "uuid": player_uuid,
             "nickname": nickname,
             "n_cards": 0,
-            "ai_agent": agent_type
-            }
+            "ai_agent": agent_type,
+            "ready": True
+        }
         players.append(player)
 
-        update_in_dynamodb(game_uuid, players)
+        max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
+
+        update_in_dynamodb(game_uuid, players, max_cards)
 
         payload = {"message": f"{nickname} joined the game"}
         return response_payload(200, payload)
