@@ -307,7 +307,7 @@ def end_round(game, losing_player_nickname):
         game["players"] = temp_players # Use the updated player list
         if transact_end_of_round(game, archive_state, original_last_modified):
             return archive_state
-    elif time_limit > 0 and any(p for p in game["players"] if p.get("n_cards") > 0 and not p.get("ai_agent")):
+    elif time_limit > 0:
         # Game is timed and waiting for human players' readiness
         game["status"] = GameStatus.WAITING_FOR_READY
         game["players"] = unset_human_readiness(game["players"])
