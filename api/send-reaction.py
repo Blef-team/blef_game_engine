@@ -15,7 +15,7 @@ from shared.logging import logger
 sqs_client = boto3.client("sqs")
 REACTION_QUEUE_NAME = os.environ.get("reaction_queue_name")
 
-pattern = r"^(😮|🤨|👏|😂|🦊|👍|😑|😎|😅)$"
+pattern = r"^(😮|🤨|👏|😂|🦊|👍|😑|😎|😅|😭|⏳|👋|🔥|👀|🤔|🤬|😈|😇|✔️|✖️)$"
 
 def is_safe_message(message):
     return bool(re.fullmatch(pattern, message))
