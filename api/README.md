@@ -181,11 +181,11 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
 
 ## Change rules
 
-  Allows the game admin to change the rules of the game before it starts. This includes changing the maximum number of cards. However, if the preference regarding the maximum number of cards cannot be satisfied, the highest feasible number will be chosen. If there is no preference, the engine will suggest a number, which will be displayed in the `max_cards` field of the game state.
+Allows the game admin to change the rules of the game before it starts. This includes changing the maximum number of cards. However, if the preference regarding the maximum number of cards cannot be satisfied, the highest feasible number will be chosen. If there is no preference, the engine will suggest a number, which will be displayed in the `max_cards` field of the game state.
 
 * **URL**
 
-  /games/{game_uuid}/change-rules
+  `/games/{game_uuid}/change-rules`
 
 * **Method**
 
@@ -199,39 +199,39 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
 
 * **Query Params**
 
-   **Required:**
+  **Required:**
 
-   `"admin_uuid"=string`
+  `"admin_uuid"=string`
 
-   **Optional (at least one rule parameter should be provided):**
+  **Optional (at least one rule parameter should be provided):**
 
-   * `"time_limit"=integer` (0 for no limit, or 6-300 seconds)
-   * `"deck_size"=integer` (24 or 32)
-   * `"common_cards"=integer` (0-12, or special values)
-   * `"jokers"=integer` (0-12)
-   * `"blanks"=integer` (0-12)
-   * `"max_cards"=integer` (0 for no preference, or 1-11)
+  * `"time_limit"=integer` (0 for no limit, or 1–300 seconds)
+  * `"deck_size"=integer` (24 or 32)
+  * `"common_cards"=integer` (0–12, or special values)
+  * `"jokers"=integer` (0–12)
+  * `"blanks"=integer` (0–12)
+  * `"max_cards"=integer` (0 for no preference, or 1–11)
 
 * **Success Response:**
 
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Rules updated"}`
+  * **Code:** 200 OK  
+    **Content:** `{"message":"Rules updated"}`
 
 * **Error Responses:**
 
-  * **Code:** 403 FORBIDDEN <br />
-  **Content:** `{"error":"Cannot change rules after the game has started"}`
+  * **Code:** 403 FORBIDDEN  
+    **Content:** `{"error":"Cannot change rules after the game has started"}`
 
-  * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error":"Invalid parameter value"}`
+  * **Code:** 400 BAD REQUEST  
+    **Content:** `{"error":"Invalid parameter value"}`
 
 * **Notes:**
 
-  * Rule parameters are passed as **individual query parameters**, NOT as a nested JSON object
-  * Only the admin (creator) of the game can change rules
-  * Rules can only be changed before the game starts (status = NOT_STARTED)
-  * When `time_limit` is set to non-zero, all human players' readiness is reset to false
-  * The `max_cards` preference may be overridden by the engine if not feasible for the player count
+  * Rule parameters are passed as **individual query parameters**, NOT as a nested JSON object  
+  * Only the admin (creator) of the game can change rules  
+  * Rules can only be changed before the game starts (status = `"Not started"`)  
+  * When `time_limit` is non-zero after any rule changes from the current request have been applied, all human players' readiness is reset to `false`  
+  * The `max_cards_preference` value in rules is retained, but the `max_cards` in the game state may differ if the preference isn't feasible for the current player count  
 
 * **Sample Calls:**
 
