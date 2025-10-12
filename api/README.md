@@ -181,43 +181,69 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/set-readiness?player_uuid
 
 ## Change rules
 
-  Allows the game admin to change the rules of the game before it starts. This includes changing the maximum number of cards. However, if the preference regarding eh maximum number of cards cannot be satisfied, the highest feasible number will be chosen. If there is no preference, the engine will suggest a number, which will be displayed in the `max_cards` field of teh game state.
+Allows the game admin to change the rules of the game before it starts. This includes changing the maximum number of cards. However, if the preference regarding the maximum number of cards cannot be satisfied, the highest feasible number will be chosen. If there is no preference, the engine will suggest a number, which will be displayed in the `max_cards` field of the game state.
 
 * **URL**
 
-  /games/{game_uuid}/change-rules
+  `/games/{game_uuid}/change-rules`
+
+* **Method**
+
+  `GET` (despite modifying state, this endpoint uses GET with query parameters)
 
 * **URL Params**
 
   **Required:**
 
-  `"game_uuid"=string`
+  `"game_uuid"=string` (path parameter)
 
-* **Data Params**
+* **Query Params**
 
-   **Required:**
+  **Required:**
 
-   `"admin_uuid"=string`
-   `"rules"=object`
+  `"admin_uuid"=string`
+
+  **Optional (at least one rule parameter should be provided):**
+
+  * `"time_limit"=integer` (0 for no limit, or 1–300 seconds)
+  * `"deck_size"=integer` (24 or 32)
+  * `"common_cards"=integer` (0–12, or special values)
+  * `"jokers"=integer` (0–12)
+  * `"blanks"=integer` (0–12)
+  * `"max_cards"=integer` (0 for no preference, or 1–11)
 
 * **Success Response:**
 
-  * **Code:** 200 OK <br />
-  **Content:** `{"message":"Rules updated"}`
+  * **Code:** 200 OK  
+    **Content:** `{"message":"Rules updated"}`
 
-* **Rules Object Details:**
-    * `time_limit`: integer (0-300 seconds)
-    * `deck_size`: integer (24 or 32)
-    * `common_cards`: integer (0-12)
-    * `jokers`: integer (0-12)
-    * `blanks`: integer (0-12)
-    * `max_cards`: integer (0-11, where 0 indicates no preference)
+* **Error Responses:**
 
-* **Sample Call:**
+  * **Code:** 403 FORBIDDEN  
+    **Content:** `{"error":"Cannot change rules after the game has started"}`
 
+  * **Code:** 400 BAD REQUEST  
+    **Content:** `{"error":"Invalid parameter value"}`
+
+* **Notes:**
+
+  * Rule parameters are passed as **individual query parameters**, NOT as a nested JSON object  
+  * Only the admin (creator) of the game can change rules  
+  * Rules can only be changed before the game starts (status = `"Not started"`)  
+  * When `time_limit` is non-zero after any rule changes from the current request have been applied, all human players' readiness is reset to `false`  
+  * The `max_cards_preference` value in rules is retained, but the `max_cards` in the game state may differ if the preference isn't feasible for the current player count  
+
+* **Sample Calls:**
+
+```bash
+# Change time limit only
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&time_limit=30
+
+# Change multiple rules
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&time_limit=15&common_cards=4&deck_size=32
 ```
-curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&rules={"common_cards":4}
-```
+
+
 
 ## Start game
 
