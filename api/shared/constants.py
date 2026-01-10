@@ -61,3 +61,6 @@ class RuleValues:
     def is_valid_max_cards_rule(cls, value):
         """Checks if a value is a valid max cards preference."""
         return (value == cls.MAX_CARDS_NO_PREFERENCE_API) or (cls.MAX_CARDS_FIXED_RANGE.BOTTOM <= value <= cls.MAX_CARDS_FIXED_RANGE.TOP)
+
+class SpecialNicknames:
+    COMMON_HAND = "0"

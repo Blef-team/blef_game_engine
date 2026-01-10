@@ -505,6 +505,8 @@ curl <HOST>/games
 
   `"nickname"=integer`
 
+  `"target"=string`
+
 * **Success Response:**
 
   * **Code:** 200 OK <br />
