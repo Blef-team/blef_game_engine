@@ -505,6 +505,11 @@ curl <HOST>/games
 
   `"nickname"=integer`
 
+  `"target"=string`
+
+    The nickname of the player being targeted by the reaction. If omitted or null, the reaction is not targeted. Special value:
+    - `"0"` — targets the common hand
+
 * **Success Response:**
 
   * **Code:** 200 OK <br />

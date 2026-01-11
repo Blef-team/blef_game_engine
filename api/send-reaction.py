@@ -7,6 +7,7 @@ import re
 from shared.response import * 
 from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
+from shared.constants import GameStatus, SpecialNicknames
 from shared.game import get_nickname_by_uuid
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
@@ -62,6 +63,16 @@ def lambda_handler(event, context):
         if not game:
             return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
 
+        target = body.get("target")
+        if target:
+            if target == SpecialNicknames.COMMON_HAND:
+                if game.get("status") == GameStatus.NOT_STARTED:
+                    return error_payload(403, "The common hand is not active yet")
+            else:
+                player_nicknames = [p["nickname"] for p in game.get("players", [])]
+                if target not in player_nicknames:
+                    return parameter_error_payload("target", target, message="Target nickname does not exist")
+
         player_uuid = body.get("player_uuid")
         declared_nickname = body.get("nickname")
         nickname_authenticated = "false"
@@ -82,8 +93,16 @@ def lambda_handler(event, context):
         elif not is_safe_message(reaction):
             return error_payload(400, "This reaction contains forbidden characters or forbidden content")
 
-        print({"game_uuid": game_uuid, "nickname": declared_nickname, "reaction": reaction, "nickname_authenticated": nickname_authenticated})
-        send_queue_message({"game_uuid": game_uuid, "nickname": declared_nickname, "reaction": reaction, "nickname_authenticated": nickname_authenticated})
+        message_payload = {
+            "game_uuid": game_uuid, 
+            "nickname": declared_nickname, 
+            "reaction": reaction, 
+            "nickname_authenticated": nickname_authenticated
+        }
+        if target:
+            message_payload["target"] = target
+        print(message_payload)
+        send_queue_message(message_payload)
 
         return response_payload(200, {"message": "Reaction received"})
 
