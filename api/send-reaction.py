@@ -66,8 +66,8 @@ def lambda_handler(event, context):
         target = body.get("target")
         if target:
             if target == SpecialNicknames.COMMON_HAND:
-                if game.get("status") not in [GameStatus.RUNNING, GameStatus.WAITING_FOR_READY]:
-                    return error_payload(403, "The common hand is not active in this game phase")
+                if game.get("status") == GameStatus.NOT_STARTED:
+                    return error_payload(403, "The common hand is not active yet")
             else:
                 player_nicknames = [p["nickname"] for p in game.get("players", [])]
                 if target not in player_nicknames:
