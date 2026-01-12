@@ -526,6 +526,50 @@ curl <HOST>/games
 curl <HOST>/send-reaction?game_uuid=6f3e8308-1170-4b3d-87b9-b62916df330f&nickname=Rando&reaction=🤨
 ```
 
+## Remove player
+
+Allows a player to leave a game or an admin to remove/kick a player (human or AI) before the game starts.
+
+* **URL**
+
+  /games/{game_uuid}/remove-player
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"player_uuid"=string` (The UUID of the person making the request)
+  `"nickname"=string` (The nickname of the player to be removed)
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Player [nickname] removed successfully"}`
+
+* **Sample Error Responses:**
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"You do not have permission to remove this player"}` (If a non-admin tries to kick someone else)
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Players can only be removed before the game starts"}`
+
+* **Sample Call:**
+
+```bash
+# A player named 'coolcat' leaving the game
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/remove-player?player_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&nickname=coolcat
+
+# Admin kicking an AI named 'alpha_(AI)'
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/remove-player?player_uuid=ADMIN_UUID&nickname=alpha_(AI)
+```
+
 # Action IDs
 
 Action IDs depend on the `deck_size` rule.
