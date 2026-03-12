@@ -44,12 +44,25 @@ def find_next_active_player(players, cp_nickname):
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
 
+def get_team(game, nickname):
+    p = get_player_by_nickname(game["players"], nickname)
+    return p.get("team") if p else None
+
 def censor_game(game, player_nickname=None):
     lose_round_id = get_action_ids(game.get("rules", {}))["lose_round"]
+
+    req_team = get_team(game, player_nickname) if player_nickname else None
+
+    # If the round is lost, reveal all active hands
     if any(event.get("action_id") == lose_round_id for event in game.get("history", [])):
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    else:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
+    else: # Otherwise, reveal own hand + teammates' hands
+        revealed_hands = []
+        for hand in game["hands"]:
+            if not is_active_player(game["players"], hand["nickname"]):
+                continue
+            if hand["nickname"] == player_nickname or (req_team is not None and get_team(game, hand["nickname"]) == req_team):
+                revealed_hands.append(hand)
 
     private_players = []
     for player in game["players"]:
