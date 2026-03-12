@@ -411,15 +411,23 @@ def end_round(game, losing_player_nickname):
     # 2. Prepare the next live state
     # Use a temporary copy to determine the outcome without changing the state prematurely.
     temp_players = update_n_cards(game, losing_player_nickname)
+
+    active_players = [p for p in temp_players if p.get("n_cards", 0) > 0]
+    is_finished = False
     
-    if sum(1 for p in temp_players if p.get("n_cards", 0) > 0) <= 1:
-        # Game is finished
+    if len(active_players) <= 1:
+        is_finished = True
+    elif len(active_players) > 1:
+        first_team = active_players[0].get("team")
+        if first_team is not None and all(p.get("team") == first_team for p in active_players):
+            is_finished = True # All remaining players share the exact same valid team
+    
+    if is_finished:
         game["status"] = GameStatus.FINISHED
         game["players"] = temp_players # Use the updated player list
         if transact_end_of_round(game, archive_state, original_last_modified):
             return archive_state
     elif time_limit > 0:
-        # Game is timed and waiting for human players' readiness
         game["status"] = GameStatus.WAITING_FOR_READY
         game["players"] = unset_human_readiness(game["players"])
         if transact_end_of_round(game, archive_state, original_last_modified):
