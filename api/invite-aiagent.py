@@ -92,7 +92,8 @@ def lambda_handler(event, context):
             "nickname": nickname,
             "n_cards": 0,
             "ai_agent": agent_type,
-            "ready": True
+            "ready": True,
+            "team": None
         }
         players.append(player)
 

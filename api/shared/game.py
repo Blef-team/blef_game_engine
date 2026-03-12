@@ -17,7 +17,8 @@ def create_player(game, nickname):
         "uuid": str(uuid.uuid4()), 
         "nickname": nickname, 
         "n_cards": 0, 
-        "ready": ready
+        "ready": ready,
+        "team": None
     }
 
 def get_player_by_nickname(players, nickname):
