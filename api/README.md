@@ -570,6 +570,57 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/remove-player?player_uuid
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/remove-player?player_uuid=ADMIN_UUID&nickname=alpha_(AI)
 ```
 
+## Change team
+
+Allows a player to change their own team allegiance, or an admin to change anyone's team (including AI agents) before the game starts. Teams are represented by integers 1 through 4. An independent player is represented by omitting the team parameter. Whenever a team is changed, the readiness of all human players is reset to `false`.
+
+* **URL**
+
+  /games/{game_uuid}/change-team
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"player_uuid"=string` (The UUID of the person making the request)
+  `"nickname"=string` (The nickname of the player whose team is being changed)
+
+  **Optional:**
+
+  `"team"=integer` (1, 2, 3, or 4. Omit to make the player independent)
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Player [nickname] team changed successfully"}`
+
+* **Sample Error Responses:**
+
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"Teams can only be changed before the game starts"}`
+  
+  * **Code:** 403 FORBIDDEN <br />
+  **Content:** `{"error":"You do not have permission to change this player's team"}`
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Bad input value in 'team': 5\nTeam must be 1, 2, 3, 4, or null"}`
+
+* **Sample Call:**
+
+```bash
+# A player named 'coolcat' joining Team 2 (Green)
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-team?player_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&nickname=coolcat&team=2
+
+# Admin making a player or AI independent by omitting the team parameter
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-team?player_uuid=f828f87f-4c64-4ba8-b9e2-3a7760910a20&nickname=alpha_(AI)
+```
+
 # Action IDs
 
 Action IDs depend on the `deck_size` rule.
