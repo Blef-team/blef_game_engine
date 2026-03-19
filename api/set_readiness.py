@@ -73,7 +73,11 @@ def lambda_handler(event, context):
                 return response_payload(200, {"message": "All players ready. Next round started."})
         elif game_status == GameStatus.NOT_STARTED:
             players = updated_game_state.get("players", [])
-            if len(players) >= 2 and all(p.get("ready") for p in players):
+            all_ready = all(p.get("ready", False) for p in players)
+            has_enough_players = (len(players) >= 2)
+            non_null_teams = [t for t in [p.get("team") for p in players] if t is not None]
+            is_single_team = (len(non_null_teams) == len(players) and len(set(non_null_teams)) == 1)
+            if all_ready and has_enough_players and not is_single_team:
                 start_game(updated_game_state)
                 return response_payload(200, {"message": "All players ready. Game started."})
         return response_payload(200, {"message": "Readiness updated"}) # Shouldn't be reached

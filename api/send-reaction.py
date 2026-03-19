@@ -8,7 +8,7 @@ from shared.response import *
 from shared.db import get_from_dynamodb
 from shared.api_gateway import parse_event
 from shared.constants import GameStatus, SpecialNicknames
-from shared.game import get_nickname_by_uuid
+from shared.game import get_nickname_by_uuid, get_player_by_nickname
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
 
@@ -93,11 +93,19 @@ def lambda_handler(event, context):
         elif not is_safe_message(reaction):
             return error_payload(400, "This reaction contains forbidden characters or forbidden content")
 
+        team_only = body.get("team_only") == "true" or body.get("team_only") is True
+        sender_team = None
+        if player_uuid and player_nickname:
+            sender_team = get_player_by_nickname(game.get("players", []), player_nickname).get("team")
+        if team_only and sender_team is None:
+            return error_payload(400, "You must be on a team to send a team-only reaction")
+
         message_payload = {
             "game_uuid": game_uuid, 
             "nickname": declared_nickname, 
             "reaction": reaction, 
-            "nickname_authenticated": nickname_authenticated
+            "nickname_authenticated": nickname_authenticated,
+            "target_team": sender_team if team_only else None
         }
         if target:
             message_payload["target"] = target

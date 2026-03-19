@@ -1,5 +1,6 @@
-from random import sample, shuffle, choice
-from itertools import islice, product
+from collections import defaultdict
+from random import sample, shuffle, choice, randint
+from itertools import islice, product, permutations
 from math import floor
 import time
 import decimal
@@ -17,7 +18,8 @@ def create_player(game, nickname):
         "uuid": str(uuid.uuid4()), 
         "nickname": nickname, 
         "n_cards": 0, 
-        "ready": ready
+        "ready": ready,
+        "team": None
     }
 
 def get_player_by_nickname(players, nickname):
@@ -42,12 +44,25 @@ def find_next_active_player(players, cp_nickname):
     next_active_player = (active_players * 2)[current_player_order + 1]
     return next_active_player
 
+def get_team(game, nickname):
+    p = get_player_by_nickname(game["players"], nickname)
+    return p.get("team") if p else None
+
 def censor_game(game, player_nickname=None):
     lose_round_id = get_action_ids(game.get("rules", {}))["lose_round"]
+
+    req_team = get_team(game, player_nickname) if player_nickname else None
+
+    # If the round is lost, reveal all active hands
     if any(event.get("action_id") == lose_round_id for event in game.get("history", [])):
         revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"])]
-    else:
-        revealed_hands = [hand for hand in game["hands"] if is_active_player(game["players"], hand["nickname"]) and hand["nickname"] == player_nickname]
+    else: # Otherwise, reveal own hand + teammates' hands
+        revealed_hands = []
+        for hand in game["hands"]:
+            if not is_active_player(game["players"], hand["nickname"]):
+                continue
+            if hand["nickname"] == player_nickname or (req_team is not None and get_team(game, hand["nickname"]) == req_team):
+                revealed_hands.append(hand)
 
     private_players = []
     for player in game["players"]:
@@ -111,26 +126,122 @@ def draw_cards(players, rules):
     common_hand = list(islice(card_iterator, 0, num_common_cards))
     return hands, common_hand
 
-def arrange_players(players):
-    num_total = len(players)
-    num_ais = sum(1 for p in players if p.get("ai_agent"))
-    if num_ais == 0:
-        shuffle(players)
-        return players
-        
-    offset = choice(range(num_total))
-    ai_positions_from_zero = [floor(i * num_total / num_ais) for i in range(num_ais)]
-    ai_positions = [(i + offset) % num_total for i in ai_positions_from_zero]
-    ai_players = [p for p in players if p.get("ai_agent")]
-    human_players = [p for p in players if not p.get("ai_agent")]
-    shuffle(human_players)
+def seat_teams(team_counts):
+    """
+    Brute-force solver that guarantees optimal seating, but randomises 
+    team priority, equivalent arrangements, and table rotation to ensure fairness.
+    """
+    players = []
+    for team, count in team_counts.items():
+        players.extend([team] * count)
     
+    total_seats = len(players)
+        
+    # Randomisation 1: Break alphabetical bias. Shuffle the teams first
+    teams_list = list(team_counts.items())
+    shuffle(teams_list) 
+
+    # Sort teams by:
+    # 1. Size descending (optimise the most constrained teams first)
+    # 2. Actual teams > Dummy teams (x[0] > 0 evaluates to True/1 for actual, False/0 for dummy)
+    # 3. Random tie-breaker (preserved by Python's stable sort from the shuffle above)    
+    sorted_teams = sorted(teams_list, key=lambda x: (x[1], x[0] > 0), reverse=True)
+    team_order = [t[0] for t in sorted_teams]
+    
+    unique_arrangements = set(permutations(players))
+    
+    # Randomisation 2: Pool the winning orders and choose one at random
+    best_arrangements = []
+    best_score = None
+    
+    # Evaluate every possible table
+    for arr in unique_arrangements:
+        team_indices = {t: [] for t in team_order}
+        for i, t in enumerate(arr):
+            team_indices[t].append(i)
+            
+        global_max_clump = 0
+        team_gap_tuples = []
+        
+        # Calculate stats for each team in order of size
+        for team in team_order:
+            indices = team_indices[team]
+            count = len(indices)
+            
+            if count == 0:
+                continue
+            if count == 1:
+                global_max_clump = max(global_max_clump, 1)
+                team_gap_tuples.append((total_seats,)) # Infinite gap for independents
+                continue
+                
+            # Calculate gaps between consecutive players
+            gaps = []
+            for i in range(count - 1):
+                gaps.append(indices[i+1] - indices[i])
+            gaps.append(total_seats - indices[-1] + indices[0]) # Wrap-around gap (last player to first player)
+            
+            # Calculate the largest clump for this specific team
+            max_clump = 1
+            current_clump = 1
+            for i in range(count * 2): # Loop twice through the gaps to easily handle wrap-around clumps
+                if gaps[i % count] == 1:
+                    current_clump += 1
+                    max_clump = max(max_clump, current_clump)
+                else:
+                    current_clump = 1
+            max_clump = min(max_clump, count) # Cap it (prevents infinite loop logic overshoot if team occupies whole table)
+            global_max_clump = max(global_max_clump, max_clump)
+
+            team_gap_tuples.append(tuple(sorted(gaps))) # Add this team's sorted gap distribution to the scoring list
+            
+        # Construct the score tuple
+        # Priority 1: Minimise the largest clump anywhere on the table
+        # Priority 2: Maximise Team 1's gap distribution, then Team 2's gap distribution etc.
+        score = (-global_max_clump, *team_gap_tuples)
+        
+        if best_score is None or score > best_score:
+            best_score = score
+            best_arrangements = [arr]
+        elif score == best_score:
+            best_arrangements.append(arr)
+            
+    winning_arrangement = list(choice(best_arrangements))
+    
+    # Randomisation 3: Randomise the starting player (shift the entire array by a random number of seats)
+    shift = randint(0, total_seats - 1)
+    final_table = winning_arrangement[shift:] + winning_arrangement[:shift]
+            
+    return final_table
+
+def arrange_players(players):
+    # Shuffle players first so that within teams players are distributed randomly 
+    shuffle(players)
+        
+    players_by_team = defaultdict(list)
+    
+    for p in players:
+        team = p.get("team")
+        # Treat independent players as special dummy teams to space them out
+        if team is None or team == 0: 
+            if p.get("ai_agent"):
+                players_by_team[-2].append(p) # Group all independent AIs into dummy team -2
+            else:
+                players_by_team[-1].append(p) # Group all independent Humans into dummy team -1
+        else:
+            players_by_team[team].append(p)
+            
+    # Build the team_counts dictionary expected by the solver
+    team_counts = {team_id: len(members) for team_id, members in players_by_team.items()}
+    
+    # Get the optimal seating sequence of team IDs
+    optimal_sequence = seat_teams(team_counts)
+    
+    # Map the sequence of team IDs back to the actual player objects
     final_players = []
-    for i in range(num_total):
-        if i in ai_positions and ai_players:
-            final_players.append(ai_players.pop(0))
-        elif human_players:
-            final_players.append(human_players.pop(0))
+    for team_id in optimal_sequence:
+        final_players.append(players_by_team[team_id].pop(0))
+        
     return final_players
 
 def start_player_timer(game):
@@ -300,15 +411,23 @@ def end_round(game, losing_player_nickname):
     # 2. Prepare the next live state
     # Use a temporary copy to determine the outcome without changing the state prematurely.
     temp_players = update_n_cards(game, losing_player_nickname)
+
+    active_players = [p for p in temp_players if p.get("n_cards", 0) > 0]
+    is_finished = False
     
-    if sum(1 for p in temp_players if p.get("n_cards", 0) > 0) <= 1:
-        # Game is finished
+    if len(active_players) <= 1:
+        is_finished = True
+    elif len(active_players) > 1:
+        first_team = active_players[0].get("team")
+        if first_team is not None and all(p.get("team") == first_team for p in active_players):
+            is_finished = True # All remaining players share the exact same valid team
+    
+    if is_finished:
         game["status"] = GameStatus.FINISHED
         game["players"] = temp_players # Use the updated player list
         if transact_end_of_round(game, archive_state, original_last_modified):
             return archive_state
     elif time_limit > 0:
-        # Game is timed and waiting for human players' readiness
         game["status"] = GameStatus.WAITING_FOR_READY
         game["players"] = unset_human_readiness(game["players"])
         if transact_end_of_round(game, archive_state, original_last_modified):
