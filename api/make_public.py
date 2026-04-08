@@ -1,10 +1,9 @@
 import time
 import decimal
-from shared.response import * 
-from shared.db import table, get_from_dynamodb
-from shared.api_gateway import parse_event
+from shared.response import response_payload, internal_error_payload
+from shared.db import table
 from shared.constants import GameStatus
-from shared.inputs import is_valid_uuid
+from shared.decorators import validate_game_request
 
 
 def update_in_dynamodb(game_uuid, public):
@@ -24,7 +23,11 @@ def update_in_dynamodb(game_uuid, public):
     )
     return True
 
-
+@validate_game_request(
+    require_admin=True, 
+    required_status=GameStatus.NOT_STARTED, 
+    status_error_message="Cannot make the change - game already started"
+)
 def lambda_handler(event, context, body, game):
     try:
         if game.get("public") == "true":
