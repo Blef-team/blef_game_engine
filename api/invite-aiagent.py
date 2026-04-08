@@ -3,16 +3,13 @@ import time
 import json
 import uuid
 import decimal
-from shared.response import *
-from shared.db import table, get_from_dynamodb
-from shared.api_gateway import parse_event
+from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.db import table
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards
-from shared.inputs import is_valid_uuid
-
+from shared.decorators import validate_game_request
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
-
 
 def update_in_dynamodb(game_uuid, players, max_cards):
     table.update_item(
@@ -43,36 +40,14 @@ def set_nickname(agent_name, player_nicknames, i=0):
     return formatted_name
 
 
-def lambda_handler(event, context):
+@validate_game_request(
+    require_admin=True, 
+    required_status=GameStatus.NOT_STARTED, 
+    status_error_message="Game already started"
+)
+def lambda_handler(event, context, body, game):
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
-
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
-
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-        if game.get("status") != GameStatus.NOT_STARTED:
-            return error_payload(403, "Game already started")
-
-        admin_uuid = body.get("admin_uuid")
-
-        if not admin_uuid:
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID missing - please supply it")
-
-        if not is_valid_uuid(admin_uuid):
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Invalid admin UUID")
-
-        players = game.get("players")
-        game_admin_uuid = [player["uuid"] for player in players if player["nickname"] == game.get("admin_nickname")][0]
-        if game_admin_uuid != admin_uuid:
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
-
+        players = game.get("players", [])
         if len(players) == 8:
             return error_payload(403, "Game room full")
 
@@ -82,13 +57,12 @@ def lambda_handler(event, context):
 
         agent_type = AGENT_MAPPING.get(agent_name)
         if not agent_type:
-            return parameter_error_payload("agent_name", agent_type, message="Invalid agent_name")
+            return parameter_error_payload("agent_name", agent_name, message="Invalid agent_name")
 
         nickname = set_nickname(agent_name, [p["nickname"] for p in players])
 
-        player_uuid = str(uuid.uuid4())
         player = {
-            "uuid": player_uuid,
+            "uuid": str(uuid.uuid4()),
             "nickname": nickname,
             "n_cards": 0,
             "ai_agent": agent_type,
@@ -98,11 +72,9 @@ def lambda_handler(event, context):
         players.append(player)
 
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
+        update_in_dynamodb(game["game_uuid"], players, max_cards)
 
-        update_in_dynamodb(game_uuid, players, max_cards)
-
-        payload = {"message": f"{nickname} joined the game"}
-        return response_payload(200, payload)
+        return response_payload(200, {"message": f"{nickname} joined the game"})
 
     except Exception as err:
         return internal_error_payload(err)

@@ -1,11 +1,10 @@
 import time
 import decimal
-from shared.response import *
-from shared.db import table, get_from_dynamodb
+from shared.response import response_payload, parameter_error_payload, internal_error_payload
+from shared.db import table
 from shared.constants import GameStatus, RuleValues, CommonCardsRules
 from shared.game import unset_human_readiness, calculate_actual_max_cards
-from shared.api_gateway import parse_event
-from shared.inputs import is_valid_uuid
+from shared.decorators import validate_game_request
 from shared.logging import logger
 
 def update_in_dynamodb(game_uuid, rules, players, max_cards=None):
@@ -33,33 +32,15 @@ def update_in_dynamodb(game_uuid, rules, players, max_cards=None):
     )
     return True
 
-def lambda_handler(event, context):
+@validate_game_request(
+    require_admin=True, 
+    required_status=GameStatus.NOT_STARTED, 
+    status_error_message="Cannot change rules after the game has started"
+)
+def lambda_handler(event, context, body, game):
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
-
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
-
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
-        if game.get("status") != GameStatus.NOT_STARTED:
-            return error_payload(403, "Cannot change rules after the game has started")
-
-        admin_uuid = str(body.get("admin_uuid"))
-        if not is_valid_uuid(admin_uuid):
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Invalid admin UUID")
-
-        players = game.get("players")
-        game_admin_uuid = [player["uuid"] for player in players if player["nickname"] == game.get("admin_nickname")][0]
-        if game_admin_uuid != admin_uuid:
-            return parameter_error_payload("admin_uuid", admin_uuid, message="Admin UUID does not match")
-
         rules = game.get("rules", {})
+        players = game.get("players", [])
 
         for key, value in body.items():
             if key in ["time_limit", "deck_size", "common_cards", "jokers", "blanks", "max_cards"]:
@@ -107,7 +88,7 @@ def lambda_handler(event, context):
 
         logger.info(f'## NEW RULES: {rules}')
         logger.info(f'## MAX CARDS: {max_cards}')
-        update_in_dynamodb(game_uuid, rules, players, max_cards)
+        update_in_dynamodb(game["game_uuid"], rules, players, max_cards)
 
         return response_payload(200, {"message": "Rules updated"})
 

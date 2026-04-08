@@ -2,15 +2,13 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 import json
-from random import sample
 import re
-from shared.response import * 
-from shared.db import get_from_dynamodb
-from shared.api_gateway import parse_event
+from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload, DecimalEncoder
 from shared.constants import GameStatus, SpecialNicknames
 from shared.game import get_nickname_by_uuid, get_player_by_nickname
 from shared.inputs import is_valid_uuid
 from shared.logging import logger
+from shared.decorators import validate_game_request
 
 
 sqs_client = boto3.client("sqs")
@@ -49,20 +47,9 @@ def send_queue_message(message):
         return
 
 
-def lambda_handler(event, context):
+@validate_game_request()
+def lambda_handler(event, context, body, game):
     try:
-        body = parse_event(event)
-        if not body:
-            return request_error_payload(event)
-
-        game_uuid = str(body.get("game_uuid"))
-        if not is_valid_uuid(game_uuid):
-            return parameter_error_payload("game_uuid", game_uuid, message="Invalid game UUID")
-
-        game = get_from_dynamodb(game_uuid)
-        if not game:
-            return parameter_error_payload("game_uuid", game_uuid, message="Game does not exist")
-
         target = body.get("target")
         if target:
             if target == SpecialNicknames.COMMON_HAND:
@@ -76,6 +63,7 @@ def lambda_handler(event, context):
         player_uuid = body.get("player_uuid")
         declared_nickname = body.get("nickname")
         nickname_authenticated = "false"
+        player_nickname = None
 
         if player_uuid and not is_valid_uuid(player_uuid):
             return parameter_error_payload("player_uuid", player_uuid, message="Invalid player UUID")
@@ -93,7 +81,7 @@ def lambda_handler(event, context):
         elif not is_safe_message(reaction):
             return error_payload(400, "This reaction contains forbidden characters or forbidden content")
 
-        team_only = body.get("team_only") == "true" or body.get("team_only") is True
+        team_only = body.get("team_only") in ["true", True]
         sender_team = None
         if player_uuid and player_nickname:
             sender_team = get_player_by_nickname(game.get("players", []), player_nickname).get("team")
@@ -101,15 +89,16 @@ def lambda_handler(event, context):
             return error_payload(400, "You must be on a team to send a team-only reaction")
 
         message_payload = {
-            "game_uuid": game_uuid, 
+            "game_uuid": game["game_uuid"], 
             "nickname": declared_nickname, 
             "reaction": reaction, 
             "nickname_authenticated": nickname_authenticated,
             "target_team": sender_team if team_only else None
         }
+        
         if target:
             message_payload["target"] = target
-        print(message_payload)
+
         send_queue_message(message_payload)
 
         return response_payload(200, {"message": "Reaction received"})
