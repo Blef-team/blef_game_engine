@@ -13,6 +13,8 @@
   **Optional:**
 
   `"nickname"=string`
+  `"previous_game_uuid"=string` (Used for rematches)
+  `"previous_player_uuid"=string` (Used for rematches)
 
 * **URL Params**
 

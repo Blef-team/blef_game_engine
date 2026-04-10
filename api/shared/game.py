@@ -83,6 +83,7 @@ def censor_game(game, player_nickname=None):
         "last_modified": game["last_modified"],
         "rules": game.get("rules", {}),
         "move_deadline": game.get("move_deadline"),
+        "next_game_uuid": game.get("next_game_uuid"),
         "update_time": time.time()
     }
 
