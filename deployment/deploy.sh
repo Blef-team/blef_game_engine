@@ -9,6 +9,19 @@ SHARED_DIR="shared"
 # Temporary directory for staging zip contents
 TEMP_DIR="deployment_temp"
 
+# Functions that are fronted by API Gateway via the "prod" alias of a published,
+# SnapStart-optimized version (see deployment/README.md). For these, updating the
+# code on $LATEST is NOT enough: API Gateway invokes the immutable "prod" alias, so
+# after pushing code we must publish a new version (which builds a fresh SnapStart
+# snapshot) and move the "prod" alias to it. Listed by full AWS function name.
+ALIAS_MANAGED=" \
+blef-create-game blef-get-game blef-join-game blef-play blef-start-game \
+blef-set-readiness blef-change-rules blef-change-team blef-make-public blef-make-private \
+blef-remove-player blef-remove-ais blef-send-reaction blef-list-public-games blef-invite-aiagent \
+blef-watch-game-connect blef-watch-game-disconnect "
+# The alias API Gateway integrations point at.
+PROD_ALIAS="prod"
+
 # Check if api directory exists
 if [ ! -d "$API_DIR" ]; then
   echo "Error: API directory '$API_DIR' not found. Run script from project root."
@@ -80,6 +93,26 @@ for f in "$API_DIR"/*.py; do
 
     if [ $? -eq 0 ]; then
         echo "✅ Successfully updated blef-$aws_function_name."
+
+        # If this function is wired to API Gateway via the "prod" alias, publish a
+        # new SnapStart-optimized version and move the alias to it. API Gateway
+        # invokes the alias, so it picks up the new version with no integration change.
+        if [[ "$ALIAS_MANAGED" == *" blef-$aws_function_name "* ]]; then
+            echo "  ↳ API-Gateway-fronted function: publishing new SnapStart version..."
+            aws lambda wait function-updated-v2 --function-name "blef-$aws_function_name"
+            new_version=$(aws lambda publish-version --function-name "blef-$aws_function_name" --query 'Version' --output text)
+            if [ -n "$new_version" ] && [ "$new_version" != "None" ]; then
+                echo "  ↳ Published version $new_version; waiting for SnapStart snapshot to become Active..."
+                aws lambda wait published-version-active --function-name "blef-$aws_function_name" --qualifier "$new_version"
+                if aws lambda update-alias --function-name "blef-$aws_function_name" --name "$PROD_ALIAS" --function-version "$new_version" > /dev/null; then
+                    echo "  ↳ ✅ '$PROD_ALIAS' alias now points to version $new_version (API Gateway uses it automatically)."
+                else
+                    echo "  ↳ ❌ Failed to move '$PROD_ALIAS' alias. New code is live on \$LATEST but NOT yet served by API Gateway."
+                fi
+            else
+                echo "  ↳ ❌ Failed to publish a new version; '$PROD_ALIAS' alias left unchanged."
+            fi
+        fi
     else
         echo "❌ Error: Failed to update blef-$aws_function_name."
         # Consider adding retry logic or specific error handling
