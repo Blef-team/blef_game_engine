@@ -14,6 +14,10 @@ from shared.decorators import validate_game_request
 sqs_client = boto3.client("sqs")
 REACTION_QUEUE_NAME = os.environ.get("reaction_queue_name")
 
+# Cached lazily on first use so the queue URL is resolved once per container
+# (and captured by the SnapStart snapshot) instead of on every reaction sent.
+_reaction_queue_url = None
+
 pattern = r"^(😮|🤨|👏|😂|🦊|👍|😑|😎|😅|😭|⏳|👋|🔥|👀|🤔|🤬|😈|😇|✔️|✖️)$"
 
 def is_safe_message(message):
@@ -22,12 +26,16 @@ def is_safe_message(message):
 
 def get_reaction_queue_url():
     """
-    Returns the URL of an existing Amazon SQS queue.
+    Returns the URL of an existing Amazon SQS queue, caching it after the
+    first successful lookup to avoid a GetQueueUrl call on every invocation.
     """
-    try:
-        return sqs_client.get_queue_url(QueueName=REACTION_QUEUE_NAME)['QueueUrl']
-    except ClientError:
-        return
+    global _reaction_queue_url
+    if _reaction_queue_url is None:
+        try:
+            _reaction_queue_url = sqs_client.get_queue_url(QueueName=REACTION_QUEUE_NAME)['QueueUrl']
+        except ClientError:
+            return None
+    return _reaction_queue_url
 
 
 def send_queue_message(message):
