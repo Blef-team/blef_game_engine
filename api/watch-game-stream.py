@@ -2,8 +2,9 @@ import os
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
+from concurrent.futures import ThreadPoolExecutor
 import json
-from shared.response import * 
+from shared.response import *
 from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, is_update_redundant
 from shared.logging import logger
@@ -11,6 +12,14 @@ from shared.db import websocket_table
 
 sqs_client = boto3.client("sqs")
 AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
+
+# Upper bound on concurrent websocket posts per broadcast. PostToConnection is
+# network-bound, so threads parallelise well despite the GIL.
+MAX_BROADCAST_WORKERS = 16
+
+# Cached lazily on first use so the queue URL is resolved once per container
+# (and captured by the SnapStart snapshot) instead of on every broadcast.
+_aiagent_queue_url = None
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
 watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
@@ -23,12 +32,16 @@ deserializer = boto3.dynamodb.types.TypeDeserializer()
 
 def get_aiagent_queue_url():
     """
-    Returns the URL of an existing Amazon SQS queue.
+    Returns the URL of an existing Amazon SQS queue, caching it after the
+    first successful lookup to avoid a GetQueueUrl call on every invocation.
     """
-    try:
-        return sqs_client.get_queue_url(QueueName=AIAGENT_QUEUE_NAME)['QueueUrl']
-    except ClientError:
-        return
+    global _aiagent_queue_url
+    if _aiagent_queue_url is None:
+        try:
+            _aiagent_queue_url = sqs_client.get_queue_url(QueueName=AIAGENT_QUEUE_NAME)['QueueUrl']
+        except ClientError:
+            return None
+    return _aiagent_queue_url
 
 
 def send_queue_message(game):
@@ -107,9 +120,16 @@ def update_game_watchers(game):
     connected_players = find_connected_players(game)
     logger.info('## CONNECTED PLAYERS')
     logger.info(connected_players)
-    for connection_id, player_uuid in connected_players:
+    if not connected_players:
+        return
+
+    def post_player_update(connected_player):
+        connection_id, player_uuid = connected_player
         player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
         post_to_connection(censor_game(game, player_nickname), connection_id)
+
+    with ThreadPoolExecutor(max_workers=min(len(connected_players), MAX_BROADCAST_WORKERS)) as executor:
+        list(executor.map(post_player_update, connected_players))
 
 
 def update_public_games_watchers(game, game_old):
@@ -117,9 +137,11 @@ def update_public_games_watchers(game, game_old):
     if not can_get_public_info(game, game_old):
         return
     connected_watchers = find_connected_public_games_watchers()
-    for connection_id in connected_watchers:
-        public_game_info = get_public_game_info(game)
-        post_to_connection(public_game_info, connection_id)    
+    if not connected_watchers:
+        return
+    public_game_info = get_public_game_info(game)
+    with ThreadPoolExecutor(max_workers=min(len(connected_watchers), MAX_BROADCAST_WORKERS)) as executor:
+        list(executor.map(lambda connection_id: post_to_connection(public_game_info, connection_id), connected_watchers))
 
 
 def update_watchers(game):
