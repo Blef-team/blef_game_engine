@@ -106,7 +106,7 @@ In order to interact with the engine using a custom app or a basic HTTP interfac
 This service is built with a serverless architecture on AWS and includes:
 
 * **API:** AWS API Gateway (HTTP & WebSocket)
-* **Compute:** AWS Lambda functions in Python. The API-Gateway-fronted handlers run with [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) and are invoked via a `prod` alias pointing at a published version (see the [deployment readme](deployment/README.md#api-gateway-is-wired-to-lambda-via-the-prod-alias-of-a-published-snapstart-version))
+* **Compute:** AWS Lambda functions in Python
 * **Database:** AWS DynamoDB
 * **Messaging:** AWS SQS
 
