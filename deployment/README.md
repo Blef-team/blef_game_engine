@@ -8,27 +8,22 @@ Game states are currently stored in and retrieved from AWS DynamoDB. Game state 
 
 AI Agents are implemented with Lambda functions. Scheduling their actions is done using an AWS SQS queue.
 
-### API Gateway is wired to Lambda via the `prod` alias of a published, SnapStart version
+### API Gateway invokes Lambda on `$LATEST`
 
-> **Important for anyone deploying or editing these functions.**
+The Lambda functions behind API Gateway are invoked directly on their `$LATEST`
+(unpublished) code: each API Gateway integration targets the bare function ARN
+(e.g. `…:function:blef-get-game`), with no versions or aliases involved. A deploy is
+therefore just an `update-function-code` on `$LATEST` — API Gateway serves the new code
+immediately, with no integration changes required.
 
-The Lambda functions that sit directly behind API Gateway are **not** invoked on their
-`$LATEST` (unpublished) code. To reduce cold starts, each of these functions has
-[Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) enabled
-(`SnapStart.ApplyOn = PublishedVersions`). SnapStart only applies to **published, numbered
-versions** — never `$LATEST` — so for each function we:
+> **Note:** these functions previously used [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html)
+> via a published version + `prod` alias to reduce cold starts. That was rolled back
+> because, for Python runtimes, SnapStart bills a per-version snapshot **cache** charge
+> for every published version until it is deleted — and each deploy published a new
+> version — so the cost accumulated with every deploy. The functions now run plain on
+> `$LATEST` (`SnapStart.ApplyOn = None`).
 
-1. Enable SnapStart on the function.
-2. **Publish a version**, which builds the SnapStart snapshot for that immutable code.
-3. Point a **`prod` alias** at that version.
-4. Configure the **API Gateway integration to invoke the `prod` alias ARN**
-   (e.g. `…:function:blef-get-game:prod`), not the bare function ARN.
-
-Because API Gateway targets the stable `prod` alias, deploys never need to re-touch the
-integration: publishing a new version and moving the alias is enough, and API Gateway
-serves the new SnapStart-optimized version automatically.
-
-**Functions wired this way** (API Gateway integration → `:prod` alias → published version):
+**Functions behind API Gateway:**
 
 | API | Functions |
 |-----|-----------|
@@ -37,34 +32,17 @@ serves the new SnapStart-optimized version automatically.
 
 All other Lambdas (DynamoDB-stream, SQS, and cron-triggered handlers such as
 `blef-watch-game-stream`, `blef-aiagent-*`, `blef-clean-public-games`,
-`blef-timeout-player`) are invoked on `$LATEST` and are **not** alias-managed.
+`blef-timeout-player`) are likewise invoked on `$LATEST`.
 
-#### What `deploy.sh` does for these functions
+#### What `deploy.sh` does
 
-`deploy.sh` keeps a list of the alias-managed function names (`ALIAS_MANAGED`). For those,
-after `update-function-code` it additionally:
+For every handler in `api/`, `deploy.sh` packages the code and runs
+`update-function-code` against the function's `$LATEST`. Functions are deployed
+concurrently through a bounded, throttle-safe worker pool (see the script header).
 
-- waits for the code update to settle,
-- **publishes a new version** (a fresh SnapStart snapshot is built — this can take a
-  minute or two while the version is in `Pending`),
-- waits for that version to become `Active`,
-- **moves the `prod` alias** to the new version.
-
-Functions not in `ALIAS_MANAGED` continue to deploy straight to `$LATEST` as before.
-
-#### Rolling back
-
-Because every deploy leaves the previous numbered version intact, a rollback is just
-re-pointing the alias — no code redeploy required:
-
-```bash
-aws lambda update-alias --function-name blef-get-game --name prod --function-version <previous_version>
-```
-
-> Note: the HTTP API stage (`$default`) has auto-deploy enabled, so integration changes
-> take effect immediately. The WebSocket API stage (`production`) does **not** auto-deploy
-> — if you ever change a WebSocket integration or route, run
-> `aws apigatewayv2 create-deployment --api-id <ws-api-id> --stage-name production`.
+> Note: the HTTP API stage (`$default`) has auto-deploy enabled. The WebSocket API stage
+> (`production`) does **not** auto-deploy — if you ever change a WebSocket integration or
+> route, run `aws apigatewayv2 create-deployment --api-id <ws-api-id> --stage-name production`.
 
 
 ### Architecture overview
