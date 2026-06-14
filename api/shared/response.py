@@ -54,3 +54,17 @@ def parameter_error_payload(param_key, param_value, message=None):
     if message:
         body = f"{body}\n{message}"
     return error_payload(400, body)
+
+def nickname_rejected_payload(reason="profanity"):
+    """
+    Creates a 422 Unprocessable Content response for a syntactically valid
+    nickname that fails a content rule (e.g. obscenity). 422 (not 400) signals
+    the request was well-formed but the value is unacceptable; the stable
+    machine-readable `reason` lets clients tell this apart from transport/
+    validation/server errors and prompt the user to choose a different nickname.
+    """
+    return response_payload(422, {
+        "error": "Nickname rejected",
+        "field": "nickname",
+        "reason": reason,
+    })

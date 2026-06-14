@@ -146,5 +146,32 @@ class TestAPIValidation(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("removed successfully", resp.json().get("message", ""))
 
+    # ---------------------------------------------------------
+    # NICKNAME OBSCENITY TESTS (422 + reason)
+    # ---------------------------------------------------------
+
+    def test_obscene_nickname_rejected_on_create(self):
+        """Atomic create+join with an obscene nickname -> 422 with reason='profanity'."""
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "kurwa123"})
+        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.json().get("reason"), "profanity")
+
+    def test_obscene_nickname_rejected_on_join(self):
+        """Join with an obscene nickname -> 422 with reason='profanity'."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "fuckface"})
+        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.json().get("reason"), "profanity")
+
+    def test_obscene_nickname_obfuscated_rejected_on_join(self):
+        """Leetspeak obfuscation that passes the format rule is still rejected (422)."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "n1gg45"})
+        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.json().get("reason"), "profanity")
+
+    def test_clean_nickname_with_swear_substring_accepted(self):
+        """A clean name that merely contains a swear substring is accepted (no false positive)."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Scunthorpe"})
+        self.assertEqual(resp.status_code, 200)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
