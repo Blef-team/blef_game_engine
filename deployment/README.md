@@ -18,10 +18,11 @@ immediately, with no integration changes required.
 
 > **Note:** these functions previously used [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html)
 > via a published version + `prod` alias to reduce cold starts. That was rolled back
-> because, for Python runtimes, SnapStart bills a per-version snapshot **cache** charge
-> for every published version until it is deleted — and each deploy published a new
-> version — so the cost accumulated with every deploy. The functions now run plain on
-> `$LATEST` (`SnapStart.ApplyOn = None`).
+> because, for Python runtimes, SnapStart bills a recurring per-version snapshot charge
+> for as long as the version exists. Just keeping the live prod version of each function
+> snapshotted came to dozens of dollars **per month** across the fleet — a standing monthly
+> cost, not a one-off — and every deploy published another billed version on top of that.
+> The functions now run plain on `$LATEST` (`SnapStart.ApplyOn = None`).
 
 **Functions behind API Gateway:**
 
