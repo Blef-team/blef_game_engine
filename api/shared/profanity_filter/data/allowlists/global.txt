@@ -1,0 +1,2 @@
+# Global allowlist: clean words containing a profanity substring.
+=fick

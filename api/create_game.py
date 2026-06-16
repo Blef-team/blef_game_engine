@@ -4,7 +4,8 @@ import random
 import re
 import time
 from botocore.exceptions import ClientError
-from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload
+from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
+from shared.profanity_filter import is_offensive
 from shared.constants import GameStatus, RuleValues
 from shared.db import get_from_dynamodb, save_in_dynamodb, table
 from shared.game import create_player
@@ -111,6 +112,9 @@ def lambda_handler(event, context):
             return parameter_error_payload("nickname", nickname, message="Nickname invalid")
         if not re.match(r"^[a-zA-Z]\w*$", nickname):
             return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+
+        if is_offensive(nickname):
+            return nickname_rejected_payload(reason="profanity")
 
         player = create_player(game, nickname)
         game.update({"players": [player], "admin_nickname": player.get("nickname")})

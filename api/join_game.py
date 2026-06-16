@@ -2,7 +2,8 @@ import time
 import re
 import decimal
 from botocore.exceptions import ClientError
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload, nickname_rejected_payload
+from shared.profanity_filter import is_offensive
 from shared.db import table
 from shared.constants import GameStatus
 from shared.game import create_player, calculate_actual_max_cards
@@ -50,6 +51,9 @@ def lambda_handler(event, context, body, game):
             return parameter_error_payload("nickname", nickname, message="Nickname missing - please supply it")
         if not isinstance(nickname, str) or not re.match(r"^[a-zA-Z]\w*$", nickname):
             return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+
+        if is_offensive(nickname):
+            return nickname_rejected_payload(reason="profanity")
 
         if nickname in [p["nickname"] for p in players]:
             return parameter_error_payload("nickname", nickname, message="Nickname already taken")
