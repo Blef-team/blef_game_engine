@@ -69,6 +69,9 @@ class SpecialNicknames:
 class AvatarSlots:
     """Fixed cosmetic vocabulary for player avatars.
 
+    Themed around Old Slavic deities and forest spirits: a player picks which
+    spirit they are, its natural colour, its gaze, and a woodland crown.
+
     The engine is an opaque carrier: it validates that each chosen token is in
     the agreed vocabulary, stores it, and broadcasts it. It never interprets or
     renders the tokens - the clients map them to art. Token names are
@@ -76,12 +79,12 @@ class AvatarSlots:
     agree between engine and clients. Grow the tuples by appending if needed.
     """
     OPTIONS = {
-        "base":   ("classic", "round", "square", "oval", "pixel", "retro"),
-        "colour": ("yellow", "blue", "green", "pink", "purple", "orange"),
-        "eyes":   ("plain", "sunglasses", "glasses", "wink", "stars", "sleepy"),
-        "hat":    ("none", "cap", "crown", "party", "beanie", "halo"),
+        "spirit": ("leshy", "rusalka", "domovoi", "vila", "veles", "mokosh"),
+        "colour": ("moss", "bark", "amber", "birch", "river", "berry"),
+        "eyes":   ("calm", "merry", "wise", "fierce", "glowing", "closed"),
+        "crown":  ("bare", "antlers", "wreath", "oak", "mushroom", "feathers"),
     }
-    PARAM_PREFIX = "avatar_"  # wire param names: avatar_base, avatar_colour, ...
+    PARAM_PREFIX = "avatar_"  # wire param names: avatar_spirit, avatar_colour, ...
 
 def random_avatar():
     """Returns a fully random, valid avatar - one token per slot."""
@@ -90,7 +93,7 @@ def random_avatar():
 def validate_avatar(body):
     """Builds a player's avatar from flat avatar_<slot> request params.
 
-    Clients transmit avatars as flat query-string params (avatar_base,
+    Clients transmit avatars as flat query-string params (avatar_spirit,
     avatar_colour, ...) because the GET endpoints cannot carry a nested object.
     Provided slots are validated against the vocabulary; omitted slots are
     randomly filled so un-customised players are still distinct. Unrelated

@@ -31,39 +31,39 @@ class TestAvatarValidation(unittest.TestCase):
 
     def test_all_slots_provided_are_preserved(self):
         body = {
-            "avatar_base": "round",
-            "avatar_colour": "blue",
-            "avatar_eyes": "sunglasses",
-            "avatar_hat": "crown",
+            "avatar_spirit": "rusalka",
+            "avatar_colour": "river",
+            "avatar_eyes": "glowing",
+            "avatar_crown": "wreath",
         }
         avatar, err = validate_avatar(body)
         self.assertIsNone(err)
         self.assertEqual(
             avatar,
-            {"base": "round", "colour": "blue", "eyes": "sunglasses", "hat": "crown"},
+            {"spirit": "rusalka", "colour": "river", "eyes": "glowing", "crown": "wreath"},
         )
 
     def test_partial_input_preserves_given_and_fills_rest(self):
-        avatar, err = validate_avatar({"avatar_hat": "party"})
+        avatar, err = validate_avatar({"avatar_crown": "antlers"})
         self.assertIsNone(err)
-        self.assertEqual(avatar["hat"], "party")
+        self.assertEqual(avatar["crown"], "antlers")
         self.assertTrue(_is_valid_avatar(avatar))
 
-    def test_explicit_none_hat_is_not_randomised(self):
-        # "none" is a real token (bare-headed); it must be respected, not rerolled.
-        avatar, err = validate_avatar({"avatar_hat": "none"})
+    def test_explicit_bare_crown_is_not_randomised(self):
+        # "bare" is a real token (no crown); it must be respected, not rerolled.
+        avatar, err = validate_avatar({"avatar_crown": "bare"})
         self.assertIsNone(err)
-        self.assertEqual(avatar["hat"], "none")
+        self.assertEqual(avatar["crown"], "bare")
 
     def test_invalid_token_is_rejected(self):
-        avatar, err = validate_avatar({"avatar_hat": "sombrero"})
+        avatar, err = validate_avatar({"avatar_crown": "sombrero"})
         self.assertIsNone(avatar)
-        self.assertIn("avatar_hat", err)
+        self.assertIn("avatar_crown", err)
 
     def test_non_string_value_is_rejected(self):
-        avatar, err = validate_avatar({"avatar_hat": 3})
+        avatar, err = validate_avatar({"avatar_crown": 3})
         self.assertIsNone(avatar)
-        self.assertIn("avatar_hat", err)
+        self.assertIn("avatar_crown", err)
 
     def test_unrelated_params_are_ignored(self):
         body = {"nickname": "x", "avatar_weapon": "sword"}
