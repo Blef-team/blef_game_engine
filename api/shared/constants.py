@@ -1,3 +1,4 @@
+import random
 from enum import Enum
 
 class GameStatus:
@@ -64,3 +65,46 @@ class RuleValues:
 
 class SpecialNicknames:
     COMMON_HAND = "0"
+
+class AvatarSlots:
+    """Fixed cosmetic vocabulary for player avatars.
+
+    The engine is an opaque carrier: it validates that each chosen token is in
+    the agreed vocabulary, stores it, and broadcasts it. It never interprets or
+    renders the tokens - the clients map them to art. Token names are
+    placeholders for the clients/product to finalise; only the strings must
+    agree between engine and clients. Grow the tuples by appending if needed.
+    """
+    OPTIONS = {
+        "base":   ("classic", "round", "square", "oval", "pixel", "retro"),
+        "colour": ("yellow", "blue", "green", "pink", "purple", "orange"),
+        "eyes":   ("plain", "sunglasses", "glasses", "wink", "stars", "sleepy"),
+        "hat":    ("none", "cap", "crown", "party", "beanie", "halo"),
+    }
+    PARAM_PREFIX = "avatar_"  # wire param names: avatar_base, avatar_colour, ...
+
+def random_avatar():
+    """Returns a fully random, valid avatar - one token per slot."""
+    return {slot: random.choice(options) for slot, options in AvatarSlots.OPTIONS.items()}
+
+def validate_avatar(body):
+    """Builds a player's avatar from flat avatar_<slot> request params.
+
+    Clients transmit avatars as flat query-string params (avatar_base,
+    avatar_colour, ...) because the GET endpoints cannot carry a nested object.
+    Provided slots are validated against the vocabulary; omitted slots are
+    randomly filled so un-customised players are still distinct. Unrelated
+    params are ignored (only the four known slot keys are read).
+
+    Returns (avatar_dict, None) on success or (None, error_message) on failure.
+    """
+    avatar = {}
+    for slot, options in AvatarSlots.OPTIONS.items():
+        raw = body.get(AvatarSlots.PARAM_PREFIX + slot)
+        if raw is None:
+            avatar[slot] = random.choice(options)
+        elif isinstance(raw, str) and raw in options:
+            avatar[slot] = raw
+        else:
+            return None, f"Invalid value for '{AvatarSlots.PARAM_PREFIX + slot}'"
+    return avatar, None
