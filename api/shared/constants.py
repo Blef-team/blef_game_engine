@@ -69,8 +69,12 @@ class SpecialNicknames:
 class AvatarSlots:
     """Fixed cosmetic vocabulary for player avatars.
 
-    Themed around Old Slavic deities and forest spirits: a player picks which
-    spirit they are, its natural colour, its gaze, and a woodland crown.
+    Players are mortals at the gods' table, dressed in Slavic folk costume
+    (Koliada mummery): an animal mask, dyed homespun cloth, a bluff-tell gaze,
+    and a woven charm. They are deliberately NOT deities - the named AI agents
+    are the gods/spirits and carry their own bespoke art, so these tokens never
+    reuse those names. Slot keys stay generic (base/colour/eyes/hat); only the
+    token vocabulary is themed.
 
     The engine is an opaque carrier: it validates that each chosen token is in
     the agreed vocabulary, stores it, and broadcasts it. It never interprets or
@@ -79,12 +83,12 @@ class AvatarSlots:
     agree between engine and clients. Grow the tuples by appending if needed.
     """
     OPTIONS = {
-        "spirit": ("leshy", "rusalka", "domovoi", "vila", "veles", "mokosh"),
-        "colour": ("moss", "bark", "amber", "birch", "river", "berry"),
-        "eyes":   ("calm", "merry", "wise", "fierce", "glowing", "closed"),
-        "crown":  ("bare", "antlers", "wreath", "oak", "mushroom", "feathers"),
+        "base":   ("tur", "bear", "goat", "stork", "wolf", "raven"),
+        "colour": ("linen", "madder", "woad", "birch", "ochre", "soot"),
+        "eyes":   ("calm", "wink", "narrow", "wide", "weary", "bright"),
+        "hat":    ("bare", "wreath", "antlers", "feather", "ribbons", "bells"),
     }
-    PARAM_PREFIX = "avatar_"  # wire param names: avatar_spirit, avatar_colour, ...
+    PARAM_PREFIX = "avatar_"  # wire param names: avatar_base, avatar_colour, ...
 
 def random_avatar():
     """Returns a fully random, valid avatar - one token per slot."""
@@ -93,7 +97,7 @@ def random_avatar():
 def validate_avatar(body):
     """Builds a player's avatar from flat avatar_<slot> request params.
 
-    Clients transmit avatars as flat query-string params (avatar_spirit,
+    Clients transmit avatars as flat query-string params (avatar_base,
     avatar_colour, ...) because the GET endpoints cannot carry a nested object.
     Provided slots are validated against the vocabulary; omitted slots are
     randomly filled so un-customised players are still distinct. Unrelated

@@ -15,7 +15,7 @@
   `"nickname"=string`
   `"previous_game_uuid"=string` (Used for rematches)
   `"previous_player_uuid"=string` (Used for rematches)
-  `"avatar_spirit"=string`, `"avatar_colour"=string`, `"avatar_eyes"=string`, `"avatar_crown"=string` (Only used when joining via `nickname`; see [Avatars](#avatars))
+  `"avatar_base"=string`, `"avatar_colour"=string`, `"avatar_eyes"=string`, `"avatar_hat"=string` (Only used when joining via `nickname`; see [Avatars](#avatars))
 
 * **URL Params**
 
@@ -54,7 +54,7 @@ curl <HOST>/games/create
 
   **Optional:**
 
-  `"avatar_spirit"=string`, `"avatar_colour"=string`, `"avatar_eyes"=string`, `"avatar_crown"=string` (see [Avatars](#avatars))
+  `"avatar_base"=string`, `"avatar_colour"=string`, `"avatar_eyes"=string`, `"avatar_hat"=string` (see [Avatars](#avatars))
 
 * **Success Response:**
 
@@ -69,27 +69,27 @@ curl <HOST>/games/create
 * **Sample Call:**
 
 ```
-curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat&avatar_spirit=leshy&avatar_colour=moss&avatar_eyes=glowing&avatar_crown=antlers
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat&avatar_base=wolf&avatar_colour=madder&avatar_eyes=narrow&avatar_hat=wreath
 ```
 
 ### Avatars
 
-Human players have a cosmetic **avatar** themed around Old Slavic deities and forest spirits — you pick which **spirit** you are, its natural **colour**, its **eyes** (gaze), and a woodland **crown**. Four independent slots, each set to one token from a fixed vocabulary:
+Human players are mortals seated at the gods' table, dressed in Slavic folk costume (Koliada mummery) — you pick an animal **mask**, the **colour** of your dyed homespun, your **eyes** (a bluff tell), and a woven **charm**. (The deities and forest spirits are the AI opponents, who carry their own bespoke art.) Four independent slots, each set to one token from a fixed vocabulary:
 
-| Slot   | Param            | Tokens                                                                                                                                  |
-|--------|------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| Spirit | `avatar_spirit`  | `leshy` (forest guardian), `rusalka` (water nymph), `domovoi` (hearth spirit), `vila` (meadow fae), `veles` (earth/forest god), `mokosh` (earth mother) |
-| Colour | `avatar_colour`  | `moss`, `bark`, `amber`, `birch`, `river`, `berry`                                                                                     |
-| Eyes   | `avatar_eyes`    | `calm`, `merry`, `wise`, `fierce`, `glowing`, `closed`                                                                                 |
-| Crown  | `avatar_crown`   | `bare`, `antlers`, `wreath`, `oak`, `mushroom`, `feathers`                                                                             |
+| Slot   | Param           | Tokens                                                                                                            |
+|--------|-----------------|------------------------------------------------------------------------------------------------------------------|
+| Mask   | `avatar_base`   | `tur` (aurochs), `bear`, `goat`, `stork`, `wolf`, `raven`                                                         |
+| Colour | `avatar_colour` | `linen` (undyed), `madder` (red), `woad` (blue), `birch` (yellow-green), `ochre` (earth gold), `soot` (charcoal)  |
+| Eyes   | `avatar_eyes`   | `calm`, `wink`, `narrow`, `wide`, `weary`, `bright`                                                               |
+| Charm  | `avatar_hat`    | `bare` (none), `wreath`, `antlers`, `feather`, `ribbons`, `bells`                                                 |
 
 The avatar is set once, when the player is created (on **Join game**, or on **Create game** when a `nickname` is supplied). It cannot be changed afterwards. Each slot is optional:
 
 * An omitted slot is filled with a random token (so players who don't customise are still visually distinct). Omitting all four yields a fully random avatar.
-* To request an uncrowned avatar, send `avatar_crown=bare` explicitly (omitting `avatar_crown` randomises the crown instead).
-* An out-of-vocabulary token (e.g. `avatar_crown=sombrero`) returns **400 BAD REQUEST**.
+* To request a bare-headed avatar, send `avatar_hat=bare` explicitly (omitting `avatar_hat` randomises the charm instead).
+* An out-of-vocabulary token (e.g. `avatar_hat=tophat`) returns **400 BAD REQUEST**.
 
-The chosen avatar is stored on the player and returned in game state as a nested object, e.g. a player entry includes `"avatar": {"spirit": "leshy", "colour": "moss", "eyes": "glowing", "crown": "antlers"}`. AI players have **no** `avatar` field.
+The chosen avatar is stored on the player and returned in game state as a nested object, e.g. a player entry includes `"avatar": {"base": "wolf", "colour": "madder", "eyes": "narrow", "hat": "wreath"}`. AI players have **no** `avatar` field.
 
 ## Invite AI agent
 
@@ -347,7 +347,7 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname": "MyAdmin", "public": "false", "room": 80, "status": "Running", "round_number": 2, "max_cards": 8, "players": [{"ready": true, "n_cards": 1, "nickname": "MyAdmin", "avatar": {"spirit": "leshy", "colour": "moss", "eyes": "glowing", "crown": "antlers"}}, {"ready": true, "nickname": "Porevit_(AI)", "n_cards": 2, "ai_agent": "conservative-crawling"}, {"ready": true, "nickname": "Porevit_2_(AI)", "n_cards": 1, "ai_agent": "conservative-crawling"}], "hands": [{"nickname": "MyAdmin", "hand": [{"colour": 2, "value": 3}]}], "common_hand": [], "cp_nickname": "MyAdmin", "history": [{"action_id": 1, "player": "Porevit_(AI)"}, {"action_id": 4, "player": "Porevit_2_(AI)"}], "last_modified": 1755801637.4618988, "rules": {"jokers": 0, "time_limit": 0, "deck_size": 24, "blanks": 0, "max_cards_preference": 9, "common_cards": 0}, "move_deadline": null, "update_time": 1755801637.9895098}`
+  **Content:** `{"admin_nickname": "MyAdmin", "public": "false", "room": 80, "status": "Running", "round_number": 2, "max_cards": 8, "players": [{"ready": true, "n_cards": 1, "nickname": "MyAdmin", "avatar": {"base": "wolf", "colour": "madder", "eyes": "narrow", "hat": "wreath"}}, {"ready": true, "nickname": "Porevit_(AI)", "n_cards": 2, "ai_agent": "conservative-crawling"}, {"ready": true, "nickname": "Porevit_2_(AI)", "n_cards": 1, "ai_agent": "conservative-crawling"}], "hands": [{"nickname": "MyAdmin", "hand": [{"colour": 2, "value": 3}]}], "common_hand": [], "cp_nickname": "MyAdmin", "history": [{"action_id": 1, "player": "Porevit_(AI)"}, {"action_id": 4, "player": "Porevit_2_(AI)"}], "last_modified": 1755801637.4618988, "rules": {"jokers": 0, "time_limit": 0, "deck_size": 24, "blanks": 0, "max_cards_preference": 9, "common_cards": 0}, "move_deadline": null, "update_time": 1755801637.9895098}`
 
 * **Sample Error Response:**
 
