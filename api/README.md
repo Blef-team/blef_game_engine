@@ -81,9 +81,9 @@ Human players are mortals at the gods' table in Slavic folk costume (Koliada mum
 | Mask  | `avatar_base`  | `tur` (aurochs), `bear`, `goat`, `stork`, `wolf`, `raven`                                                       |
 | Cloth | `avatar_cloth` | `poppy` (red), `cherry` (deep red), `chestnut` (brown), `wheat` (straw gold), `linen` (natural), `coal` (black) |
 | Eyes  | `avatar_eyes`  | `calm`, `wink`, `narrow`, `wide`, `weary`, `bright`                                                             |
-| Charm | `avatar_hat`   | `bare` (none), `wreath`, `antlers`, `feather`, `ribbons`, `bells`                                               |
+| Charm | `avatar_hat`   | `bare` (none), `wreath`, `kerchief`, `ribbons`, `bells`, `coins`                                          |
 
-Team allegiance is shown separately as a coloured glow behind the avatar (teams are blue / green / purple / orange — defined in the clients, not the engine). The cloth palette is deliberately warm folk tones that avoid those hues, so a player's personal flair never reads as a team colour.
+Team allegiance is shown separately as a coloured glow behind the avatar (teams are blue / green / purple / orange — defined in the clients, not the engine). The cloth palette is deliberately warm folk tones that avoid those hues, so a player's personal flair never reads as a team colour. The slots compose on any mask: the mask carries the creature's own features (horns, beak, feathers) and the eyes show through its eye-holes, so the charm slot is human-made folk adornments — never animal features — which never clash with a horned or bird mask.
 
 The avatar is set once, when the player is created (on **Join game**, or on **Create game** when a `nickname` is supplied). It cannot be changed afterwards. Each slot is optional:
 

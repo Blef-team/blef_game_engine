@@ -74,6 +74,11 @@ class AvatarSlots:
     a woven charm. No human skin is ever shown (the face is a mask), so the
     'cloth' slot is the costume colour - personal flair, not a skin tone.
 
+    The slots compose on any mask: the mask carries the creature's own features
+    (horns, beak, feathers) and the eyes show through its eye-holes, so the
+    'hat' charm stays human-made folk adornments (no antlers/feathers) that
+    never clash with a horned or bird mask.
+
     Cloth tones are deliberately warm folk colours that avoid the team-glow
     hues (teams are blue/green/purple/orange), so a player's flair never reads
     as a team allegiance.
@@ -91,7 +96,7 @@ class AvatarSlots:
         "base":  ("tur", "bear", "goat", "stork", "wolf", "raven"),
         "cloth": ("poppy", "cherry", "chestnut", "wheat", "linen", "coal"),
         "eyes":  ("calm", "wink", "narrow", "wide", "weary", "bright"),
-        "hat":   ("bare", "wreath", "antlers", "feather", "ribbons", "bells"),
+        "hat":   ("bare", "wreath", "kerchief", "ribbons", "bells", "coins"),
     }
     PARAM_PREFIX = "avatar_"  # wire param names: avatar_base, avatar_cloth, ...
 

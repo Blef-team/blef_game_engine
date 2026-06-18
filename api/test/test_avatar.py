@@ -44,9 +44,9 @@ class TestAvatarValidation(unittest.TestCase):
         )
 
     def test_partial_input_preserves_given_and_fills_rest(self):
-        avatar, err = validate_avatar({"avatar_hat": "antlers"})
+        avatar, err = validate_avatar({"avatar_hat": "kerchief"})
         self.assertIsNone(err)
-        self.assertEqual(avatar["hat"], "antlers")
+        self.assertEqual(avatar["hat"], "kerchief")
         self.assertTrue(_is_valid_avatar(avatar))
 
     def test_explicit_bare_hat_is_not_randomised(self):
