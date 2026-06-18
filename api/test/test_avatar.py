@@ -30,44 +30,29 @@ class TestAvatarValidation(unittest.TestCase):
         self.assertTrue(_is_valid_avatar(avatar))
 
     def test_all_slots_provided_are_preserved(self):
-        body = {
-            "avatar_base": "wolf",
-            "avatar_cloth": "poppy",
-            "avatar_eyes": "narrow",
-            "avatar_hat": "wreath",
-        }
-        avatar, err = validate_avatar(body)
+        avatar, err = validate_avatar({"avatar_mask": "wolf", "avatar_material": "amber"})
         self.assertIsNone(err)
-        self.assertEqual(
-            avatar,
-            {"base": "wolf", "cloth": "poppy", "eyes": "narrow", "hat": "wreath"},
-        )
+        self.assertEqual(avatar, {"mask": "wolf", "material": "amber"})
 
     def test_partial_input_preserves_given_and_fills_rest(self):
-        avatar, err = validate_avatar({"avatar_hat": "kerchief"})
+        # Only the material is supplied; the mask is randomly filled.
+        avatar, err = validate_avatar({"avatar_material": "gold"})
         self.assertIsNone(err)
-        self.assertEqual(avatar["hat"], "kerchief")
+        self.assertEqual(avatar["material"], "gold")
         self.assertTrue(_is_valid_avatar(avatar))
 
-    def test_explicit_bare_hat_is_not_randomised(self):
-        # "bare" is a real token (bare-headed); it must be respected, not rerolled.
-        avatar, err = validate_avatar({"avatar_hat": "bare"})
-        self.assertIsNone(err)
-        self.assertEqual(avatar["hat"], "bare")
-
     def test_invalid_token_is_rejected(self):
-        avatar, err = validate_avatar({"avatar_hat": "tophat"})
+        avatar, err = validate_avatar({"avatar_material": "plastic"})
         self.assertIsNone(avatar)
-        self.assertIn("avatar_hat", err)
+        self.assertIn("avatar_material", err)
 
     def test_non_string_value_is_rejected(self):
-        avatar, err = validate_avatar({"avatar_hat": 3})
+        avatar, err = validate_avatar({"avatar_mask": 3})
         self.assertIsNone(avatar)
-        self.assertIn("avatar_hat", err)
+        self.assertIn("avatar_mask", err)
 
     def test_unrelated_params_are_ignored(self):
-        body = {"nickname": "x", "avatar_weapon": "sword"}
-        avatar, err = validate_avatar(body)
+        avatar, err = validate_avatar({"nickname": "x", "avatar_charm": "bells"})
         self.assertIsNone(err)
         self.assertTrue(_is_valid_avatar(avatar))
 

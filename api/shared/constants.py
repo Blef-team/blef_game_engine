@@ -69,22 +69,15 @@ class SpecialNicknames:
 class AvatarSlots:
     """Fixed cosmetic vocabulary for player avatars.
 
-    Players are mortals at the gods' table in Slavic folk costume (Koliada
-    mummery): an animal-mask face, dyed homespun cloth, a bluff-tell gaze, and
-    a woven charm. No human skin is ever shown (the face is a mask), so the
-    'cloth' slot is the costume colour - personal flair, not a skin tone.
+    Each human player is a Slavic ritual animal mask, carved or cast in a
+    chosen material - two slots only: the mask (which beast) and the material
+    (its finish). No human face or skin is shown; the material is a surface
+    (wood, stone, metal, resin), not a skin tone or a flat colour, so it never
+    reads as a team-glow allegiance.
 
-    The slots compose on any mask: the mask carries the creature's own features
-    (horns, beak, feathers) and the eyes show through its eye-holes, so the
-    'hat' charm stays human-made folk adornments (no antlers/feathers) that
-    never clash with a horned or bird mask.
-
-    Cloth tones are deliberately warm folk colours that avoid the team-glow
-    hues (teams are blue/green/purple/orange), so a player's flair never reads
-    as a team allegiance.
-
-    They are deliberately NOT deities - the named AI agents are the gods/spirits
-    and carry their own bespoke art, so these tokens never reuse those names.
+    The masks are plain beasts, not deities - the named AI agents are the
+    gods/spirits and carry their own bespoke art, so these tokens never reuse
+    those names.
 
     The engine is an opaque carrier: it validates that each chosen token is in
     the agreed vocabulary, stores it, and broadcasts it. It never interprets or
@@ -93,12 +86,10 @@ class AvatarSlots:
     agree between engine and clients. Grow the tuples by appending if needed.
     """
     OPTIONS = {
-        "base":  ("tur", "bear", "goat", "stork", "wolf", "raven"),
-        "cloth": ("poppy", "cherry", "chestnut", "wheat", "linen", "coal"),
-        "eyes":  ("calm", "wink", "narrow", "wide", "weary", "bright"),
-        "hat":   ("bare", "wreath", "kerchief", "ribbons", "bells", "coins"),
+        "mask":     ("tur", "bear", "goat", "stork", "wolf", "raven", "lynx", "zubr"),
+        "material": ("wood", "stone", "steel", "gold", "brass", "amber"),
     }
-    PARAM_PREFIX = "avatar_"  # wire param names: avatar_base, avatar_cloth, ...
+    PARAM_PREFIX = "avatar_"  # wire param names: avatar_mask, avatar_material
 
 def random_avatar():
     """Returns a fully random, valid avatar - one token per slot."""
@@ -107,8 +98,8 @@ def random_avatar():
 def validate_avatar(body):
     """Builds a player's avatar from flat avatar_<slot> request params.
 
-    Clients transmit avatars as flat query-string params (avatar_base,
-    avatar_cloth, ...) because the GET endpoints cannot carry a nested object.
+    Clients transmit avatars as flat query-string params (avatar_mask,
+    avatar_material) because the GET endpoints cannot carry a nested object.
     Provided slots are validated against the vocabulary; omitted slots are
     randomly filled so un-customised players are still distinct. Unrelated
     params are ignored (only the four known slot keys are read).
