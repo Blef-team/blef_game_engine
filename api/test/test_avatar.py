@@ -32,7 +32,7 @@ class TestAvatarValidation(unittest.TestCase):
     def test_all_slots_provided_are_preserved(self):
         body = {
             "avatar_base": "wolf",
-            "avatar_colour": "madder",
+            "avatar_cloth": "poppy",
             "avatar_eyes": "narrow",
             "avatar_hat": "wreath",
         }
@@ -40,7 +40,7 @@ class TestAvatarValidation(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(
             avatar,
-            {"base": "wolf", "colour": "madder", "eyes": "narrow", "hat": "wreath"},
+            {"base": "wolf", "cloth": "poppy", "eyes": "narrow", "hat": "wreath"},
         )
 
     def test_partial_input_preserves_given_and_fills_rest(self):
