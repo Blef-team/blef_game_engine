@@ -81,7 +81,7 @@ Each human player is a Slavic ritual **mask** of an animal, carved or cast in a 
 | Mask     | `avatar_mask`     | `tur` (aurochs), `bear`, `goat`, `stork`, `wolf`, `raven`, `lynx`, `zubr` (European bison)    |
 | Material | `avatar_material` | `wood`, `stone`, `steel`, `gold`, `brass`, `amber`                                            |
 
-No human face or skin is shown — it is a mask object, and the material is a surface finish (wood, stone, metal, resin), not a skin tone or a flat colour, so it never reads as a team allegiance (teams are a separate coloured glow, defined in the clients). The masks are plain beasts, not the deity-named AI opponents, so these tokens never collide with agent names.
+No human face or skin is shown — the avatar is a mask object, and the material is a surface finish (wood, stone, metal, resin) rather than a flat colour. The engine stores only the tokens; how an avatar is drawn is left to the API consumer. Material is intentionally a finish, not a colour, so an avatar won't collide with separate colour-coded concepts such as team membership. The mask and material tokens are also kept distinct from the AI agent names, so an avatar can't be confused with an agent.
 
 The avatar is set once, when the player is created (on **Join game**, or on **Create game** when a `nickname` is supplied). It cannot be changed afterwards. Each slot is optional:
 

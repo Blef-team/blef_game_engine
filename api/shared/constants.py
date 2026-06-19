@@ -69,21 +69,25 @@ class SpecialNicknames:
 class AvatarSlots:
     """Fixed cosmetic vocabulary for player avatars.
 
-    Each human player is a Slavic ritual animal mask, carved or cast in a
-    chosen material - two slots only: the mask (which beast) and the material
-    (its finish). No human face or skin is shown; the material is a surface
-    (wood, stone, metal, resin), not a skin tone or a flat colour, so it never
-    reads as a team-glow allegiance.
+    Two slots: the mask (which animal) and the material it is carved or cast
+    in. The engine is an opaque carrier - it validates that each token is in
+    the vocabulary, stores it on the player, and broadcasts it. It never
+    interprets or renders the tokens; the rendered appearance is left to
+    whatever consumes the API, which maps these tokens to its own art. Only the
+    token strings form the contract.
 
-    The masks are plain beasts, not deities - the named AI agents are the
-    gods/spirits and carry their own bespoke art, so these tokens never reuse
-    those names.
+    A few deliberate constraints, recorded to prevent later mistakes:
+    - Material is a surface/finish (wood, stone, metal, resin), not a flat
+      colour. Keeping appearance out of the engine leaves colour choices to the
+      consumer and avoids tokens that could collide with separate colour-coded
+      concepts such as team membership.
+    - The model shows a mask object, never a human face, so no token implies a
+      skin tone.
+    - Mask and material tokens are kept distinct from the AI agent names (see
+      the invite-aiagent agent mapping) so a player avatar can't be confused
+      with an agent.
 
-    The engine is an opaque carrier: it validates that each chosen token is in
-    the agreed vocabulary, stores it, and broadcasts it. It never interprets or
-    renders the tokens - the clients map them to art. Token names are
-    placeholders for the clients/product to finalise; only the strings must
-    agree between engine and clients. Grow the tuples by appending if needed.
+    Grow the tuples by appending if needed.
     """
     OPTIONS = {
         "mask":     ("tur", "bear", "goat", "stork", "wolf", "raven", "lynx", "zubr"),
@@ -98,11 +102,11 @@ def random_avatar():
 def validate_avatar(body):
     """Builds a player's avatar from flat avatar_<slot> request params.
 
-    Clients transmit avatars as flat query-string params (avatar_mask,
-    avatar_material) because the GET endpoints cannot carry a nested object.
-    Provided slots are validated against the vocabulary; omitted slots are
-    randomly filled so un-customised players are still distinct. Unrelated
-    params are ignored (only the four known slot keys are read).
+    Avatars arrive as flat query-string params (avatar_mask, avatar_material):
+    the GET endpoints merge query params into `body`, and a flat param can't
+    carry a nested object. Provided slots are validated against the vocabulary;
+    omitted slots are randomly filled so un-customised players are still
+    distinct. Unrelated params are ignored (only the known slot keys are read).
 
     Returns (avatar_dict, None) on success or (None, error_message) on failure.
     """
