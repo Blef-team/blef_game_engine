@@ -3,6 +3,7 @@ import uuid
 import random
 import re
 import time
+import unicodedata
 from botocore.exceptions import ClientError
 from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
@@ -110,8 +111,14 @@ def lambda_handler(event, context):
         # If the user wants to join at the same time
         if not isinstance(nickname, str):
             return parameter_error_payload("nickname", nickname, message="Nickname invalid")
-        if not re.match(r"^[a-zA-Z]\w*$", nickname):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+        # Canonicalise to NFC so a decomposed accent (e.g. "ó" as o + U+0301)
+        # validates and is stored the same as its precomposed form. Letters of
+        # ANY script are allowed (the leading char must be a letter); digits and
+        # single underscores may follow. No spaces (the client sends underscores)
+        # and no leading/trailing/doubled underscores.
+        nickname = unicodedata.normalize("NFC", nickname)
+        if not re.match(r"^[^\W\d_](?:_?[^\W_])*$", nickname):
+            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and contain only letters, numbers and single underscores")
 
         if is_offensive(nickname):
             return nickname_rejected_payload(reason="profanity")
