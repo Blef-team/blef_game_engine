@@ -11,6 +11,14 @@ from shared.db import get_from_dynamodb, save_in_dynamodb, table
 from shared.game import create_player
 from shared.api_gateway import parse_event
 
+# Retention backstop: a game (and its per-round archives, which deep-copy the
+# game) carries this TTL from creation, so DynamoDB auto-expires the nicknames /
+# per-game IDs / match history ~this long after the game is created. The whole
+# record lives well under a day, so creation-anchored is effectively "from last
+# activity" and is the more conservative bound. Epoch seconds; set on the item,
+# so update_item handlers preserve it untouched.
+RETENTION_PERIOD_SECONDS = 365 * 24 * 60 * 60  # 365 days
+
 def register_rematch(prev_game, initiator_uuid, new_game_uuid):
     """
     Verifies the initiator was a player in the previous game and
@@ -98,7 +106,8 @@ def lambda_handler(event, context):
             "hands": [],
             "cp_nickname": None,
             "history": [],
-            "rules": rules_to_use
+            "rules": rules_to_use,
+            "ttl": int(time.time() + RETENTION_PERIOD_SECONDS)
         }
 
         nickname = body.get("nickname")
