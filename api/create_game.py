@@ -1,12 +1,11 @@
 import decimal
 import uuid
 import random
-import re
 import time
-import unicodedata
 from botocore.exceptions import ClientError
 from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
+from shared.inputs import parse_nickname
 from shared.constants import GameStatus, RuleValues
 from shared.db import get_from_dynamodb, save_in_dynamodb, table
 from shared.game import create_player
@@ -109,16 +108,10 @@ def lambda_handler(event, context):
             raise Exception("Failed to save game")
 
         # If the user wants to join at the same time
-        if not isinstance(nickname, str):
-            return parameter_error_payload("nickname", nickname, message="Nickname invalid")
-        # Canonicalise to NFC so a decomposed accent (e.g. "ó" as o + U+0301)
-        # validates and is stored the same as its precomposed form. Letters of
-        # ANY script are allowed (the leading char must be a letter); digits and
-        # single underscores may follow. No spaces (the client sends underscores)
-        # and no leading/trailing/doubled underscores.
-        nickname = unicodedata.normalize("NFC", nickname)
-        if not re.match(r"^[^\W\d_](?:_?[^\W_])*$", nickname):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and contain only letters, numbers and single underscores")
+        try:
+            nickname = parse_nickname(nickname)
+        except ValueError as err:
+            return parameter_error_payload("nickname", nickname, message=str(err))
 
         if is_offensive(nickname):
             return nickname_rejected_payload(reason="profanity")

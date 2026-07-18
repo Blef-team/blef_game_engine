@@ -1,10 +1,9 @@
 import time
-import re
 import decimal
-import unicodedata
 from botocore.exceptions import ClientError
 from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
+from shared.inputs import parse_nickname
 from shared.db import table
 from shared.constants import GameStatus
 from shared.game import create_player, calculate_actual_max_cards
@@ -50,16 +49,10 @@ def lambda_handler(event, context, body, game):
         nickname = body.get("nickname")
         if not nickname:
             return parameter_error_payload("nickname", nickname, message="Nickname missing - please supply it")
-        if not isinstance(nickname, str):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and contain only letters, numbers and single underscores")
-        # Canonicalise to NFC so a decomposed accent (e.g. "ó" as o + U+0301)
-        # validates and is stored/looked-up the same as its precomposed form.
-        # Letters of ANY script are allowed (leading char must be a letter);
-        # digits and single underscores may follow. No spaces (the client sends
-        # underscores) and no leading/trailing/doubled underscores.
-        nickname = unicodedata.normalize("NFC", nickname)
-        if not re.match(r"^[^\W\d_](?:_?[^\W_])*$", nickname):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and contain only letters, numbers and single underscores")
+        try:
+            nickname = parse_nickname(nickname)
+        except ValueError as err:
+            return parameter_error_payload("nickname", nickname, message=str(err))
 
         if is_offensive(nickname):
             return nickname_rejected_payload(reason="profanity")
