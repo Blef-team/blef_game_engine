@@ -4,6 +4,7 @@ from shared.response import response_payload, parameter_error_payload, error_pay
 from shared.db import table
 from shared.constants import GameStatus
 from shared.game import get_player_by_nickname, unset_human_readiness
+from shared.inputs import parse_team
 from shared.decorators import validate_game_request
 
 def update_in_dynamodb(game_uuid, players):
@@ -36,14 +37,10 @@ def lambda_handler(event, context, body, game):
         if not target_player:
             return parameter_error_payload("nickname", target_nickname, message="Target player not found in this game")
 
-        new_team = body.get("team")
-        if new_team is not None:
-            try:
-                new_team = int(new_team)
-            except (ValueError, TypeError):
-                return parameter_error_payload("team", new_team, message="Team must be an integer (1-4) or null")
-        if new_team not in [1, 2, 3, 4, None]:
-             return parameter_error_payload("team", new_team, message="Team must be 1, 2, 3, 4, or null")
+        try:
+            new_team = parse_team(body.get("team"))
+        except ValueError as err:
+            return parameter_error_payload("team", body.get("team"), message=str(err))
 
         # Admin can change anyone's team. Non-admins can only change their own.
         is_admin = (requester_nickname == game.get("admin_nickname"))
