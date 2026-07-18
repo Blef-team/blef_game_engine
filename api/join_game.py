@@ -5,7 +5,7 @@ from shared.response import response_payload, parameter_error_payload, error_pay
 from shared.profanity_filter import is_offensive
 from shared.inputs import parse_nickname
 from shared.db import table
-from shared.constants import GameStatus
+from shared.constants import GameStatus, validate_avatar
 from shared.game import create_player, calculate_actual_max_cards
 from shared.decorators import validate_game_request
 from shared.logging import logger
@@ -60,7 +60,11 @@ def lambda_handler(event, context, body, game):
         if nickname in [p["nickname"] for p in players]:
             return parameter_error_payload("nickname", nickname, message="Nickname already taken")
 
-        new_player = create_player(game, nickname)
+        avatar, avatar_error = validate_avatar(body)
+        if avatar_error:
+            return parameter_error_payload("avatar", None, message=avatar_error)
+
+        new_player = create_player(game, nickname, avatar)
         players.append(new_player)
         admin_nickname = game.get("admin_nickname") or new_player.get("nickname")
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
