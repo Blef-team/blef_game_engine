@@ -6,7 +6,7 @@ import time
 from botocore.exceptions import ClientError
 from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
-from shared.constants import GameStatus, RuleValues
+from shared.constants import GameStatus, RuleValues, validate_avatar
 from shared.db import get_from_dynamodb, save_in_dynamodb, table
 from shared.game import create_player
 from shared.api_gateway import parse_event
@@ -125,7 +125,11 @@ def lambda_handler(event, context):
         if is_offensive(nickname):
             return nickname_rejected_payload(reason="profanity")
 
-        player = create_player(game, nickname)
+        avatar, avatar_error = validate_avatar(body)
+        if avatar_error:
+            return parameter_error_payload("avatar", None, message=avatar_error)
+
+        player = create_player(game, nickname, avatar)
         game.update({"players": [player], "admin_nickname": player.get("nickname")})
         if save_in_dynamodb(game):
             return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player.get("uuid")})

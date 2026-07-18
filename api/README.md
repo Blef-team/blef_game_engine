@@ -15,6 +15,7 @@
   `"nickname"=string`
   `"previous_game_uuid"=string` (Used for rematches)
   `"previous_player_uuid"=string` (Used for rematches)
+  `"avatar_mask"=string`, `"avatar_material"=string` (Only used when joining via `nickname`; see [Avatars](#avatars))
 
 * **URL Params**
 
@@ -51,6 +52,10 @@ curl <HOST>/games/create
 
   `"nickname"=string`
 
+  **Optional:**
+
+  `"avatar_mask"=string`, `"avatar_material"=string` (see [Avatars](#avatars))
+
 * **Success Response:**
 
   * **Code:** 200 OK <br />
@@ -64,8 +69,26 @@ curl <HOST>/games/create
 * **Sample Call:**
 
 ```
-curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat&avatar_mask=wolf&avatar_material=amber
 ```
+
+### Avatars
+
+Each human player is a Slavic ritual **mask** of an animal, carved or cast in a **material**. Just two slots, each one token from a fixed vocabulary (8 × 6 = 48 combinations):
+
+| Slot     | Param             | Tokens                                                                                       |
+|----------|-------------------|----------------------------------------------------------------------------------------------|
+| Mask     | `avatar_mask`     | `tur` (aurochs), `bear`, `goat`, `stork`, `wolf`, `raven`, `lynx`, `zubr` (European bison)    |
+| Material | `avatar_material` | `wood`, `stone`, `steel`, `gold`, `brass`, `amber`                                            |
+
+No human face or skin is shown — the avatar is a mask object, and the material is a surface finish (wood, stone, metal, resin) rather than a flat colour. The engine stores only the tokens; how an avatar is drawn is left to the API consumer. Material is intentionally a finish, not a colour, so an avatar won't collide with separate colour-coded concepts such as team membership. The mask and material tokens are also kept distinct from the AI agent names, so an avatar can't be confused with an agent.
+
+The avatar is set once, when the player is created (on **Join game**, or on **Create game** when a `nickname` is supplied). It cannot be changed afterwards. Each slot is optional:
+
+* An omitted slot is filled with a random token (so players who don't customise are still visually distinct). Omitting both yields a fully random avatar.
+* An out-of-vocabulary token (e.g. `avatar_material=plastic`) returns **400 BAD REQUEST**.
+
+The chosen avatar is stored on the player and returned in game state as a nested object, e.g. a player entry includes `"avatar": {"mask": "wolf", "material": "amber"}`. AI players have **no** `avatar` field.
 
 ## Invite AI agent
 
@@ -323,7 +346,7 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/start?admin_uuid=a6a53849
 * **Success Response:**
 
   * **Code:** 200 OK <br />
-  **Content:** `{"admin_nickname": "MyAdmin", "public": "false", "room": 80, "status": "Running", "round_number": 2, "max_cards": 8, "players": [{"ready": true, "n_cards": 1, "nickname": "MyAdmin"}, {"ready": true, "nickname": "Porevit_(AI)", "n_cards": 2, "ai_agent": "conservative-crawling"}, {"ready": true, "nickname": "Porevit_2_(AI)", "n_cards": 1, "ai_agent": "conservative-crawling"}], "hands": [{"nickname": "MyAdmin", "hand": [{"colour": 2, "value": 3}]}], "common_hand": [], "cp_nickname": "MyAdmin", "history": [{"action_id": 1, "player": "Porevit_(AI)"}, {"action_id": 4, "player": "Porevit_2_(AI)"}], "last_modified": 1755801637.4618988, "rules": {"jokers": 0, "time_limit": 0, "deck_size": 24, "blanks": 0, "max_cards_preference": 9, "common_cards": 0}, "move_deadline": null, "update_time": 1755801637.9895098}`
+  **Content:** `{"admin_nickname": "MyAdmin", "public": "false", "room": 80, "status": "Running", "round_number": 2, "max_cards": 8, "players": [{"ready": true, "n_cards": 1, "nickname": "MyAdmin", "avatar": {"mask": "wolf", "material": "amber"}}, {"ready": true, "nickname": "Porevit_(AI)", "n_cards": 2, "ai_agent": "conservative-crawling"}, {"ready": true, "nickname": "Porevit_2_(AI)", "n_cards": 1, "ai_agent": "conservative-crawling"}], "hands": [{"nickname": "MyAdmin", "hand": [{"colour": 2, "value": 3}]}], "common_hand": [], "cp_nickname": "MyAdmin", "history": [{"action_id": 1, "player": "Porevit_(AI)"}, {"action_id": 4, "player": "Porevit_2_(AI)"}], "last_modified": 1755801637.4618988, "rules": {"jokers": 0, "time_limit": 0, "deck_size": 24, "blanks": 0, "max_cards_preference": 9, "common_cards": 0}, "move_deadline": null, "update_time": 1755801637.9895098}`
 
 * **Sample Error Response:**
 

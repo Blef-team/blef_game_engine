@@ -9,17 +9,18 @@ import uuid
 from .db import table, save_in_dynamodb, transact_end_of_round
 from .time_limit import send_time_limit_message
 from .logging import logger
-from .constants import GameStatus, CommonCardsRules, RuleValues
+from .constants import GameStatus, CommonCardsRules, RuleValues, random_avatar
 
-def create_player(game, nickname):
+def create_player(game, nickname, avatar=None):
     players = game.get("players")
     ready = False if len(players) == 0 or game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT) != RuleValues.TIME_LIMIT_NO_LIMIT else True
     return {
-        "uuid": str(uuid.uuid4()), 
-        "nickname": nickname, 
-        "n_cards": 0, 
+        "uuid": str(uuid.uuid4()),
+        "nickname": nickname,
+        "n_cards": 0,
         "ready": ready,
-        "team": None
+        "team": None,
+        "avatar": avatar if avatar is not None else random_avatar()
     }
 
 def get_player_by_nickname(players, nickname):
