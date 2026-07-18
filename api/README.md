@@ -656,6 +656,54 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-team?player_uuid=f
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-team?player_uuid=f828f87f-4c64-4ba8-b9e2-3a7760910a20&nickname=alpha_(AI)
 ```
 
+## Report nickname
+
+Allows anyone, including observers, to report an objectionable nickname in a game. Invisible to other users.
+
+* **URL**
+
+  /games/{game_uuid}/report-nickname
+
+* **URL Params**
+
+  **Required:**
+
+  `"game_uuid"=string`
+
+* **Data Params**
+
+  **Required:**
+
+  `"nickname"=string` (The nickname being reported)
+
+  **Optional:**
+
+  `"player_uuid"=string` (The reporter's own player UUID if applicable)
+  `"comment"=string` (Free-text context, max 500 characters)
+
+* **Success Response:**
+
+  * **Code:** 200 OK <br />
+  **Content:** `{"message":"Report received"}`
+
+* **Sample Error Responses:**
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Bad input value in 'nickname': ghost\nReported nickname not found in this game"}`
+
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Bad input value in 'comment': 512 characters\nComment too long (max 500 characters)"}`
+
+* **Sample Calls:**
+
+```bash
+# An observer reporting a nickname
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/report-nickname?nickname=coolcat
+
+# A player reporting a nickname with a comment
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/report-nickname?player_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&nickname=coolcat&comment=impersonation
+```
+
 # Action IDs
 
 Action IDs depend on the `deck_size` rule.

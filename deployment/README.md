@@ -28,7 +28,7 @@ immediately, with no integration changes required.
 
 | API | Functions |
 |-----|-----------|
-| HTTP API (`blef-game-engine-http-api`) | `blef-create-game`, `blef-get-game`, `blef-join-game`, `blef-play`, `blef-start-game`, `blef-set-readiness`, `blef-change-rules`, `blef-change-team`, `blef-make-public`, `blef-make-private`, `blef-remove-player`, `blef-remove-ais`, `blef-send-reaction`, `blef-list-public-games`, `blef-invite-aiagent` |
+| HTTP API (`blef-game-engine-http-api`) | `blef-create-game`, `blef-get-game`, `blef-join-game`, `blef-play`, `blef-start-game`, `blef-set-readiness`, `blef-change-rules`, `blef-change-team`, `blef-make-public`, `blef-make-private`, `blef-remove-player`, `blef-remove-ais`, `blef-send-reaction`, `blef-list-public-games`, `blef-invite-aiagent`, `blef-report-nickname` |
 | WebSocket API (`blef-watch-game-websocket-api`) | `blef-watch-game-connect`, `blef-watch-game-disconnect` |
 
 All other Lambdas (DynamoDB-stream, SQS, and cron-triggered handlers such as
@@ -44,6 +44,30 @@ concurrently through a bounded, throttle-safe worker pool (see the script header
 > Note: the HTTP API stage (`$default`) has auto-deploy enabled. The WebSocket API stage
 > (`production`) does **not** auto-deploy — if you ever change a WebSocket integration or
 > route, run `aws apigatewayv2 create-deployment --api-id <ws-api-id> --stage-name production`.
+
+### Nickname reports infrastructure (one-time setup)
+
+`blef-report-nickname` needs resources that `deploy.sh` does not create:
+
+1. **DynamoDB table `nickname_reports`** — partition key `game_uuid` (S), sort key
+   `report_id` (S), TTL enabled on attribute `ttl` (reports self-expire after 180 days):
+
+   ```bash
+   aws dynamodb create-table --table-name nickname_reports \
+     --attribute-definitions AttributeName=game_uuid,AttributeType=S AttributeName=report_id,AttributeType=S \
+     --key-schema AttributeName=game_uuid,KeyType=HASH AttributeName=report_id,KeyType=RANGE \
+     --billing-mode PAY_PER_REQUEST
+   aws dynamodb update-time-to-live --table-name nickname_reports \
+     --time-to-live-specification "Enabled=true, AttributeName=ttl"
+   ```
+
+2. **The Lambda function and API Gateway route** — create `blef-report-nickname`
+   like the other HTTP API functions (same runtime/role pattern; its role also needs
+   `dynamodb:PutItem` on `nickname_reports`), then add the route
+   `GET /games/{game_uuid}/report-nickname` targeting it. `deploy.sh` only
+   updates code on existing functions.
+
+Reports are reviewed by the maintainers pulling straight from DynamoDB. `deployment/fetch_reports.py` scans the table, prints reports that arrived since its last run, and flags reported nicknames that pass the current profanity filter (blocklist candidates).
 
 
 ### Architecture overview
