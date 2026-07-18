@@ -9,17 +9,18 @@ import uuid
 from .db import table, save_in_dynamodb, transact_end_of_round
 from .time_limit import send_time_limit_message
 from .logging import logger
-from .constants import GameStatus, CommonCardsRules, RuleValues
+from .constants import GameStatus, CommonCardsRules, RuleValues, random_avatar
 
-def create_player(game, nickname):
+def create_player(game, nickname, avatar=None):
     players = game.get("players")
     ready = False if len(players) == 0 or game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT) != RuleValues.TIME_LIMIT_NO_LIMIT else True
     return {
-        "uuid": str(uuid.uuid4()), 
-        "nickname": nickname, 
-        "n_cards": 0, 
+        "uuid": str(uuid.uuid4()),
+        "nickname": nickname,
+        "n_cards": 0,
         "ready": ready,
-        "team": None
+        "team": None,
+        "avatar": avatar if avatar is not None else random_avatar()
     }
 
 def get_player_by_nickname(players, nickname):
@@ -215,6 +216,21 @@ def seat_teams(team_counts):
             
     return final_table
 
+def order_same_type_ais(members):
+    """
+    Puts AIs of the same type in nickname order (so enumerated copies of an agent
+    appear in their natural order), keeping every other member's position unchanged.
+    """
+    indices_by_type = defaultdict(list)
+    for i, player in enumerate(members):
+        if player.get("ai_agent"):
+            indices_by_type[player["ai_agent"]].append(i)
+
+    for indices in indices_by_type.values():
+        ordered = sorted((members[i] for i in indices), key=lambda p: p["nickname"])
+        for i, player in zip(indices, ordered):
+            members[i] = player
+
 def arrange_players(players):
     # Shuffle players first so that within teams players are distributed randomly 
     shuffle(players)
@@ -231,6 +247,9 @@ def arrange_players(players):
                 players_by_team[-1].append(p) # Group all independent Humans into dummy team -1
         else:
             players_by_team[team].append(p)
+
+    for members in players_by_team.values():
+        order_same_type_ais(members)
             
     # Build the team_counts dictionary expected by the solver
     team_counts = {team_id: len(members) for team_id, members in players_by_team.items()}
