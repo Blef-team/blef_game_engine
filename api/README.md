@@ -64,7 +64,7 @@ curl <HOST>/games/create
 * **Sample Error Response:**
 
   * **Code:** 400 BAD REQUEST <br />
-  **Content:** `{"error": "Bad input value in 'nickname': 1\nNickname must start with a letter and only contain alphanumeric characters"}`
+  **Content:** `{"error": "Bad input value in 'nickname': 1\nNickname must start with a letter and contain only letters, numbers and single underscores"}`
 
 * **Sample Call:**
 

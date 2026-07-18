@@ -2,6 +2,7 @@
 import os
 import uuid
 import unittest
+import unicodedata
 import requests
 
 BASE_URL = os.environ.get("BASE_URL").rstrip("/")
@@ -172,6 +173,49 @@ class TestAPIValidation(unittest.TestCase):
         """A clean name that merely contains a swear substring is accepted (no false positive)."""
         resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Scunthorpe"})
         self.assertEqual(resp.status_code, 200)
+
+    # ---------------------------------------------------------
+    # NICKNAME FORMAT TESTS (Unicode letters allowed; specials/doubled-_ rejected)
+    # ---------------------------------------------------------
+
+    def test_unicode_nickname_accepted_on_create(self):
+        """Atomic create+join with a non-Latin-leading nickname is accepted."""
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "热的bói"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertIn("player_uuid", resp.json())
+
+    def test_unicode_nickname_accepted_on_join(self):
+        """Join with a Cyrillic nickname is accepted."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Порвит"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+    def test_decomposed_accent_nickname_accepted_on_join(self):
+        """An NFD (decomposed) accent is NFC-normalised server-side and accepted —
+        without normalisation Python's \\w excludes the combining mark and rejects it."""
+        nfd_cafe = unicodedata.normalize("NFD", "Café")
+        self.assertNotEqual(nfd_cafe, "Café")  # ensure we're actually sending decomposed bytes
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": nfd_cafe})
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+    def test_underscore_separated_nickname_accepted_on_join(self):
+        """A single-underscore-separated nickname (the generated Adjective_Animal form) is accepted."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Bold_Fox_2"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+    def test_invalid_nickname_format_rejected_on_create(self):
+        """A digit-leading nickname is rejected with the format error on create."""
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "1foo"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("must start with a letter", resp.json().get("error", ""))
+
+    def test_invalid_nickname_formats_rejected_on_join(self):
+        """Leading underscore/digit, doubled or trailing underscores, spaces, specials and
+        emoji are all rejected with the format error."""
+        for bad in ["_foo", "Bold__Fox", "Bold_", "foo bar", "foo!", "😀foo"]:
+            with self.subTest(nickname=bad):
+                resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": bad})
+                self.assertEqual(resp.status_code, 400, f"{bad!r} -> {resp.text}")
+                self.assertIn("must start with a letter", resp.json().get("error", ""))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,11 +1,11 @@
 import decimal
 import uuid
 import random
-import re
 import time
 from botocore.exceptions import ClientError
 from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
+from shared.inputs import parse_nickname
 from shared.constants import GameStatus, RuleValues, validate_avatar
 from shared.db import get_from_dynamodb, save_in_dynamodb, table
 from shared.game import create_player
@@ -117,10 +117,10 @@ def lambda_handler(event, context):
             raise Exception("Failed to save game")
 
         # If the user wants to join at the same time
-        if not isinstance(nickname, str):
-            return parameter_error_payload("nickname", nickname, message="Nickname invalid")
-        if not re.match(r"^[a-zA-Z]\w*$", nickname):
-            return parameter_error_payload("nickname", nickname, message="Nickname must start with a letter and only contain alphanumeric characters")
+        try:
+            nickname = parse_nickname(nickname)
+        except ValueError as err:
+            return parameter_error_payload("nickname", nickname, message=str(err))
 
         if is_offensive(nickname):
             return nickname_rejected_payload(reason="profanity")
