@@ -92,7 +92,7 @@ The chosen avatar is stored on the player and returned in game state as a nested
 
 ## Invite AI agent
 
-Allows the game admin to add an AI player to the game before it starts.
+Allows the game admin to add an AI player to the game before it starts, optionally straight onto a team. If a team is given, the readiness of all human players is reset to `false`, as with a team change.
 
 * **URL**
 
@@ -111,20 +111,30 @@ Allows the game admin to add an AI player to the game before it starts.
   `"admin_uuid"=string`
   `"agent_name"=string`
 
+  **Optional:**
+
+  `"team"=integer` (1, 2, 3, or 4. Omit to make the AI independent)
+
 * **Success Response:**
 
   * **Code:** 200 OK <br />
   **Content:** `{"message":"alpha_1_(AI) joined the game"}`
 
-* **Sample Error Response:**
+* **Sample Error Responses:**
 
   * **Code:** 403 FORBIDDEN <br />
   **Content:** `{"error":"Game room full"}`
 
-* **Sample Call:**
+  * **Code:** 400 BAD REQUEST <br />
+  **Content:** `{"error":"Bad input value in 'team': 5\nTeam must be 1, 2, 3, 4, or null"}`
+
+* **Sample Calls:**
 
 ```
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/invite-aiagent?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&agent_name=alpha
+
+# Inviting an AI directly to Team 2
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/invite-aiagent?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&agent_name=alpha&team=2
 ```
 
 ## Remove AI agents
