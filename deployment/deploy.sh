@@ -69,7 +69,14 @@ _deploy_impl() {
 
   # --- Update code on $LATEST (what API Gateway invokes) ---
   echo "Updating code on \$LATEST ..."
-  if ! aws lambda update-function-code --function-name "$fn" --zip-file "fileb://$zip" >/dev/null; then
+  # Under Git Bash/MSYS the aws CLI is a native Windows binary and the fileb://
+  # prefix suppresses the shell's automatic POSIX->Windows path translation, so
+  # hand it an explicit Windows-style path. No-op elsewhere (no cygpath).
+  local zip_path="$zip"
+  if command -v cygpath >/dev/null 2>&1; then
+    zip_path=$(cygpath -m "$zip")
+  fi
+  if ! aws lambda update-function-code --function-name "$fn" --zip-file "fileb://$zip_path" >/dev/null; then
     echo "❌ update-function-code failed for $fn"; rm -rf "$work" "$zip"; return 1
   fi
   echo "✅ code updated on \$LATEST."
