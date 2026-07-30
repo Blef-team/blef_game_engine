@@ -106,6 +106,65 @@ class TestAPIValidation(unittest.TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("Every rule must be an integer", resp.json().get("error", ""))
 
+    def test_handler_change_rules_initial_cards(self):
+        """Tests the initial_cards rule: its three forms, unset, and validation."""
+        url = f"{BASE_URL}/games/{self.game_uuid}/change-rules"
+        state_url = f"{BASE_URL}/games/{self.game_uuid}"
+
+        def rules():
+            return self.session.get(state_url, params={"player_uuid": self.admin_uuid}).json()["rules"]
+
+        # A shared count applies to everyone.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": 2})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(int(rules()["initial_cards"]), 2)
+
+        # "random" is stored as-is and resolved per player at start.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": "random"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(rules()["initial_cards"], "random")
+
+        # Named players — the handicap / challenge form.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                             "initial_cards": "AdminUser:3"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(int(rules()["initial_cards"]["AdminUser"]), 3)
+
+        # 0 clears it.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": 0})
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("initial_cards", rules())
+
+        # Nicknames must already be in the game.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                             "initial_cards": "NoSuchPlayer:2"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("Target player not found", resp.json().get("error", ""))
+
+        # Unparseable declarations are rejected.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": "garbage"})
+        self.assertEqual(resp.status_code, 400)
+
+        # Counts above max_cards are refused, not clamped.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": 99})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("Initial cards must be between", resp.json().get("error", ""))
+
+    def test_handler_change_rules_initial_cards_is_order_independent(self):
+        """The feasibility check must see the settled rules, not whatever order
+        the parameters arrived in. A 24-card deck allows fewer cards per player
+        than a 32-card one, so the same pair of rules must give the same answer
+        both ways round."""
+        url = f"{BASE_URL}/games/{self.game_uuid}/change-rules"
+
+        forward = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                                "deck_size": 24, "initial_cards": 11})
+        self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": 0})
+        backward = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                                 "initial_cards": 11, "deck_size": 24})
+        self.assertEqual(forward.status_code, backward.status_code,
+                         "initial_cards validation depends on parameter order")
+
     def test_handler_invite_aiagent(self):
         """Tests the simplified invite-aiagent handler logic."""
         url = f"{BASE_URL}/games/{self.game_uuid}/invite-aiagent"

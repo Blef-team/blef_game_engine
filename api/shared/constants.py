@@ -47,7 +47,14 @@ class RuleValues:
 
     COMMON_CARDS_FIXED_RANGE = _Range(0, 12) # We don't envisage players needing more than 12
     COMMON_CARDS_DEFAULT = 0
-    
+
+    # Opening hand sizes. Default is one card each; the rule can set a shared
+    # count, randomise per player, or name players individually (handicaps and
+    # challenges). 0 unsets it, mirroring MAX_CARDS_NO_PREFERENCE_API.
+    INITIAL_CARDS_UNSET = 0
+    INITIAL_CARDS_RANDOM = "random"
+    INITIAL_CARDS_DEFAULT = 1
+
     @classmethod
     def is_valid_time_limit_rule(cls, value):
         """Checks if a value is a valid time limit rule."""
@@ -62,6 +69,42 @@ class RuleValues:
     def is_valid_max_cards_rule(cls, value):
         """Checks if a value is a valid max cards preference."""
         return (value == cls.MAX_CARDS_NO_PREFERENCE_API) or (cls.MAX_CARDS_FIXED_RANGE.BOTTOM <= value <= cls.MAX_CARDS_FIXED_RANGE.TOP)
+
+    @classmethod
+    def parse_initial_cards_rule(cls, raw):
+        """Parse an initial_cards declaration into an int, "random", a
+        nickname->count dict, or None to unset. Returns (value, error)."""
+        text = str(raw).strip()
+        if text in ("", str(cls.INITIAL_CARDS_UNSET)):
+            return None, None
+        if text.lower() == cls.INITIAL_CARDS_RANDOM:
+            return cls.INITIAL_CARDS_RANDOM, None
+        if text.isdigit():
+            return int(text), None
+        mapping = {}
+        for entry in text.split(","):
+            nickname, _, count = entry.rpartition(":")
+            if not nickname or not count.isdigit():
+                return None, "Expected an integer, 'random', or nickname:count pairs"
+            mapping[nickname] = int(count)
+        return mapping, None
+
+    @classmethod
+    def validate_initial_cards_rule(cls, value, nicknames, max_cards):
+        """Feasibility and roster check, returning an error message or None. Run
+        AFTER every rule is settled: max_cards depends on deck size and player
+        count, so validating mid-request would depend on parameter order."""
+        if value is None or value == cls.INITIAL_CARDS_RANDOM:
+            return None
+        counts = list(value.values()) if isinstance(value, dict) else [value]
+        if not all(cls.MAX_CARDS_FIXED_RANGE.BOTTOM <= c <= int(max_cards) for c in counts):
+            return f"Initial cards must be between {cls.MAX_CARDS_FIXED_RANGE.BOTTOM} and {max_cards}"
+        if isinstance(value, dict):
+            unknown = sorted(set(value) - set(nicknames))
+            if unknown:
+                return f"Target player not found in this game: {unknown[0]}"
+        return None
+
 
 class SpecialNicknames:
     COMMON_HAND = "0"

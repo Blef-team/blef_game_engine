@@ -80,11 +80,27 @@ def lambda_handler(event, context, body, game):
                         f"Max cards must be {RuleValues.MAX_CARDS_NO_PREFERENCE_API} (for no preference) or an integer between "
                         f"{RuleValues.MAX_CARDS_FIXED_RANGE.BOTTOM} and {RuleValues.MAX_CARDS_FIXED_RANGE.TOP}")
                 rules["max_cards_preference"] = value if value != RuleValues.MAX_CARDS_NO_PREFERENCE_API else RuleValues.MAX_CARDS_NO_PREFERENCE_INTERNAL
+            elif key == "initial_cards":
+                declaration, error = RuleValues.parse_initial_cards_rule(value)
+                if error:
+                    return parameter_error_payload(key, value, error)
+                if declaration is None:
+                    rules.pop(key, None)
+                else:
+                    rules[key] = declaration
 
         if rules.get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT) != RuleValues.TIME_LIMIT_NO_LIMIT:
             players = unset_human_readiness(players)
 
         max_cards = calculate_actual_max_cards(rules, len(players))
+
+        # After the loop, so the check sees the settled deck size and player
+        # count rather than whatever order the parameters happened to arrive in.
+        if "initial_cards" in rules:
+            error = RuleValues.validate_initial_cards_rule(
+                rules["initial_cards"], [p["nickname"] for p in players], max_cards)
+            if error:
+                return parameter_error_payload("initial_cards", body.get("initial_cards"), error)
 
         logger.info(f'## NEW RULES: {rules}')
         logger.info(f'## MAX CARDS: {max_cards}')
