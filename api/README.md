@@ -273,7 +273,9 @@ Allows the game admin to change the rules of the game before it starts. This inc
   * Rules can only be changed before the game starts (status = `"Not started"`)  
   * When `time_limit` is non-zero after any rule changes from the current request have been applied, all human players' readiness is reset to `false`  
   * The `max_cards_preference` value in rules is retained, but the `max_cards` in the game state may differ if the preference isn't feasible for the current player count  
-  * `initial_cards` counts must be between 1 and the game's `max_cards`, and any nickname given must already be in the game. Both are checked **after** all rules in the request are applied, so the result does not depend on parameter order  
+  * `initial_cards` counts must be between 1 and the game's `max_cards`, and any nickname given must already be in the game. Both are checked **after** all rules in the request are applied, so the result does not depend on parameter order. Nicknames are matched in their stored (NFC-normalised) form  
+  * These checks run **only when the request sets `initial_cards`**. A rule that was valid when set can go stale — a named player leaves, or the roster grows and `max_cards` falls below the count — and a stale rule must never block unrelated rule changes. It adapts at game start instead (see below)  
+  * When a request sets `initial_cards`, all human players' readiness is reset to `false`, as with a team change, because uneven openings change the fairness players agreed to. This happens regardless of `time_limit`  
   * `initial_cards` is a rule like any other, so a rematch **inherits** it. Counts are clamped to the new game's `max_cards` and players the rule does not name open with 1, so an inherited rule adapts to a changed roster instead of failing. Pass `initial_cards=0` to clear it  
   * Uneven openings are visible to everyone in the `rules` field of the game state before the game starts  
 
