@@ -266,5 +266,27 @@ class TestAPIValidation(unittest.TestCase):
         resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "Bad3", "team": 9})
         self.assertEqual(resp.status_code, 400, resp.text)
 
+    def test_rejected_team_does_not_consume_the_rematch(self):
+        """A rejected team must not leave the previous game pointing at a game
+        that was never saved. The rematch link can only be claimed once, so a
+        request that fails after claiming it would brick rematches for good."""
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Bob"})
+
+        resp = self.session.get(f"{BASE_URL}/games/create",
+                                params={"previous_game_uuid": self.game_uuid,
+                                        "previous_player_uuid": self.admin_uuid, "team": 2})
+        self.assertEqual(resp.status_code, 400, resp.text)
+
+        # The link must still be free, and a genuine rematch must reach a real game.
+        resp = self.session.get(f"{BASE_URL}/games/create",
+                                params={"previous_game_uuid": self.game_uuid,
+                                        "previous_player_uuid": self.admin_uuid,
+                                        "nickname": "AdminUser"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        rematch_uuid = resp.json()["game_uuid"]
+        state = self.session.get(f"{BASE_URL}/games/{rematch_uuid}")
+        self.assertEqual(state.status_code, 200,
+                         "the rematch points at a game that does not exist")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

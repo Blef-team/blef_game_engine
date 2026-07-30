@@ -60,6 +60,15 @@ def lambda_handler(event, context):
         if not body:
             return request_error_payload(event)
 
+        # Before register_rematch, which writes to the previous game: a rejection
+        # after that point leaves it pointing at a game that is never saved.
+        if body.get("team") is not None and not body.get("nickname"):
+            return parameter_error_payload("team", body.get("team"), message="Team can only be set when joining with a nickname")
+        try:
+            team = parse_team(body.get("team"))
+        except ValueError as err:
+            return parameter_error_payload("team", body.get("team"), message=str(err))
+
         game_uuid = str(uuid.uuid4())
         prev_game_uuid = body.get("previous_game_uuid")
         prev_player_uuid = body.get("previous_player_uuid")
@@ -112,8 +121,6 @@ def lambda_handler(event, context):
 
         nickname = body.get("nickname")
         if not nickname:
-            if body.get("team") is not None:
-                return parameter_error_payload("team", body.get("team"), message="Team can only be set when joining with a nickname")
             if save_in_dynamodb(game):
                 return response_payload(200, {"game_uuid": game_uuid})
             raise Exception("Failed to save game")
@@ -130,11 +137,6 @@ def lambda_handler(event, context):
         avatar, avatar_error = validate_avatar(body)
         if avatar_error:
             return parameter_error_payload("avatar", None, message=avatar_error)
-
-        try:
-            team = parse_team(body.get("team"))
-        except ValueError as err:
-            return parameter_error_payload("team", body.get("team"), message=str(err))
 
         player = create_player(game, nickname, avatar, team)
         game.update({"players": [player], "admin_nickname": player.get("nickname")})
