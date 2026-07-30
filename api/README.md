@@ -58,7 +58,7 @@ curl <HOST>/games/create
   `"avatar_mask"=string`, `"avatar_material"=string` (see [Avatars](#avatars))
   `"team"=integer` (1, 2, 3, or 4. Omit to join as an independent player)
 
-  Joining straight into a team is equivalent to joining and then calling [Change team](#change-team), and likewise resets the readiness of all human players to `false`. It lets a client restore a team without the player first appearing as independent, which matters when a whole table rejoins for a rematch.
+  Joining straight into a team is equivalent to joining and then calling [Change team](#change-team), and likewise resets the readiness of all human players to `false`.
 
 * **Success Response:**
 
