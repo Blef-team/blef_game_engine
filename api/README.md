@@ -16,6 +16,7 @@
   `"previous_game_uuid"=string` (Used for rematches)
   `"previous_player_uuid"=string` (Used for rematches)
   `"avatar_mask"=string`, `"avatar_material"=string` (Only used when joining via `nickname`; see [Avatars](#avatars))
+  `"team"=integer` (1, 2, 3, or 4. Omit to be independent. Requires `nickname` — supplying it without one is an error)
 
 * **URL Params**
 
@@ -55,6 +56,9 @@ curl <HOST>/games/create
   **Optional:**
 
   `"avatar_mask"=string`, `"avatar_material"=string` (see [Avatars](#avatars))
+  `"team"=integer` (1, 2, 3, or 4. Omit to join as an independent player)
+
+  Joining straight into a team is equivalent to joining and then calling [Change team](#change-team), and likewise resets the readiness of all human players to `false`.
 
 * **Success Response:**
 
@@ -70,6 +74,9 @@ curl <HOST>/games/create
 
 ```
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat&avatar_mask=wolf&avatar_material=amber
+
+# Joining straight into Team 2
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/join?nickname=coolcat&team=2
 ```
 
 ### Avatars

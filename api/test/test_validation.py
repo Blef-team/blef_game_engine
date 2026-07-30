@@ -327,5 +327,76 @@ class TestAPIValidation(unittest.TestCase):
                 self.assertEqual(resp.status_code, 400, f"{bad!r} -> {resp.text}")
                 self.assertIn("must start with a letter", resp.json().get("error", ""))
 
+    # ---------------------------------------------------------
+    # JOINING STRAIGHT INTO A TEAM
+    # ---------------------------------------------------------
+
+    def _player(self, game_uuid, nickname):
+        state = self.session.get(f"{BASE_URL}/games/{game_uuid}", params={"player_uuid": self.admin_uuid}).json()
+        return next(p for p in state["players"] if p["nickname"] == nickname)
+
+    def test_join_with_team_seats_the_player(self):
+        """A team supplied on join is applied without a follow-up change-team call."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Teamed", "team": 2})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertEqual(self._player(self.game_uuid, "Teamed")["team"], 2)
+
+    def test_join_without_team_is_independent(self):
+        """Omitting the team keeps the previous behaviour: an independent player."""
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Loner"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertIsNone(self._player(self.game_uuid, "Loner")["team"])
+
+    def test_join_with_team_resets_human_readiness(self):
+        """Joining into a team is equivalent to join + change-team, so it unreadies humans."""
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Early"})
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Teamed", "team": 3})
+        self.assertFalse(self._player(self.game_uuid, "Early")["ready"])
+
+    def test_create_with_nickname_and_team(self):
+        """The creator can claim a team in the same call."""
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "Founder", "team": 1})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        state = self.session.get(f"{BASE_URL}/games/{resp.json()['game_uuid']}").json()
+        self.assertEqual(state["players"][0]["team"], 1)
+
+    def test_create_with_team_but_no_nickname_rejected(self):
+        """A team without a nickname creates no player, so it is an error rather than a silent no-op."""
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"team": 1})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("only be set when joining with a nickname", resp.json().get("error", ""))
+
+    def test_invalid_team_rejected(self):
+        """Out-of-range and non-integer teams are rejected on both entry points."""
+        for params in [{"nickname": "Bad1", "team": 5}, {"nickname": "Bad2", "team": "green"}]:
+            with self.subTest(params=params):
+                resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params=params)
+                self.assertEqual(resp.status_code, 400, resp.text)
+                self.assertIn("Team must be", resp.json().get("error", ""))
+        resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "Bad3", "team": 9})
+        self.assertEqual(resp.status_code, 400, resp.text)
+
+    def test_rejected_team_does_not_consume_the_rematch(self):
+        """A rejected team must not leave the previous game pointing at a game
+        that was never saved. The rematch link can only be claimed once, so a
+        request that fails after claiming it would brick rematches for good."""
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Bob"})
+
+        resp = self.session.get(f"{BASE_URL}/games/create",
+                                params={"previous_game_uuid": self.game_uuid,
+                                        "previous_player_uuid": self.admin_uuid, "team": 2})
+        self.assertEqual(resp.status_code, 400, resp.text)
+
+        # The link must still be free, and a genuine rematch must reach a real game.
+        resp = self.session.get(f"{BASE_URL}/games/create",
+                                params={"previous_game_uuid": self.game_uuid,
+                                        "previous_player_uuid": self.admin_uuid,
+                                        "nickname": "AdminUser"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        rematch_uuid = resp.json()["game_uuid"]
+        state = self.session.get(f"{BASE_URL}/games/{rematch_uuid}")
+        self.assertEqual(state.status_code, 200,
+                         "the rematch points at a game that does not exist")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
