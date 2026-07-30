@@ -73,3 +73,47 @@ def transact_end_of_round(live_game_state, archive_game_state, last_modified_con
             return False
         else:
             raise
+
+def transact_create_rematch(new_game, prev_game_uuid):
+    """
+    Saves the rematch game and claims the link on the previous game in a single
+    transaction. Either both land or neither does, so a failure can never leave
+    the previous game pointing at a game that was not saved. Claiming the link
+    is one-shot, so such a pointer would be permanent.
+
+    Returns True on success, False if the previous game's link was already
+    claimed (the caller re-reads it to find the winner).
+    """
+    new_game["last_modified"] = decimal.Decimal(str(time.time()))
+
+    try:
+        table.meta.client.transact_write_items(TransactItems=[
+            {
+                'Put': {
+                    'TableName': table.name,
+                    'Item': new_game,
+                    'ConditionExpression': 'attribute_not_exists(game_uuid)'
+                }
+            },
+            {
+                'Update': {
+                    'TableName': table.name,
+                    'Key': {'game_uuid': prev_game_uuid},
+                    'UpdateExpression': "SET next_game_uuid = :n, last_modified = :t",
+                    'ConditionExpression': "attribute_not_exists(next_game_uuid) OR attribute_type(next_game_uuid, :null_type)",
+                    'ExpressionAttributeValues': {
+                        ':n': new_game["game_uuid"],
+                        ':t': decimal.Decimal(str(time.time())),
+                        ':null_type': 'NULL'
+                    }
+                }
+            }
+        ])
+        return True
+
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'TransactionCanceledException':
+            logger.warning(f"Rematch registration lost the race for game {prev_game_uuid}.")
+            return False
+        else:
+            raise

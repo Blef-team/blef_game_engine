@@ -376,27 +376,49 @@ class TestAPIValidation(unittest.TestCase):
         resp = self.session.get(f"{BASE_URL}/games/create", params={"nickname": "Bad3", "team": 9})
         self.assertEqual(resp.status_code, 400, resp.text)
 
-    def test_rejected_team_does_not_consume_the_rematch(self):
-        """A rejected team must not leave the previous game pointing at a game
-        that was never saved. The rematch link can only be claimed once, so a
-        request that fails after claiming it would brick rematches for good."""
+    def test_rejected_rematch_does_not_consume_the_link(self):
+        """No rejected create may leave the previous game pointing at a game that
+        was never saved. The link can only be claimed once, so a request that
+        fails after claiming it would brick rematches for that game for good."""
         self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Bob"})
+        rematch_params = {"previous_game_uuid": self.game_uuid,
+                          "previous_player_uuid": self.admin_uuid}
 
-        resp = self.session.get(f"{BASE_URL}/games/create",
-                                params={"previous_game_uuid": self.game_uuid,
-                                        "previous_player_uuid": self.admin_uuid, "team": 2})
-        self.assertEqual(resp.status_code, 400, resp.text)
+        for label, bad in [("team without nickname", {"team": 2}),
+                           ("invalid team", {"nickname": "AdminUser", "team": 9}),
+                           ("malformed nickname", {"nickname": "1nvalid"}),
+                           ("bad avatar", {"nickname": "AdminUser", "avatar_material": "plastic"})]:
+            with self.subTest(case=label):
+                resp = self.session.get(f"{BASE_URL}/games/create", params={**rematch_params, **bad})
+                self.assertEqual(resp.status_code, 400, resp.text)
 
         # The link must still be free, and a genuine rematch must reach a real game.
         resp = self.session.get(f"{BASE_URL}/games/create",
-                                params={"previous_game_uuid": self.game_uuid,
-                                        "previous_player_uuid": self.admin_uuid,
-                                        "nickname": "AdminUser"})
+                                params={**rematch_params, "nickname": "AdminUser"})
         self.assertEqual(resp.status_code, 200, resp.text)
         rematch_uuid = resp.json()["game_uuid"]
         state = self.session.get(f"{BASE_URL}/games/{rematch_uuid}")
         self.assertEqual(state.status_code, 200,
                          "the rematch points at a game that does not exist")
+
+    def test_second_rematch_returns_the_first(self):
+        """The link is claimed once. A later attempt reports the winner rather
+        than overwriting it or creating an orphan."""
+        bob_uuid = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join",
+                                    params={"nickname": "Bob"}).json()["player_uuid"]
+        rematch_params = {"previous_game_uuid": self.game_uuid}
+
+        first = self.session.get(f"{BASE_URL}/games/create",
+                                 params={**rematch_params, "previous_player_uuid": self.admin_uuid,
+                                         "nickname": "AdminUser"})
+        self.assertEqual(first.status_code, 200, first.text)
+
+        second = self.session.get(f"{BASE_URL}/games/create",
+                                  params={**rematch_params, "previous_player_uuid": bob_uuid,
+                                          "nickname": "Bob"})
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(second.json()["game_uuid"], first.json()["game_uuid"],
+                         "the second rematch must land in the first one's game")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
