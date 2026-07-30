@@ -1,13 +1,11 @@
-import decimal
 import uuid
 import random
 import time
-from botocore.exceptions import ClientError
 from shared.response import error_payload, internal_error_payload, parameter_error_payload, request_error_payload, response_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
 from shared.inputs import parse_nickname, parse_team
 from shared.constants import GameStatus, RuleValues, validate_avatar
-from shared.db import get_from_dynamodb, save_in_dynamodb, table
+from shared.db import get_from_dynamodb, save_in_dynamodb, transact_create_rematch
 from shared.game import create_player
 from shared.api_gateway import parse_event
 
@@ -19,10 +17,11 @@ from shared.api_gateway import parse_event
 # so update_item handlers preserve it untouched.
 RETENTION_PERIOD_SECONDS = 365 * 24 * 60 * 60  # 365 days
 
-def register_rematch(prev_game, initiator_uuid, new_game_uuid):
+def check_rematch_eligibility(prev_game, initiator_uuid):
     """
-    Verifies the initiator was a player in the previous game and
-    atomically registers the rematch link.
+    Read-only pre-checks on a rematch request. Fails fast with the same errors
+    as before, but claims nothing: the link is claimed in the same transaction
+    that saves the new game, so a later rejection cannot strand it.
     """
     # Verify the initiator was a player in that game
     player_uuids = [p["uuid"] for p in prev_game.get("players", [])]
@@ -34,25 +33,23 @@ def register_rematch(prev_game, initiator_uuid, new_game_uuid):
     if existing_rematch:
         return False, existing_rematch, "Rematch already exists"
 
-    # Attempt atomic registration
-    try:
-        table.update_item(
-            Key={'game_uuid': prev_game["game_uuid"]},
-            UpdateExpression="SET next_game_uuid = :n, last_modified = :t",
-            ConditionExpression="attribute_not_exists(next_game_uuid) OR attribute_type(next_game_uuid, :null_type)",
-            ExpressionAttributeValues={
-                ':n': new_game_uuid,
-                ':t': decimal.Decimal(str(time.time())),
-                ':null_type': 'NULL'
-            }
-        )
-        return True, new_game_uuid, None
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            # Re-fetch only in case of a race condition to get the winner's UUID
-            updated_prev = get_from_dynamodb(prev_game["game_uuid"])
-            return False, updated_prev.get("next_game_uuid"), "Rematch already exists"
-        raise
+    return True, None, None
+
+def save_game(game, prev_game_uuid):
+    """
+    Persists a newly created game. For a rematch this also claims the previous
+    game's link, atomically. Returns (saved, winner_uuid): a False with a
+    winner_uuid means another rematch won the race.
+    """
+    if not prev_game_uuid:
+        return save_in_dynamodb(game), None
+
+    if transact_create_rematch(game, prev_game_uuid):
+        return True, None
+
+    # Lost the race - re-read to find who won.
+    updated_prev = get_from_dynamodb(prev_game_uuid)
+    return False, (updated_prev or {}).get("next_game_uuid")
 
 def lambda_handler(event, context):
     try:
@@ -60,8 +57,7 @@ def lambda_handler(event, context):
         if not body:
             return request_error_payload(event)
 
-        # Before register_rematch, which writes to the previous game: a rejection
-        # after that point leaves it pointing at a game that is never saved.
+        # Cheap checks first, before the previous game is even read.
         if body.get("team") is not None and not body.get("nickname"):
             return parameter_error_payload("team", body.get("team"), message="Team can only be set when joining with a nickname")
         try:
@@ -96,12 +92,12 @@ def lambda_handler(event, context):
             if not prev_player_uuid:
                 return parameter_error_payload("previous_player_uuid", None, "Required for rematch")
 
-            success, final_uuid, error_msg = register_rematch(prev_game, prev_player_uuid, game_uuid)
-            if not success:
+            eligible, final_uuid, error_msg = check_rematch_eligibility(prev_game, prev_player_uuid)
+            if not eligible:
                 if final_uuid: # Someone else already created it
                     return response_payload(200, {"game_uuid": final_uuid, "message": error_msg})
                 return error_payload(403, error_msg) # Unauthorized or missing game
-            
+
         game = {
             "game_uuid": game_uuid,
             "next_game_uuid": None,
@@ -121,8 +117,11 @@ def lambda_handler(event, context):
 
         nickname = body.get("nickname")
         if not nickname:
-            if save_in_dynamodb(game):
+            saved, winner_uuid = save_game(game, prev_game_uuid)
+            if saved:
                 return response_payload(200, {"game_uuid": game_uuid})
+            if winner_uuid:
+                return response_payload(200, {"game_uuid": winner_uuid, "message": "Rematch already exists"})
             raise Exception("Failed to save game")
 
         # If the user wants to join at the same time
@@ -140,8 +139,11 @@ def lambda_handler(event, context):
 
         player = create_player(game, nickname, avatar, team)
         game.update({"players": [player], "admin_nickname": player.get("nickname")})
-        if save_in_dynamodb(game):
+        saved, winner_uuid = save_game(game, prev_game_uuid)
+        if saved:
             return response_payload(200, {"game_uuid": game_uuid, "player_uuid": player.get("uuid")})
+        if winner_uuid:
+            return response_payload(200, {"game_uuid": winner_uuid, "message": "Rematch already exists"})
 
         raise Exception("Something went wrong - ended up with no response")
 
