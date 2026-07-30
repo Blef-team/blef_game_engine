@@ -11,7 +11,7 @@ from .time_limit import send_time_limit_message
 from .logging import logger
 from .constants import GameStatus, CommonCardsRules, RuleValues, random_avatar
 
-def create_player(game, nickname, avatar=None):
+def create_player(game, nickname, avatar=None, team=None):
     players = game.get("players")
     ready = False if len(players) == 0 or game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT) != RuleValues.TIME_LIMIT_NO_LIMIT else True
     return {
@@ -19,7 +19,7 @@ def create_player(game, nickname, avatar=None):
         "nickname": nickname,
         "n_cards": 0,
         "ready": ready,
-        "team": None,
+        "team": team,
         "avatar": avatar if avatar is not None else random_avatar()
     }
 
