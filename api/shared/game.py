@@ -331,13 +331,39 @@ def calculate_actual_max_cards(rules, n_players):
         suggested_total_cards_in_round = calculate_suggested_max_cards_dealt_in_any_round(rules)
         return calculate_largest_feasible_max_cards_per_player(n_players, suggested_total_cards_in_round, common_cards_rule)
 
+def resolve_opening_hands(players, rules, max_cards):
+    """Cards each player opens with. One each unless `initial_cards` sets a
+    shared count, randomises, or names players individually.
+
+    Counts are clamped rather than refused here: change_rules already rejected
+    bad values, and the roster can grow afterwards (shrinking max_cards), which
+    must not make a game unstartable. Players the rule does not name open with
+    the default, so an inherited rule degrades instead of failing.
+    """
+    rule = rules.get("initial_cards")
+    limit = max(RuleValues.INITIAL_CARDS_DEFAULT, int(max_cards))
+
+    def bounded(count):
+        return max(RuleValues.INITIAL_CARDS_DEFAULT, min(int(count), limit))
+
+    if rule == RuleValues.INITIAL_CARDS_RANDOM:
+        return {p["nickname"]: randint(RuleValues.INITIAL_CARDS_DEFAULT, limit) for p in players}
+    if isinstance(rule, dict):
+        return {p["nickname"]: bounded(rule.get(p["nickname"], RuleValues.INITIAL_CARDS_DEFAULT))
+                for p in players}
+    if rule:
+        return {p["nickname"]: bounded(rule) for p in players}
+    return {p["nickname"]: RuleValues.INITIAL_CARDS_DEFAULT for p in players}
+
+
 def start_game(game):
     game_uuid = game["game_uuid"]
     players = game["players"]
     rules = game.get("rules", {})
 
+    opening_hands = resolve_opening_hands(players, rules, game.get("max_cards", 0))
     for player in players:
-        player["n_cards"] = 1
+        player["n_cards"] = opening_hands[player["nickname"]]
 
     public = "false"
     status = GameStatus.RUNNING

@@ -246,6 +246,12 @@ Allows the game admin to change the rules of the game before it starts. This inc
   * `"jokers"=integer` (0–12)
   * `"blanks"=integer` (0–12)
   * `"max_cards"=integer` (0 for no preference, or 1–11)
+  * `"initial_cards"` — how many cards each player opens with. One of:
+    * `integer` — every player opens with that many (0 unsets the rule)
+    * `"random"` — each player opens with a random number of cards
+    * `"nickname:count,nickname:count"` — named players open with the given
+      counts and the rest open with 1. Allows handicaps and challenges
+      (e.g. `You:10,Morana_(AI):2`)
 
 * **Success Response:**
 
@@ -267,6 +273,11 @@ Allows the game admin to change the rules of the game before it starts. This inc
   * Rules can only be changed before the game starts (status = `"Not started"`)  
   * When `time_limit` is non-zero after any rule changes from the current request have been applied, all human players' readiness is reset to `false`  
   * The `max_cards_preference` value in rules is retained, but the `max_cards` in the game state may differ if the preference isn't feasible for the current player count  
+  * `initial_cards` counts must be between 1 and the game's `max_cards`, and any nickname given must already be in the game. Both are checked **after** all rules in the request are applied, so the result does not depend on parameter order. Nicknames are matched in their stored (NFC-normalised) form  
+  * These checks run **only when the request sets `initial_cards`**. A rule that was valid when set can go stale — a named player leaves, or the roster grows and `max_cards` falls below the count — and a stale rule must never block unrelated rule changes. It adapts at game start instead (see below)  
+  * When a request sets `initial_cards`, all human players' readiness is reset to `false`, as with a team change, because uneven openings change the fairness players agreed to. This happens regardless of `time_limit`  
+  * `initial_cards` is a rule like any other, so a rematch **inherits** it. Counts are clamped to the new game's `max_cards` and players the rule does not name open with 1, so an inherited rule adapts to a changed roster instead of failing. Pass `initial_cards=0` to clear it  
+  * Uneven openings are visible to everyone in the `rules` field of the game state before the game starts  
 
 * **Sample Calls:**
 
@@ -276,6 +287,18 @@ curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f
 
 # Change multiple rules
 curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&time_limit=15&common_cards=4&deck_size=32
+
+# Everyone opens with 2 cards
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&initial_cards=2
+
+# Random opening hands
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&initial_cards=random
+
+# A challenge: beat Morana starting with 10 cards while she has 2
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&initial_cards=MyAdmin:10,Morana_(AI):2
+
+# Clear it
+curl <HOST>/games/f2fdd601-bc82-438b-a4ee-a871dc35561a/change-rules?admin_uuid=f65e08df-d82a-46b1-979b-550cbc04d56d&initial_cards=0
 ```
 
 

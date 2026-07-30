@@ -80,11 +80,31 @@ def lambda_handler(event, context, body, game):
                         f"Max cards must be {RuleValues.MAX_CARDS_NO_PREFERENCE_API} (for no preference) or an integer between "
                         f"{RuleValues.MAX_CARDS_FIXED_RANGE.BOTTOM} and {RuleValues.MAX_CARDS_FIXED_RANGE.TOP}")
                 rules["max_cards_preference"] = value if value != RuleValues.MAX_CARDS_NO_PREFERENCE_API else RuleValues.MAX_CARDS_NO_PREFERENCE_INTERNAL
+            elif key == "initial_cards":
+                declaration, error = RuleValues.parse_initial_cards_rule(value)
+                if error:
+                    return parameter_error_payload(key, value, error)
+                if declaration is None:
+                    rules.pop(key, None)
+                else:
+                    rules[key] = declaration
 
         if rules.get("time_limit", RuleValues.TIME_LIMIT_NO_LIMIT) != RuleValues.TIME_LIMIT_NO_LIMIT:
             players = unset_human_readiness(players)
 
         max_cards = calculate_actual_max_cards(rules, len(players))
+
+        # Checked after the loop so it sees the settled deck size and player
+        # count, not the parameter order — but only when this request sets it. A
+        # stale rule (a named player left, or the roster grew and max_cards fell)
+        # must not block unrelated rule changes; start_game clamps and defaults.
+        if "initial_cards" in body:
+            error = RuleValues.validate_initial_cards_rule(
+                rules.get("initial_cards"), [p["nickname"] for p in players], max_cards)
+            if error:
+                return parameter_error_payload("initial_cards", body["initial_cards"], error)
+            # Uneven openings change the agreed fairness, so re-ask — as change_team does.
+            players = unset_human_readiness(players)
 
         logger.info(f'## NEW RULES: {rules}')
         logger.info(f'## MAX CARDS: {max_cards}')
