@@ -94,13 +94,17 @@ def lambda_handler(event, context, body, game):
 
         max_cards = calculate_actual_max_cards(rules, len(players))
 
-        # After the loop, so the check sees the settled deck size and player
-        # count rather than whatever order the parameters happened to arrive in.
-        if "initial_cards" in rules:
+        # Checked after the loop so it sees the settled deck size and player
+        # count, not the parameter order — but only when this request sets it. A
+        # stale rule (a named player left, or the roster grew and max_cards fell)
+        # must not block unrelated rule changes; start_game clamps and defaults.
+        if "initial_cards" in body:
             error = RuleValues.validate_initial_cards_rule(
-                rules["initial_cards"], [p["nickname"] for p in players], max_cards)
+                rules.get("initial_cards"), [p["nickname"] for p in players], max_cards)
             if error:
-                return parameter_error_payload("initial_cards", body.get("initial_cards"), error)
+                return parameter_error_payload("initial_cards", body["initial_cards"], error)
+            # Uneven openings change the agreed fairness, so re-ask — as change_team does.
+            players = unset_human_readiness(players)
 
         logger.info(f'## NEW RULES: {rules}')
         logger.info(f'## MAX CARDS: {max_cards}')

@@ -165,6 +165,57 @@ class TestAPIValidation(unittest.TestCase):
         self.assertEqual(forward.status_code, backward.status_code,
                          "initial_cards validation depends on parameter order")
 
+    def test_handler_change_rules_stale_initial_cards_does_not_block_other_rules(self):
+        """A rule that was valid when set can go stale as the roster moves. It
+        must never lock the game's other rules: only a request that actually
+        sets initial_cards is validated, and start_game clamps the rest."""
+        url = f"{BASE_URL}/games/{self.game_uuid}/change-rules"
+        join_url = f"{BASE_URL}/games/{self.game_uuid}/join"
+
+        # A named player leaves. Cara keeps the game at two seats, so it is the
+        # roster check that would fire rather than max_cards collapsing to 0.
+        bob_uuid = self.session.get(join_url, params={"nickname": "Bob"}).json()["player_uuid"]
+        self.session.get(join_url, params={"nickname": "Cara"})
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                             "initial_cards": "Bob:3"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/remove-player",
+                         params={"player_uuid": bob_uuid, "nickname": "Bob"})
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "deck_size": 32})
+        self.assertEqual(resp.status_code, 200,
+                         f"a departed player's seed blocked an unrelated rule change: {resp.text}")
+
+        # The roster grows, so max_cards falls below a count that was feasible.
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid,
+                                             "deck_size": 24, "initial_cards": 8})
+        self.assertEqual(resp.status_code, 200, resp.text)  # 2 seats on 24 cards allows 11
+        for nickname in ["Dana", "Efim", "Fola", "Gita"]:      # 5+ seats allows only 4
+            self.session.get(join_url, params={"nickname": nickname})
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "deck_size": 32})
+        self.assertEqual(resp.status_code, 200,
+                         f"an over-max seed blocked an unrelated rule change: {resp.text}")
+
+    def test_handler_change_rules_initial_cards_unsets_readiness(self):
+        """Changing the opening hands changes the fairness players agreed to, so
+        it must re-ask for readiness — the treatment team changes already get."""
+        url = f"{BASE_URL}/games/{self.game_uuid}/change-rules"
+        self.session.get(f"{BASE_URL}/games/{self.game_uuid}/join", params={"nickname": "Bob"})
+
+        # Only the admin declares ready, or the game would start on the spot.
+        resp = self.session.get(f"{BASE_URL}/games/{self.game_uuid}/set-readiness",
+                                params={"player_uuid": self.admin_uuid, "ready": "True"})
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+        def admin_is_ready():
+            players = self.session.get(f"{BASE_URL}/games/{self.game_uuid}",
+                                       params={"player_uuid": self.admin_uuid}).json()["players"]
+            return next(p for p in players if p["nickname"] == "AdminUser").get("ready")
+
+        self.assertTrue(admin_is_ready(), "setup failed: readiness never took")
+        resp = self.session.get(url, params={"admin_uuid": self.admin_uuid, "initial_cards": 2})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        self.assertFalse(admin_is_ready(), "initial_cards changed without re-asking for readiness")
+
     def test_handler_invite_aiagent(self):
         """Tests the simplified invite-aiagent handler logic."""
         url = f"{BASE_URL}/games/{self.game_uuid}/invite-aiagent"
