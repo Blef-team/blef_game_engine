@@ -1,4 +1,5 @@
 import random
+import unicodedata
 from enum import Enum
 
 class GameStatus:
@@ -86,7 +87,10 @@ class RuleValues:
             nickname, _, count = entry.rpartition(":")
             if not nickname or not count.isdigit():
                 return None, "Expected an integer, 'random', or nickname:count pairs"
-            mapping[nickname] = int(count)
+            # NFC to match how parse_nickname stores rosters, so a decomposed
+            # accent still resolves. Not parse_nickname itself: AI nicknames
+            # ("Perun_(AI)") are engine-made and fail its format rule.
+            mapping[unicodedata.normalize("NFC", nickname.strip())] = int(count)
         return mapping, None
 
     @classmethod
