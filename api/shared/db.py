@@ -37,6 +37,44 @@ def save_in_dynamodb(obj, game_uuid=None, last_modified_condition=None):
         else:
             raise
 
+def update_players_conditionally(game_uuid, players, last_modified, **extra):
+    """
+    Replaces the players list (plus any extra top-level attributes) only if the
+    game has not been modified since it was read, so a concurrent lobby write
+    cannot be silently lost. Returns True on success, False if another write
+    landed in between (the caller should surface a 409 or retry).
+    """
+    update_parts = ["players = :players", "last_modified = :t"]
+    attribute_names = {}
+    attribute_values = {
+        ':players': players,
+        ':t': decimal.Decimal(str(time.time())),
+        ':lm': last_modified
+    }
+    for i, (attr, value) in enumerate(extra.items()):
+        attribute_names[f"#e{i}"] = attr
+        attribute_values[f":e{i}"] = value
+        update_parts.append(f"#e{i} = :e{i}")
+
+    update_params = {
+        'Key': {'game_uuid': game_uuid},
+        'UpdateExpression': "SET " + ", ".join(update_parts),
+        'ConditionExpression': "last_modified = :lm",
+        'ExpressionAttributeValues': attribute_values
+    }
+    if attribute_names:
+        update_params['ExpressionAttributeNames'] = attribute_names
+
+    try:
+        table.update_item(**update_params)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            logger.warning(f"Conditional players update failed for game_uuid: {game_uuid} due to a race condition.")
+            return False
+        else:
+            raise
+
 def transact_end_of_round(live_game_state, archive_game_state, last_modified_condition):
     """
     Atomically updates the live game state and saves the round archive using a transaction.

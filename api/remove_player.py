@@ -1,24 +1,8 @@
-import time
-import decimal
 from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
-from shared.db import table
+from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards, get_player_by_nickname
 from shared.decorators import validate_game_request
-
-def update_in_dynamodb(game_uuid, players, admin_nickname, max_cards):
-    """ Updates the players list, admin, and max_cards in DynamoDB. """
-    table.update_item(
-        Key={'game_uuid': game_uuid},
-        UpdateExpression="SET players = :p, admin_nickname = :a, max_cards = :mc, last_modified = :t",
-        ExpressionAttributeValues={
-            ':p': players,
-            ':a': admin_nickname,
-            ':mc': max_cards,
-            ':t': decimal.Decimal(str(time.time()))
-        }
-    )
-    return True
 
 @validate_game_request(
     require_player=True, 
@@ -59,7 +43,8 @@ def lambda_handler(event, context, body, game):
         rules = game.get("rules", {})
         max_cards = calculate_actual_max_cards(rules, len(new_players))
 
-        update_in_dynamodb(game["game_uuid"], new_players, new_admin, max_cards)
+        if not update_players_conditionally(game["game_uuid"], new_players, game["last_modified"], admin_nickname=new_admin, max_cards=max_cards):
+            return error_payload(409, "The game state changed. Please try again.")
 
         return response_payload(200, {"message": f"Player {target_nickname} removed successfully"})
 
