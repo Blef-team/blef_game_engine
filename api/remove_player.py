@@ -1,4 +1,4 @@
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, conflict_payload, internal_error_payload
 from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards, get_player_by_nickname
@@ -44,7 +44,7 @@ def lambda_handler(event, context, body, game):
         max_cards = calculate_actual_max_cards(rules, len(new_players))
 
         if not update_players_conditionally(game["game_uuid"], new_players, game["last_modified"], admin_nickname=new_admin, max_cards=max_cards):
-            return error_payload(409, "The game state changed. Please try again.")
+            return conflict_payload()
 
         return response_payload(200, {"message": f"Player {target_nickname} removed successfully"})
 

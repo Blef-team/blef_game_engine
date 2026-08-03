@@ -4,7 +4,7 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 from itertools import combinations
-from shared.response import response_payload, error_payload, parameter_error_payload, internal_error_payload
+from shared.response import response_payload, error_payload, parameter_error_payload, conflict_payload, internal_error_payload
 from shared.db import table, RACE_LOST_ERROR_CODES
 from shared.constants import GameStatus, RuleValues
 from shared.logging import logger
@@ -271,13 +271,13 @@ def lambda_handler(event, context, body, game):
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             game["move_deadline"] = start_player_timer(game)
             if not update_in_dynamodb(game["game_uuid"], game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"]):
-                return error_payload(409, "The game state changed.")
+                return conflict_payload()
             return response_payload(200, censor_game(game, player_nickname))
 
         else:
             end_round_state = handle_check(game)
             if not end_round_state:
-                return error_payload(409, "The game state changed.")
+                return conflict_payload()
             return response_payload(200, censor_game(end_round_state, player_nickname))
 
     except Exception as err:

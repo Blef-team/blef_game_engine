@@ -1,7 +1,7 @@
 import time
 import decimal
 from botocore.exceptions import ClientError
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, conflict_payload, internal_error_payload
 from shared.db import table, RACE_LOST_ERROR_CODES
 from shared.constants import GameStatus
 from shared.game import update_n_cards, start_game, start_next_round, find_losing_player_nickname
@@ -55,7 +55,7 @@ def lambda_handler(event, context, body, game):
 
         updated_game_state = update_player_readiness(game["game_uuid"], player_index, player_uuid, ready)
         if not updated_game_state:
-            return error_payload(409, "The game state changed.")
+            return conflict_payload()
 
         game_status = updated_game_state.get("status")
         if game_status == GameStatus.WAITING_FOR_READY:
