@@ -10,6 +10,9 @@ table = dynamodb.Table("games")
 websocket_table = dynamodb.Table("watch_game_websocket_manager")
 reports_table = dynamodb.Table("nickname_reports")
 
+# A write that lost a race rather than genuinely failing
+RACE_LOST_ERROR_CODES = ('ConditionalCheckFailedException', 'TransactionConflictException')
+
 def get_from_dynamodb(game_uuid):
     response = table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
