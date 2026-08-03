@@ -34,8 +34,9 @@ def save_in_dynamodb(obj, game_uuid=None, last_modified_condition=None):
         table.put_item(**put_params)
         return True
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            logger.warning(f"Conditional save failed for game_uuid: {obj.get('game_uuid')}.")
+        error_code = e.response['Error']['Code']
+        if last_modified_condition and error_code in RACE_LOST_ERROR_CODES: # Only a guarded save can lose a race
+            logger.warning(f"Conditional save failed for game_uuid: {obj.get('game_uuid')}: {error_code}.")
             return False
         else:
             raise
@@ -72,8 +73,9 @@ def update_players_conditionally(game_uuid, players, last_modified, **extra):
         table.update_item(**update_params)
         return True
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            logger.warning(f"Conditional players update failed for game_uuid: {game_uuid} due to a race condition.")
+        error_code = e.response['Error']['Code']
+        if error_code in RACE_LOST_ERROR_CODES:
+            logger.warning(f"Conditional players update failed for game_uuid: {game_uuid} due to a race condition: {error_code}.")
             return False
         else:
             raise

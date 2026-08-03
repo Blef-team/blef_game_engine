@@ -24,7 +24,8 @@ def lambda_handler(event, context, body, game):
         if int(game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT)) > RuleValues.TIME_LIMIT_NO_LIMIT:
             return error_payload(403, "Games with a time limit can only start when everyone is ready")
 
-        start_game(game)
+        if not start_game(game):
+            return error_payload(409, "The game state changed.")
 
         return response_payload(202, {"message": "Game started"})
 

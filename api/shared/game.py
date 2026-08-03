@@ -6,7 +6,8 @@ import time
 import decimal
 import copy
 import uuid
-from .db import table, save_in_dynamodb, transact_end_of_round
+from botocore.exceptions import ClientError
+from .db import table, save_in_dynamodb, transact_end_of_round, RACE_LOST_ERROR_CODES
 from .time_limit import send_time_limit_message
 from .logging import logger
 from .constants import GameStatus, CommonCardsRules, RuleValues, random_avatar
@@ -357,9 +358,14 @@ def resolve_opening_hands(players, rules, max_cards):
 
 
 def start_game(game):
+    """
+    Deals the opening hands and locks the roster in.
+    Guarded on last_modified. Returns True on success, False if the game changed under us.
+    """
     game_uuid = game["game_uuid"]
     players = game["players"]
     rules = game.get("rules", {})
+    original_last_modified = game["last_modified"]
 
     opening_hands = resolve_opening_hands(players, rules, game.get("max_cards", 0))
     for player in players:
@@ -377,32 +383,45 @@ def start_game(game):
     game['cp_nickname'] = cp_nickname
     move_deadline = start_player_timer(game)
 
-    table.update_item(
-        Key={'game_uuid': game_uuid},
-        UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
-        ExpressionAttributeValues={
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':players': players,
-            ':public': public,
-            ':status': status,
-            ':round_number': round_number,
-            ':hands': hands,
-            ':common_hand': common_hand,
-            ':cp_nickname': cp_nickname,
-            ':move_deadline': move_deadline
-        },
-        ExpressionAttributeNames={
-            '#game_public': "public",
-            '#game_status': "status"
-        }
-    )
-    return True
+    try:
+        table.update_item(
+            Key={'game_uuid': game_uuid},
+            UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
+            ConditionExpression="last_modified = :lm",
+            ExpressionAttributeValues={
+                ':last_modified': decimal.Decimal(str(time.time())),
+                ':players': players,
+                ':public': public,
+                ':status': status,
+                ':round_number': round_number,
+                ':hands': hands,
+                ':common_hand': common_hand,
+                ':cp_nickname': cp_nickname,
+                ':move_deadline': move_deadline,
+                ':lm': original_last_modified
+            },
+            ExpressionAttributeNames={
+                '#game_public': "public",
+                '#game_status': "status"
+            }
+        )
+        return True
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code in RACE_LOST_ERROR_CODES:
+            logger.warning(f"Start of game {game_uuid} lost a race: {error_code}.")
+            return False
+        else:
+            raise
 
 def start_next_round(game):
     """
     Recalls the loser of the previous round, updates cards,
     and starts the next round with the correct current player.
+    Guarded on last_modified. Returns True on success, False if the game changed under us.
     """
+    original_last_modified = game["last_modified"]
+
     # Update the card counts for the new round
     losing_player_nickname = find_losing_player_nickname(game)    
     losing_player = get_player_by_nickname(game["players"], losing_player_nickname)
@@ -424,9 +443,8 @@ def start_next_round(game):
     game["hands"], game["common_hand"] = draw_cards(game["players"], game.get("rules", {}))
     
     game["move_deadline"] = start_player_timer(game)
-    
-    save_in_dynamodb(game)
-    return True
+
+    return save_in_dynamodb(game, last_modified_condition=original_last_modified)
 
 def get_action_ids(rules):
     """
@@ -481,10 +499,10 @@ def end_round(game, losing_player_nickname):
     else:
         # No finish and no time limit: save archive state unconditionally and start the next round
         save_in_dynamodb(archive_state)
-        start_next_round(game)
-        return archive_state
+        if start_next_round(game):
+            return archive_state
 
-    return False # This is only reached if a transaction fails
+    return False # Only reached when a guarded write lost its race
 
 def unset_human_readiness(players):
     """
