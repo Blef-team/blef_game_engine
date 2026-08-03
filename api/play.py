@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 from itertools import combinations
 from shared.response import response_payload, error_payload, parameter_error_payload, internal_error_payload
-from shared.db import table
+from shared.db import table, RACE_LOST_ERROR_CODES
 from shared.constants import GameStatus, RuleValues
 from shared.logging import logger
 from shared.game import censor_game, find_next_active_player, end_round, start_player_timer, get_action_ids
@@ -196,8 +196,9 @@ def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modi
         )
         return True
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            logger.warning("Failed to update game state due to a race condition (play vs timeout).")
+        error_code = e.response['Error']['Code']
+        if error_code in RACE_LOST_ERROR_CODES:
+            logger.warning(f"Failed to update game state for {game_uuid} due to a race condition (play vs timeout): {error_code}.")
             return False
         else:
             raise
