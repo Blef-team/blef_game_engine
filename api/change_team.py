@@ -1,23 +1,9 @@
-import time
-import decimal
 from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
-from shared.db import table
+from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import get_player_by_nickname, unset_human_readiness
 from shared.inputs import parse_team
 from shared.decorators import validate_game_request
-
-def update_in_dynamodb(game_uuid, players):
-    """ Updates the players list in DynamoDB. """
-    table.update_item(
-        Key={'game_uuid': game_uuid},
-        UpdateExpression="SET players = :p, last_modified = :t",
-        ExpressionAttributeValues={
-            ':p': players,
-            ':t': decimal.Decimal(str(time.time()))
-        }
-    )
-    return True
 
 @validate_game_request(
     require_player=True, 
@@ -52,7 +38,8 @@ def lambda_handler(event, context, body, game):
         target_player["team"] = new_team
         players = unset_human_readiness(players)
 
-        update_in_dynamodb(game["game_uuid"], players)
+        if not update_players_conditionally(game["game_uuid"], players, game["last_modified"]):
+            return error_payload(409, "The game state changed. Please try again.")
 
         return response_payload(200, {"message": f"Player {target_nickname} team changed successfully"})
 

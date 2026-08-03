@@ -1,25 +1,8 @@
-import time
-import decimal
-from shared.response import response_payload, internal_error_payload
-from shared.db import table
+from shared.response import response_payload, error_payload, internal_error_payload
+from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards
 from shared.decorators import validate_game_request
-
-def update_in_dynamodb(game_uuid, players, max_cards):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set players = :players, max_cards = :mc, last_modified = :last_modified",
-        ExpressionAttributeValues={
-            ':players': players,
-            ':mc': max_cards,
-            ':last_modified': decimal.Decimal(str(time.time()))
-        },
-        ReturnValues="NONE"
-    )
-    return True
 
 @validate_game_request(
     require_admin=True, 
@@ -36,7 +19,8 @@ def lambda_handler(event, context, body, game):
         
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(human_players))
 
-        update_in_dynamodb(game["game_uuid"], human_players, max_cards)
+        if not update_players_conditionally(game["game_uuid"], human_players, game["last_modified"], max_cards=max_cards):
+            return error_payload(409, "The game state changed. Please try again.")
 
         return response_payload(200, {"message": "All AI players have been removed."})
 

@@ -1,31 +1,14 @@
 import os
-import time
 import json
 import uuid
-import decimal
 from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
-from shared.db import table
+from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards, unset_human_readiness
 from shared.inputs import parse_team
 from shared.decorators import validate_game_request
 
 AGENT_MAPPING = json.loads(os.environ.get("agent_mapping"))
-
-def update_in_dynamodb(game_uuid, players, max_cards):
-    table.update_item(
-        Key={
-            'game_uuid': game_uuid
-        },
-        UpdateExpression="set players = :players, last_modified = :last_modified, max_cards = :mc",
-        ExpressionAttributeValues={
-            ':players': players,
-            ':last_modified': decimal.Decimal(str(time.time())),
-            ':mc': max_cards
-        },
-        ReturnValues="NONE"
-    )
-    return True
 
 
 def format_name(agent_name, num):
@@ -80,7 +63,8 @@ def lambda_handler(event, context, body, game):
             players = unset_human_readiness(players)
 
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
-        update_in_dynamodb(game["game_uuid"], players, max_cards)
+        if not update_players_conditionally(game["game_uuid"], players, game["last_modified"], max_cards=max_cards):
+            return error_payload(409, "The game state changed. Please try again.")
 
         return response_payload(200, {"message": f"{nickname} joined the game"})
 

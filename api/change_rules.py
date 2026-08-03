@@ -1,36 +1,9 @@
-import time
-import decimal
-from shared.response import response_payload, parameter_error_payload, internal_error_payload
-from shared.db import table
+from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.db import update_players_conditionally
 from shared.constants import GameStatus, RuleValues, CommonCardsRules
 from shared.game import unset_human_readiness, calculate_actual_max_cards
 from shared.decorators import validate_game_request
 from shared.logging import logger
-
-def update_in_dynamodb(game_uuid, rules, players, max_cards=None):
-    """
-    Updates the game rules, player readiness, and max cards in DynamoDB.
-    """
-    update_expressions = ["#rules = :rules", "players = :players", "last_modified = :last_modified"]
-    expression_attribute_names = {'#rules': 'rules'}
-    expression_attribute_values = {
-        ':rules': rules,
-        ':players': players,
-        ':last_modified': decimal.Decimal(str(time.time()))
-    }
-
-    if max_cards is not None:
-        update_expressions.append("max_cards = :max_cards")
-        expression_attribute_values[':max_cards'] = max_cards
-
-    table.update_item(
-        Key={'game_uuid': game_uuid},
-        UpdateExpression="set " + ", ".join(update_expressions),
-        ExpressionAttributeNames=expression_attribute_names,
-        ExpressionAttributeValues=expression_attribute_values,
-        ReturnValues="NONE"
-    )
-    return True
 
 @validate_game_request(
     require_admin=True, 
@@ -108,7 +81,8 @@ def lambda_handler(event, context, body, game):
 
         logger.info(f'## NEW RULES: {rules}')
         logger.info(f'## MAX CARDS: {max_cards}')
-        update_in_dynamodb(game["game_uuid"], rules, players, max_cards)
+        if not update_players_conditionally(game["game_uuid"], players, game["last_modified"], rules=rules, max_cards=max_cards):
+            return error_payload(409, "The game state changed. Please try again.")
 
         return response_payload(200, {"message": "Rules updated"})
 
