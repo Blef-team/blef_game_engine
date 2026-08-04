@@ -9,6 +9,9 @@ from shared.logging import logger
 from shared.db import table as games_table, websocket_table
 
 
+CONNECTION_RETENTION_PERIOD_SECONDS = 3 * 60 * 60  # API Gateway's WebSocket connections can only last two hours anyway
+
+
 def get_game(game_uuid):
     response = games_table.query(KeyConditionExpression=Key('game_uuid').eq(game_uuid))
     items = response.get("Items")
@@ -18,7 +21,9 @@ def get_game(game_uuid):
 
 
 def save_connection_object(obj):
-    obj["last_modified"] = decimal.Decimal(str(time.time()))
+    now = time.time()
+    obj["last_modified"] = decimal.Decimal(str(now))
+    obj["ttl"] = int(now + CONNECTION_RETENTION_PERIOD_SECONDS)
     websocket_table.put_item(Item=obj)
     return True
 

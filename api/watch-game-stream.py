@@ -9,23 +9,14 @@ from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, is_update_redundant
 from shared.logging import logger
 from shared.db import websocket_table
+from shared.websocket import post_to_connection, MAX_BROADCAST_WORKERS
 
 sqs_client = boto3.client("sqs")
 AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
 
-# Upper bound on concurrent websocket posts per broadcast. PostToConnection is
-# network-bound, so threads parallelise well despite the GIL.
-MAX_BROADCAST_WORKERS = 16
-
 # Cached lazily on first use so the queue URL is resolved once per container
 # (and captured by the SnapStart snapshot) instead of on every broadcast.
 _aiagent_queue_url = None
-
-watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
-watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
-
-endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
-apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
 
 deserializer = boto3.dynamodb.types.TypeDeserializer()
 
@@ -96,20 +87,6 @@ def find_connected_public_games_watchers():
         IndexName="game_uuid-index"
     )
     return [(connection["connection_id"]) for connection in response.get("Items")]
-
-
-def post_to_connection(payload, connection_id):
-    logger.info('## POSTING TO CONNECTION')
-    logger.info(connection_id)
-    try:
-        response = apigateway.post_to_connection(
-            Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
-            ConnectionId=connection_id
-        )
-    except Exception as err:
-        logger.info('## ERROR: COULD NOT POST TO CONNECTION')
-        logger.info(str(err))
-    return True
 
 
 def deserialise_dynamodb_stream_event(obj):
