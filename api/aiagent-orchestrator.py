@@ -19,14 +19,6 @@ def name_valid(name):
     return name and isinstance(name, str) and pattern.match(name)
 
 
-def lambda_function_exists(name):
-    try:
-        response = lambda_client.get_function(FunctionName=name)
-    except lambda_client.exceptions.ResourceNotFoundException:
-        return False
-    return response.get("ResponseMetadata").get("HTTPStatusCode") == 200
-
-
 def call_aiagent(payload):
     """
         Invoke blef-aiagent-[...] asynchronously
@@ -34,13 +26,18 @@ def call_aiagent(payload):
     agent_name = get_aiagent_name(payload)
     logger.info("## AGENT_NAME")
     logger.info(agent_name)
+    if not name_valid(agent_name):
+        logger.error(f"## REFUSING TO INVOKE AN AGENT WITH AN UNUSABLE NAME: {agent_name}")
+        return
     function_name = f'blef-aiagent-{agent_name}'
-    if name_valid(agent_name) and lambda_function_exists(function_name):
+    try:
         return lambda_client.invoke(
             FunctionName=function_name,
             InvocationType='Event',
             Payload=json.dumps(payload)
             )
+    except lambda_client.exceptions.ResourceNotFoundException:
+        logger.error(f"## NO SUCH AI AGENT FUNCTION: {function_name}")
 
 
 def get_game(record):
