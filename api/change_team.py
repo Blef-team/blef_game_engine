@@ -1,4 +1,4 @@
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, conflict_payload, internal_error_payload
 from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import get_player_by_nickname, unset_human_readiness
@@ -39,7 +39,7 @@ def lambda_handler(event, context, body, game):
         players = unset_human_readiness(players)
 
         if not update_players_conditionally(game["game_uuid"], players, game["last_modified"]):
-            return error_payload(409, "The game state changed. Please try again.")
+            return conflict_payload()
 
         return response_payload(200, {"message": f"Player {target_nickname} team changed successfully"})
 

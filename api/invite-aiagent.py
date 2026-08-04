@@ -1,7 +1,7 @@
 import os
 import json
 import uuid
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, conflict_payload, internal_error_payload
 from shared.db import update_players_conditionally
 from shared.constants import GameStatus
 from shared.game import calculate_actual_max_cards, unset_human_readiness
@@ -64,7 +64,7 @@ def lambda_handler(event, context, body, game):
 
         max_cards = calculate_actual_max_cards(game.get("rules", {}), len(players))
         if not update_players_conditionally(game["game_uuid"], players, game["last_modified"], max_cards=max_cards):
-            return error_payload(409, "The game state changed. Please try again.")
+            return conflict_payload()
 
         return response_payload(200, {"message": f"{nickname} joined the game"})
 

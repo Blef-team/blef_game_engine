@@ -1,4 +1,4 @@
-from shared.response import response_payload, parameter_error_payload, error_payload, internal_error_payload, nickname_rejected_payload
+from shared.response import response_payload, parameter_error_payload, error_payload, conflict_payload, internal_error_payload, nickname_rejected_payload
 from shared.profanity_filter import is_offensive
 from shared.inputs import parse_nickname, parse_team
 from shared.db import update_players_conditionally
@@ -51,7 +51,7 @@ def lambda_handler(event, context, body, game):
             return response_payload(200, {"player_uuid": new_player.get("uuid")})
         
         logger.info(f"Join failed for '{nickname}' due to race condition.")
-        return error_payload(409, "The game state changed. Please try again.")
+        return conflict_payload()
 
     except Exception as err:
         return internal_error_payload(err)

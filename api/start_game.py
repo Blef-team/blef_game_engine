@@ -1,4 +1,4 @@
-from shared.response import response_payload, error_payload, internal_error_payload
+from shared.response import response_payload, error_payload, conflict_payload, internal_error_payload
 from shared.constants import GameStatus, RuleValues
 from shared.game import start_game
 from shared.decorators import validate_game_request
@@ -24,7 +24,8 @@ def lambda_handler(event, context, body, game):
         if int(game.get("rules", {}).get("time_limit", RuleValues.TIME_LIMIT_DEFAULT)) > RuleValues.TIME_LIMIT_NO_LIMIT:
             return error_payload(403, "Games with a time limit can only start when everyone is ready")
 
-        start_game(game)
+        if not start_game(game):
+            return conflict_payload()
 
         return response_payload(202, {"message": "Game started"})
 

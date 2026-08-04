@@ -1,5 +1,14 @@
 # HTTP API endpoints
 
+## Concurrent changes
+
+Endpoints that rewrite the player list, or the game as a whole, do so conditionally: the write is rejected if the game changed between the engine reading it and writing it back. When that happens, the endpoint responds:
+
+  * **Code:** 409 CONFLICT <br />
+  **Content:** `{"error":"The game state changed. Please try again."}`
+
+A 409 means nothing was written, so the call is safe to repeat. It can be returned by [Join game](#join-game), [Invite AI agent](#invite-ai-agent), [Remove AI agents](#remove-ai-agents), [Set readiness](#set-readiness), [Change rules](#change-rules), [Start game](#start-game), [Remove player](#remove-player), [Change team](#change-team) and [Play](#play).
+
 ## Create game
 
   Creates a game object with default rules. Optionally, allows joining the newly created game.

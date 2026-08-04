@@ -55,6 +55,18 @@ def parameter_error_payload(param_key, param_value, message=None):
         body = f"{body}\n{message}"
     return error_payload(400, body)
 
+def conflict_payload():
+    """
+    Creates a 409 Conflict response for a write refused because the game changed
+    under it. Nothing was written, so the call is safe to repeat once the caller
+    has re-read the game.
+
+    The message is published API surface rather than an internal detail, so
+    clients may classify the error by matching it. Rephrasing it is a breaking
+    change; test_response.py pins the wording.
+    """
+    return error_payload(409, "The game state changed.")
+
 def nickname_rejected_payload(reason="profanity"):
     """
     Creates a 422 Unprocessable Content response for a syntactically valid
