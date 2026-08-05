@@ -8,6 +8,10 @@ import decimal
 import unittest
 
 os.environ.setdefault("AWS_DEFAULT_REGION", "eu-west-2")
+# set_readiness broadcasts, so it pulls in shared.websocket's endpoint construction
+os.environ.setdefault("AWS_REGION", "eu-west-2")
+os.environ.setdefault("watch_game_websocket_api_id", "abc123")
+os.environ.setdefault("watch_game_websocket_api_stage", "production")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import set_readiness  # noqa: E402
 import shared.game as game_module  # noqa: E402
@@ -98,12 +102,16 @@ class TestReadinessHandler(unittest.TestCase):
         self.real_table = set_readiness.table
         self.real_get = decorators.get_from_dynamodb
         self.real_start = set_readiness.start_game
+        self.real_broadcast = set_readiness.broadcast_game_state
+        self.broadcasts = []
         set_readiness.start_game = lambda game: True
+        set_readiness.broadcast_game_state = lambda game: self.broadcasts.append(game)
 
     def tearDown(self):
         set_readiness.table = self.real_table
         decorators.get_from_dynamodb = self.real_get
         set_readiness.start_game = self.real_start
+        set_readiness.broadcast_game_state = self.real_broadcast
 
     def call(self, game):
         decorators.get_from_dynamodb = lambda _uuid: copy.deepcopy(game)
@@ -116,6 +124,19 @@ class TestReadinessHandler(unittest.TestCase):
         resp = self.call(lobby())
         self.assertEqual(resp["statusCode"], 200)
         self.assertEqual(len(fake.calls), 1)
+
+    def test_the_new_state_is_pushed_to_watchers(self):
+        # This endpoint returns only a message, so the websocket push is how anyone
+        # (including the player who called it) learns the readiness changed.
+        set_readiness.table = FakeTable()
+        self.call(lobby())
+        self.assertEqual(len(self.broadcasts), 1)
+
+    def test_a_refused_write_pushes_nothing(self):
+        set_readiness.table = FakeTable(error_code='ConditionalCheckFailedException', fail_times=1)
+        resp = self.call(lobby())
+        self.assertEqual(resp["statusCode"], 409)
+        self.assertEqual(self.broadcasts, [])
 
     def test_lost_race_reports_conflict(self):
         # The roster shifted, so the write was refused rather than landing on the
