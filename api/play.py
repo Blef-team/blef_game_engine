@@ -235,9 +235,12 @@ def handle_check(game):
 
 
 def push_to_other_players(game, mover_uuid):
-    """Sends the new state straight to other watchers."""
-    humans = [p for p in game.get("players", []) if not p.get("ai_agent")]
-    if len(humans) < 2:
+    """Sends the new state straight to other watchers after a human move in a multiplayer game."""
+    players = game.get("players", [])
+    mover = next((p for p in players if p.get("uuid") == mover_uuid), None)
+    if mover is None or mover.get("ai_agent"):
+        return
+    if len([p for p in players if not p.get("ai_agent")]) < 2:
         return
     broadcast_game_state(game, exclude_player_uuid=mover_uuid)
 
