@@ -177,11 +177,12 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
         print(f"Error in determine_set_existence: {err}")
         return False
 
-def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modified, written_at):
+def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modified):
     """
     Conditionally updates the game state in DynamoDB.
-    Returns True on success, False on failure (due to race condition).
+    Returns the last_modified it wrote, or None if it lost a race.
     """
+    written_at = decimal.Decimal(str(time.time()))
     try:
         table.update_item(
             Key={'game_uuid': game_uuid},
@@ -195,12 +196,12 @@ def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modi
                 ':lm': last_modified
             }
         )
-        return True
+        return written_at
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code in RACE_LOST_ERROR_CODES:
             logger.warning(f"Failed to update game state for {game_uuid} due to a race condition (play vs timeout): {error_code}.")
-            return False
+            return None
         else:
             raise
 
@@ -234,15 +235,14 @@ def handle_check(game):
     return end_round(game, losing_player_nickname)
 
 
-def push_to_other_players(game, mover_uuid):
-    """Sends the new state straight to other watchers after a human move in a multiplayer game."""
-    players = game.get("players", [])
-    mover = next((p for p in players if p.get("uuid") == mover_uuid), None)
+def broadcast_human_move(game, mover_uuid):
+    """
+    Sends the new state to every watcher, including the mover, after a human move.
+    """
+    mover = next((p for p in game.get("players", []) if p.get("uuid") == mover_uuid), None)
     if mover is None or mover.get("ai_agent"):
         return
-    if len([p for p in players if not p.get("ai_agent")]) < 2:
-        return
-    broadcast_game_state(game, exclude_player_uuid=mover_uuid)
+    broadcast_game_state(game)
 
 @validate_game_request(
     require_player=True, 
@@ -283,18 +283,18 @@ def lambda_handler(event, context, body, game):
         if action_id != check_action:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             game["move_deadline"] = start_player_timer(game)
-            written_at = decimal.Decimal(str(time.time()))
-            if not update_in_dynamodb(game["game_uuid"], game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"], written_at):
+            written_at = update_in_dynamodb(game["game_uuid"], game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"])
+            if not written_at:
                 return conflict_payload()
             game["last_modified"] = written_at
-            push_to_other_players(game, player_uuid)
+            broadcast_human_move(game, player_uuid)
             return response_payload(200, censor_game(game, player_nickname))
 
         else:
             end_round_state = handle_check(game)
             if not end_round_state:
                 return conflict_payload()
-            push_to_other_players(end_round_state, player_uuid)
+            broadcast_human_move(end_round_state, player_uuid)
             return response_payload(200, censor_game(end_round_state, player_nickname))
 
     except Exception as err:

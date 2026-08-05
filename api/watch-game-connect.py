@@ -21,9 +21,8 @@ def get_game(game_uuid):
 
 
 def save_connection_object(obj):
-    now = time.time()
-    obj["last_modified"] = decimal.Decimal(str(now))
-    obj["ttl"] = int(now + CONNECTION_RETENTION_PERIOD_SECONDS)
+    obj["last_modified"] = decimal.Decimal(str(time.time()))
+    obj["ttl"] = int(time.time() + CONNECTION_RETENTION_PERIOD_SECONDS)
     websocket_table.put_item(Item=obj)
     return True
 

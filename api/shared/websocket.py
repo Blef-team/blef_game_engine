@@ -47,14 +47,11 @@ def find_connected_connections(game_uuid):
     return [(c["connection_id"], c.get("player_uuid")) for c in response.get("Items", [])]
 
 
-def broadcast_game_state(game, exclude_player_uuid=None):
+def broadcast_game_state(game):
     """
     Pushes a game state to everyone watching it, censored per recipient.
-    `exclude_player_uuid` skips one player, in case the caller returns state to them in the HTTP response
     """
-    recipients = [(connection_id, player_uuid)
-                  for connection_id, player_uuid in find_connected_connections(game["game_uuid"])
-                  if exclude_player_uuid is None or player_uuid != exclude_player_uuid]
+    recipients = find_connected_connections(game["game_uuid"])
     if not recipients:
         return
 

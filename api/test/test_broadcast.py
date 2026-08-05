@@ -71,10 +71,10 @@ class TestBroadcastGameState(unittest.TestCase):
         ws.broadcast_game_state(game())
         self.assertEqual({c for c, _ in self.api.sent}, {"c1", "c2"})
 
-    def test_excluded_player_is_skipped(self):
+    def test_the_mover_is_not_skipped(self):
         self.connections(("c1", ALICE), ("c2", BOB))
-        ws.broadcast_game_state(game(), exclude_player_uuid=ALICE)
-        self.assertEqual([c for c, _ in self.api.sent], ["c2"])
+        ws.broadcast_game_state(game())
+        self.assertEqual(sorted(c for c, _ in self.api.sent), ["c1", "c2"])
 
     def test_each_recipient_sees_only_their_own_hand(self):
         # The whole state passes through here, so a censoring slip would leak cards.
@@ -104,10 +104,10 @@ class TestBroadcastGameState(unittest.TestCase):
         ws.broadcast_game_state(game())
         self.assertEqual(self.api.sent, [])
 
-    def test_excluding_the_only_watcher_sends_nothing(self):
+    def test_a_lone_watcher_still_gets_it(self):
         self.connections(("c1", ALICE))
-        ws.broadcast_game_state(game(), exclude_player_uuid=ALICE)
-        self.assertEqual(self.api.sent, [])
+        ws.broadcast_game_state(game())
+        self.assertEqual(len(self.api.sent), 1)
 
 
 if __name__ == "__main__":
