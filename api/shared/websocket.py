@@ -1,8 +1,11 @@
 import os
 import json
 import boto3
+from boto3.dynamodb.conditions import Key
+from concurrent.futures import ThreadPoolExecutor
 from .response import response_payload, DecimalEncoder
 from .db import websocket_table
+from .game import censor_game, get_nickname_by_uuid
 from .logging import logger
 
 watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
@@ -33,3 +36,32 @@ def post_to_connection(payload, connection_id):
         logger.info('## ERROR: COULD NOT POST TO CONNECTION')
         logger.info(str(err))
     return True
+
+
+def find_connected_connections(game_uuid):
+    """Connections watching a game. Round snapshots have the round suffix stripped to get the game UUID."""
+    response = websocket_table.query(
+        KeyConditionExpression=Key('game_uuid').eq(game_uuid.split("_")[0]),
+        IndexName="game_uuid-index"
+    )
+    return [(c["connection_id"], c.get("player_uuid")) for c in response.get("Items", [])]
+
+
+def broadcast_game_state(game, exclude_player_uuid=None):
+    """
+    Pushes a game state to everyone watching it, censored per recipient.
+    `exclude_player_uuid` skips one player, in case the caller returns state to them in the HTTP response
+    """
+    recipients = [(connection_id, player_uuid)
+                  for connection_id, player_uuid in find_connected_connections(game["game_uuid"])
+                  if exclude_player_uuid is None or player_uuid != exclude_player_uuid]
+    if not recipients:
+        return
+
+    def push(recipient):
+        connection_id, player_uuid = recipient
+        nickname = get_nickname_by_uuid(game.get("players", []), player_uuid)
+        post_to_connection(censor_game(game, nickname), connection_id)
+
+    with ThreadPoolExecutor(max_workers=min(len(recipients), MAX_BROADCAST_WORKERS)) as executor:
+        list(executor.map(push, recipients))

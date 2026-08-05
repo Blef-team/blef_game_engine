@@ -6,6 +6,7 @@ from shared.db import table, RACE_LOST_ERROR_CODES
 from shared.constants import GameStatus
 from shared.game import update_n_cards, start_game, start_next_round, find_losing_player_nickname
 from shared.decorators import validate_game_request
+from shared.websocket import broadcast_game_state
 from shared.logging import logger
 
 def update_player_readiness(game_uuid, player_index, player_uuid, ready_status):
@@ -67,6 +68,7 @@ def lambda_handler(event, context, body, game):
             # still landed, so report that and let the winning write drive the start.
             if len(active_players_for_next_round) >= 2 and all(p.get("ready") for p in active_players_for_next_round):
                 if start_next_round(updated_game_state):
+                    broadcast_game_state(updated_game_state)
                     return response_payload(200, {"message": "All players ready. Next round started."})
 
         elif game_status == GameStatus.NOT_STARTED:
@@ -78,8 +80,10 @@ def lambda_handler(event, context, body, game):
 
             if all_ready and has_enough_players and not is_single_team:
                 if start_game(updated_game_state):
+                    broadcast_game_state(updated_game_state)
                     return response_payload(200, {"message": "All players ready. Game started."})
 
+        broadcast_game_state(updated_game_state)
         return response_payload(200, {"message": "Readiness updated"})
 
     except Exception as err:

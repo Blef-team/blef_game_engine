@@ -382,6 +382,7 @@ def start_game(game):
     game['round_number'] = round_number
     game['cp_nickname'] = cp_nickname
     move_deadline = start_player_timer(game)
+    written_at = decimal.Decimal(str(time.time()))
 
     try:
         table.update_item(
@@ -389,7 +390,7 @@ def start_game(game):
             UpdateExpression="set last_modified = :last_modified, players = :players, #game_public = :public, #game_status = :status, round_number = :round_number, hands = :hands, common_hand = :common_hand, cp_nickname = :cp_nickname, move_deadline = :move_deadline",
             ConditionExpression="last_modified = :lm",
             ExpressionAttributeValues={
-                ':last_modified': decimal.Decimal(str(time.time())),
+                ':last_modified': written_at,
                 ':players': players,
                 ':public': public,
                 ':status': status,
@@ -405,6 +406,16 @@ def start_game(game):
                 '#game_status': "status"
             }
         )
+        # Leave the caller holding what was actually persisted, so it can be broadcast.
+        game.update({
+            'players': players,
+            'public': public,
+            'status': status,
+            'hands': hands,
+            'common_hand': common_hand,
+            'move_deadline': move_deadline,
+            'last_modified': written_at
+        })
         return True
     except ClientError as e:
         error_code = e.response['Error']['Code']
