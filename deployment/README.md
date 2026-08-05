@@ -41,6 +41,8 @@ For every handler in `api/`, `deploy.sh` packages the code and runs
 `update-function-code` against the function's `$LATEST`. Functions are deployed
 concurrently through a bounded, throttle-safe worker pool (see the script header).
 
+The handlers run on `arm64` to save on running costs. This is specified on every deploy, as otherwise AWS resets the architecture to `x86_64`.
+
 > Note: the HTTP API stage (`$default`) has auto-deploy enabled. The WebSocket API stage
 > (`production`) does **not** auto-deploy — if you ever change a WebSocket integration or
 > route, run `aws apigatewayv2 create-deployment --api-id <ws-api-id> --stage-name production`.
