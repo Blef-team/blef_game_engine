@@ -35,6 +35,8 @@ SHARED_DIR="shared"
 # Max functions deployed concurrently. The shared Lambda control-plane bucket is
 # the constraint; 8 is a safe balance for ~22 functions. Override via env.
 CONCURRENCY="${CONCURRENCY:-8}"
+# We use pure Python, so arm64 is a cheaper drop-in. Needs to be specified every time
+ARCHITECTURE="${ARCHITECTURE:-arm64}"
 
 # Client-side rate limiting + retries. adaptive mode measures throttling and
 # slows the client automatically, so the pool can't overrun the account limit.
@@ -76,7 +78,7 @@ _deploy_impl() {
   if command -v cygpath >/dev/null 2>&1; then
     zip_path=$(cygpath -m "$zip")
   fi
-  if ! aws lambda update-function-code --function-name "$fn" --zip-file "fileb://$zip_path" >/dev/null; then
+  if ! aws lambda update-function-code --function-name "$fn" --zip-file "fileb://$zip_path" --architectures "$ARCHITECTURE" >/dev/null; then
     echo "❌ update-function-code failed for $fn"; rm -rf "$work" "$zip"; return 1
   fi
   echo "✅ code updated on \$LATEST."
@@ -109,7 +111,7 @@ deploy_one() {
 }
 
 # Make worker logic + config available to the bash -c children spawned by xargs.
-export API_DIR SHARED_DIR
+export API_DIR SHARED_DIR ARCHITECTURE
 export -f _deploy_impl deploy_one
 
 # --- Main ---
@@ -142,7 +144,7 @@ if [ "$total" -eq 0 ]; then
   echo "No handler files to deploy."; rm -rf "$RESULTS_DIR"; exit 0
 fi
 
-echo "Deploying $total function(s) with concurrency $CONCURRENCY"
+echo "Deploying $total function(s) with concurrency $CONCURRENCY on $ARCHITECTURE"
 echo "(AWS_RETRY_MODE=$AWS_RETRY_MODE, AWS_MAX_ATTEMPTS=$AWS_MAX_ATTEMPTS)"
 echo "Logs: $RESULTS_DIR"
 echo "============================="
