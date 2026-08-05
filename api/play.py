@@ -10,6 +10,7 @@ from shared.constants import GameStatus, RuleValues
 from shared.logging import logger
 from shared.game import censor_game, find_next_active_player, end_round, start_player_timer, get_action_ids
 from shared.decorators import validate_game_request
+from shared.websocket import broadcast_game_state
 
 sqs_client = boto3.client("sqs")
 TIME_LIMIT_QUEUE_NAME = os.environ.get("time_limit_queue_name")
@@ -179,27 +180,28 @@ def determine_set_existence(all_cards, action_id, rules, num_jokers):
 def update_in_dynamodb(game_uuid, cp_nickname, history, move_deadline, last_modified):
     """
     Conditionally updates the game state in DynamoDB.
-    Returns True on success, False on failure (due to race condition).
+    Returns the last_modified it wrote, or None if it lost a race.
     """
+    written_at = decimal.Decimal(str(time.time()))
     try:
         table.update_item(
             Key={'game_uuid': game_uuid},
             UpdateExpression="SET last_modified = :t, cp_nickname = :c, history = :h, move_deadline = :d",
             ConditionExpression="last_modified = :lm",
             ExpressionAttributeValues={
-                ':t': decimal.Decimal(str(time.time())),
+                ':t': written_at,
                 ':c': cp_nickname,
                 ':h': history,
                 ':d': move_deadline,
                 ':lm': last_modified
             }
         )
-        return True
+        return written_at
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code in RACE_LOST_ERROR_CODES:
             logger.warning(f"Failed to update game state for {game_uuid} due to a race condition (play vs timeout): {error_code}.")
-            return False
+            return None
         else:
             raise
 
@@ -232,6 +234,16 @@ def handle_check(game):
 
     return end_round(game, losing_player_nickname)
 
+
+def broadcast_human_move(game, mover_uuid):
+    """
+    Sends the new state to every watcher, including the mover, after a human move.
+    """
+    mover = next((p for p in game.get("players", []) if p.get("uuid") == mover_uuid), None)
+    if mover is None or mover.get("ai_agent"):
+        return
+    broadcast_game_state(game)
+
 @validate_game_request(
     require_player=True, 
     required_status=GameStatus.RUNNING, 
@@ -241,6 +253,7 @@ def lambda_handler(event, context, body, game):
     try:
         # Check if it's actually this player's turn
         player_nickname = body["player_nickname"]
+        player_uuid = str(body.get("player_uuid"))
         if player_nickname != game["cp_nickname"]:
             return parameter_error_payload("player_uuid", body.get("player_uuid"), "Not your turn or invalid player UUID")
 
@@ -270,14 +283,18 @@ def lambda_handler(event, context, body, game):
         if action_id != check_action:
             game["cp_nickname"] = find_next_active_player(game["players"], game["cp_nickname"])["nickname"]
             game["move_deadline"] = start_player_timer(game)
-            if not update_in_dynamodb(game["game_uuid"], game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"]):
+            written_at = update_in_dynamodb(game["game_uuid"], game["cp_nickname"], game["history"], game["move_deadline"], game["last_modified"])
+            if not written_at:
                 return conflict_payload()
+            game["last_modified"] = written_at
+            broadcast_human_move(game, player_uuid)
             return response_payload(200, censor_game(game, player_nickname))
 
         else:
             end_round_state = handle_check(game)
             if not end_round_state:
                 return conflict_payload()
+            broadcast_human_move(end_round_state, player_uuid)
             return response_payload(200, censor_game(end_round_state, player_nickname))
 
     except Exception as err:

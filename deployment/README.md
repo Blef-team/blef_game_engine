@@ -72,5 +72,16 @@ The handlers run on `arm64` to save on running costs. This is specified on every
 Reports are reviewed by the maintainers pulling straight from DynamoDB. `deployment/fetch_reports.py` scans the table, prints reports that arrived since its last run, and flags reported nicknames that pass the current profanity filter (blocklist candidates).
 
 
+### Websocket connection expiry (one-time setup)
+
+`watch_game_websocket_manager` needs TTL enabled on the `ttl` attribute:
+
+```bash
+aws dynamodb update-time-to-live --table-name watch_game_websocket_manager \
+  --time-to-live-specification "Enabled=true, AttributeName=ttl"
+```
+
+This is only a backstop. When a broadcast is refused because of a dropped connection, the connection is deleted from the table by a separate mechanism.
+
 ### Architecture overview
 ![Blef architecture](https://user-images.githubusercontent.com/10632991/146104548-3e4693ab-4889-43c2-b7a0-e4d47d52fb36.png)

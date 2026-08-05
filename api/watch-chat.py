@@ -1,37 +1,10 @@
-import os
-import boto3
 from boto3.dynamodb.conditions import Key
 from concurrent.futures import ThreadPoolExecutor
 import json
-from shared.response import *
 from shared.api_gateway import parse_event
 from shared.logging import logger
 from shared.db import websocket_table, get_from_dynamodb
-
-
-watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
-watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
-
-endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
-apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
-
-# Upper bound on concurrent websocket posts per broadcast. PostToConnection is
-# network-bound, so threads parallelise well despite the GIL.
-MAX_BROADCAST_WORKERS = 16
-
-def post_to_connection(payload, connection_id):
-    logger.info('## POSTING TO CONNECTION')
-    logger.info(connection_id)
-    try:
-        apigateway.post_to_connection(
-            Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
-            ConnectionId=connection_id
-        )
-    except Exception as err:
-        # A single stale/gone connection must not abort the rest of the broadcast.
-        logger.info('## ERROR: COULD NOT POST TO CONNECTION')
-        logger.info(str(err))
-    return True
+from shared.websocket import post_to_connection, MAX_BROADCAST_WORKERS
 
 
 def broadcast_reaction(reaction_details):

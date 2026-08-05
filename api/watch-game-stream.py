@@ -9,23 +9,14 @@ from shared.api_gateway import parse_event
 from shared.game import get_player_by_nickname, get_nickname_by_uuid, censor_game, is_update_redundant
 from shared.logging import logger
 from shared.db import websocket_table
+from shared.websocket import post_to_connection, broadcast_game_state, MAX_BROADCAST_WORKERS
 
 sqs_client = boto3.client("sqs")
 AIAGENT_QUEUE_NAME = os.environ.get("aiagent_queue_name")
 
-# Upper bound on concurrent websocket posts per broadcast. PostToConnection is
-# network-bound, so threads parallelise well despite the GIL.
-MAX_BROADCAST_WORKERS = 16
-
 # Cached lazily on first use so the queue URL is resolved once per container
 # (and captured by the SnapStart snapshot) instead of on every broadcast.
 _aiagent_queue_url = None
-
-watch_game_websocket_api_id = os.environ.get("watch_game_websocket_api_id")
-watch_game_websocket_api_stage = os.environ.get("watch_game_websocket_api_stage")
-
-endpoint_url = f"{boto3.client('apigatewayv2').get_api(ApiId=watch_game_websocket_api_id).get('ApiEndpoint')}/{watch_game_websocket_api_stage}".replace("wss://", "https://")
-apigateway = boto3.client('apigatewaymanagementapi', endpoint_url=endpoint_url)
 
 deserializer = boto3.dynamodb.types.TypeDeserializer()
 
@@ -62,18 +53,6 @@ def send_queue_message(game):
         return
 
 
-def find_connected_players(game):
-    game_uuid = game["game_uuid"]
-    if isinstance(game_uuid, dict):
-        game_uuid = game_uuid.get("S")
-    watched_game_uuid = game_uuid.split("_")[0]
-    response = websocket_table.query(
-        KeyConditionExpression=Key('game_uuid').eq(watched_game_uuid),
-        IndexName="game_uuid-index"
-    )
-    return [(connection["connection_id"], connection["player_uuid"]) for connection in response.get("Items", [])]
-
-
 def get_public_game_info(game):
     public_game_info = {
         "game_uuid": game["game_uuid"],
@@ -98,38 +77,8 @@ def find_connected_public_games_watchers():
     return [(connection["connection_id"]) for connection in response.get("Items")]
 
 
-def post_to_connection(payload, connection_id):
-    logger.info('## POSTING TO CONNECTION')
-    logger.info(connection_id)
-    try:
-        response = apigateway.post_to_connection(
-            Data=bytes(json.dumps(response_payload(200, payload), cls=DecimalEncoder), encoding="utf-8"),
-            ConnectionId=connection_id
-        )
-    except Exception as err:
-        logger.info('## ERROR: COULD NOT POST TO CONNECTION')
-        logger.info(str(err))
-    return True
-
-
 def deserialise_dynamodb_stream_event(obj):
     return {k: deserializer.deserialize(v) for k,v in obj.items()}
-
-
-def update_game_watchers(game):
-    connected_players = find_connected_players(game)
-    logger.info('## CONNECTED PLAYERS')
-    logger.info(connected_players)
-    if not connected_players:
-        return
-
-    def post_player_update(connected_player):
-        connection_id, player_uuid = connected_player
-        player_nickname = get_nickname_by_uuid(game["players"], player_uuid)
-        post_to_connection(censor_game(game, player_nickname), connection_id)
-
-    with ThreadPoolExecutor(max_workers=min(len(connected_players), MAX_BROADCAST_WORKERS)) as executor:
-        list(executor.map(post_player_update, connected_players))
 
 
 def update_public_games_watchers(game, game_old):
@@ -145,7 +94,7 @@ def update_public_games_watchers(game, game_old):
 
 
 def update_watchers(game):
-    update_game_watchers(game["new"])
+    broadcast_game_state(game["new"])
     update_public_games_watchers(game["new"], game["old"])
 
 
